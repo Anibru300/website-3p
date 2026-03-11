@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "homepage": "https://carlosurbina.github.io/website-3p",
+  "homepage": "https://Anibru300.github.io/website-3p",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
