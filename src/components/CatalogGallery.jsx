@@ -194,6 +194,7 @@ const CatalogGallery = () => {
                       src={mainCatalog.image} 
                       alt={mainCatalog.name}
                       className="h-20 w-auto"
+                      loading="lazy"
                     />
                   </div>
                   <h3 className="text-3xl font-bold mb-2">{mainCatalog.name}</h3>
@@ -325,6 +326,7 @@ const CatalogGallery = () => {
                         src={catalog.image} 
                         alt={catalog.name}
                         className="object-contain transition-transform duration-300 group-hover:scale-110"
+                        loading="lazy"
                         style={{ 
                           maxWidth: catalog.isSvg ? '100%' : '80%',
                           maxHeight: catalog.isSvg ? '100%' : '80%',
@@ -440,6 +442,7 @@ const CatalogGallery = () => {
                     src={selectedImage.image} 
                     alt={selectedImage.name}
                     className="max-w-full max-h-[50vh] md:max-h-[55vh] object-contain"
+                    loading="lazy"
                     style={{ minWidth: '200px', minHeight: '100px' }}
                     onError={(e) => {
                       e.target.style.display = 'none';
