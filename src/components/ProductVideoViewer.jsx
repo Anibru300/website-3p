@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { 
   Play, Pause, Volume2, VolumeX, Maximize, X, 
-  Rotate3D, Film, Download
+  Rotate3D, Film, AlertCircle
 } from 'lucide-react';
 
 const ProductVideoViewer = ({ 
@@ -14,7 +14,7 @@ const ProductVideoViewer = ({
 }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
-  const [showControls, setShowControls] = useState(true);
+  const [videoError, setVideoError] = useState(false);
   const videoRef = useRef(null);
 
   if (!videoUrl) {
@@ -55,6 +55,29 @@ const ProductVideoViewer = ({
     }
   };
 
+  const handleVideoError = () => {
+    console.log('Error cargando video:', videoUrl);
+    setVideoError(true);
+  };
+
+  // Si hay error cargando el video, mostrar la imagen con mensaje
+  if (videoError) {
+    return (
+      <div className="relative w-full h-full bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl overflow-hidden flex flex-col items-center justify-center p-6">
+        <img 
+          src={posterUrl} 
+          alt={alt}
+          className="max-w-full max-h-[70%] object-contain drop-shadow-2xl mb-4"
+        />
+        <div className="bg-amber-100 border border-amber-300 rounded-xl p-4 max-w-sm text-center">
+          <AlertCircle className="w-8 h-8 text-amber-600 mx-auto mb-2" />
+          <p className="text-amber-800 font-medium text-sm">Video 360° no disponible</p>
+          <p className="text-amber-600 text-xs mt-1">El video está siendo procesado o no es accesible desde esta ubicación.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
       {/* Header */}
@@ -92,15 +115,13 @@ const ProductVideoViewer = ({
         muted
         loop
         playsInline
+        crossOrigin="anonymous"
+        onError={handleVideoError}
         onClick={togglePlay}
       />
 
       {/* Controles */}
-      <div 
-        className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4"
-        onMouseEnter={() => setShowControls(true)}
-        onMouseLeave={() => setShowControls(false)}
-      >
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
         <div className="flex items-center justify-center gap-4">
           {/* Play/Pause */}
           <button
