@@ -131,6 +131,7 @@ export const choreTimeProducts = [
     stock: 6,
     specs: "Sensor de humedad relativa para paneles Intelligra. Mide con precision el ambiente de la nave.",
     imagen: "images/catalogo/chore-time/48299_SENSOR_DE_HUMEDAD_RELATIVA_INTELLIGRA_vista1.png",
+    modelo3d: "models/48299.glb",
   },
   {
     codigo: "48564",
