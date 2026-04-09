@@ -210,11 +210,13 @@ const ChoreTimePage = () => {
       {/* Modal de detalle */}
       {selectedProduct && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-8 bg-black/70 backdrop-blur-sm"
           onClick={() => setSelectedProduct(null)}
         >
           <div 
-            className="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            className={`relative bg-white rounded-2xl shadow-2xl w-full max-h-[95vh] overflow-hidden transition-all duration-300 ${
+              view3D ? 'max-w-6xl lg:max-w-7xl' : 'max-w-4xl'
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             <button 
@@ -241,9 +243,13 @@ const ChoreTimePage = () => {
               <ChevronRight size={24} className="text-gray-700" />
             </button>
 
-            <div className="grid md:grid-cols-2 gap-0">
-              {/* Sección de imagen/3D */}
-              <div className="relative h-64 md:h-auto md:min-h-[400px] bg-gray-50 md:rounded-l-2xl overflow-hidden">
+            <div className={`grid gap-0 ${view3D ? 'lg:grid-cols-5' : 'md:grid-cols-2'}`}>
+              {/* Sección de imagen/3D - Más grande cuando es 3D */}
+              <div className={`relative bg-gray-50 overflow-hidden ${
+                view3D 
+                  ? 'lg:col-span-3 h-[50vh] lg:h-[85vh]' 
+                  : 'h-64 md:h-auto md:min-h-[450px] md:rounded-l-2xl'
+              }`}>
                 {/* Toggle 2D/3D */}
                 <div className="absolute top-4 left-4 z-20 flex bg-white rounded-lg shadow-md p-1">
                   <button
@@ -269,8 +275,11 @@ const ChoreTimePage = () => {
                 {/* Contenido: 2D o 3D */}
                 {view3D ? (
                   <Suspense fallback={
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-p3-red"></div>
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-p3-blue border-t-transparent mx-auto mb-4"></div>
+                        <p className="text-gray-600 font-medium">Cargando modelo 3D...</p>
+                      </div>
                     </div>
                   }>
                     <Product3DViewer
@@ -281,11 +290,11 @@ const ChoreTimePage = () => {
                     />
                   </Suspense>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center p-6">
+                  <div className="w-full h-full flex items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-gray-100">
                     <img 
                       src={selectedProduct.imagen} 
                       alt={selectedProduct.nombre}
-                      className="max-h-full max-w-full object-contain"
+                      className="max-h-full max-w-full object-contain drop-shadow-xl"
                       loading="lazy"
                       onError={(e) => { 
                         e.target.style.display = 'none'; 
@@ -295,7 +304,10 @@ const ChoreTimePage = () => {
                   </div>
                 )}
               </div>
-              <div className="p-6 md:p-8 flex flex-col">
+              {/* Sección de información */}
+              <div className={`p-6 lg:p-8 flex flex-col overflow-y-auto ${
+                view3D ? 'lg:col-span-2 max-h-[40vh] lg:max-h-[85vh]' : ''
+              }`}>
                 <div className="text-sm font-semibold text-[#E8611A] mb-2">SKU: {selectedProduct.codigo}</div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">{selectedProduct.nombre}</h2>
                 <p className="text-gray-600 mb-6 leading-relaxed">{selectedProduct.specs}</p>
