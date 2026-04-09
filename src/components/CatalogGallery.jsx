@@ -272,13 +272,12 @@ const CatalogGallery = () => {
                     {language === 'es' ? 'Descargar Catálogo PDF' : 'Download PDF Catalog'}
                   </a>
                   <div 
-                    className="flex-1"
+                    className="flex-1 cursor-pointer"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       goToChoreTimeProducts();
                     }}
-                    style={{ cursor: 'pointer' }}
                   >
                     <div className="flex items-center justify-center gap-2 px-6 py-4 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-p3-red hover:text-p3-red transition-all h-full w-full">
                       <Eye size={20} />
@@ -389,67 +388,72 @@ const CatalogGallery = () => {
           </div>
         </FadeInSection>
 
-        {/* Modal para ver logo ampliado - CORREGIDO */}
+        {/* Modal para ver logo ampliado - CORREGIDO V3 */}
         {selectedImage && (
           <div 
-            className="fixed inset-0 z-[100] flex items-center justify-center" 
+            className="fixed inset-0 z-[100]"
             style={{ backgroundColor: 'rgba(0, 0, 0, 0.95)' }}
             onClick={closeModal}
           >
-            {/* Botón X - MEJORADO Y MÁS VISIBLE */}
-            <button 
-              className="fixed top-6 right-6 z-[200] w-14 h-14 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center text-white shadow-2xl transition-all border-4 border-white"
-              onClick={closeModal}
-              aria-label="Cerrar"
-              style={{ position: 'fixed' }}
-            >
-              <X size={32} strokeWidth={3} />
-            </button>
-            
-            {/* Texto de ayuda */}
-            <div className="fixed top-6 left-6 z-[150] text-white/70 text-sm bg-black/50 px-4 py-2 rounded-full">
-              Presiona ESC o clic fuera para cerrar
-            </div>
-            
-            <button 
-              className="fixed left-6 top-1/2 -translate-y-1/2 z-[150] text-white/70 hover:text-white transition-colors p-3 hover:bg-white/10 rounded-full"
-              onClick={(e) => { e.stopPropagation(); goToPrev(); }}
-              aria-label="Anterior"
-              style={{ position: 'fixed' }}
-            >
-              <ChevronLeft size={48} />
-            </button>
-            
-            <button 
-              className="fixed right-6 top-1/2 -translate-y-1/2 z-[150] text-white/70 hover:text-white transition-colors p-3 hover:bg-white/10 rounded-full"
-              onClick={(e) => { e.stopPropagation(); goToNext(); }}
-              aria-label="Siguiente"
-              style={{ position: 'fixed' }}
-            >
-              <ChevronRight size={48} />
-            </button>
-            
-            <div 
-              className="max-w-4xl max-h-[85vh] flex flex-col items-center mt-8"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-white rounded-2xl p-8 md:p-12 mb-6 shadow-2xl">
-                <img 
-                  src={selectedImage.image} 
-                  alt={selectedImage.name}
-                  className="max-w-full max-h-[50vh] md:max-h-[55vh] object-contain"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = `<span class="text-2xl font-bold text-gray-800">${selectedImage.name}</span>`;
-                  }}
-                />
+            {/* Contenedor central */}
+            <div className="relative w-full h-full flex items-center justify-center p-4">
+              {/* Botón X - MÁS VISIBLE */}
+              <button 
+                className="absolute top-4 right-4 w-12 h-12 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center text-white shadow-lg transition-all border-2 border-white z-[200]"
+                onClick={(e) => { e.stopPropagation(); closeModal(); }}
+                aria-label="Cerrar"
+              >
+                <X size={28} strokeWidth={3} />
+              </button>
+              
+              {/* Texto de ayuda */}
+              <div className="absolute top-4 left-4 text-white/70 text-sm bg-black/50 px-3 py-1 rounded-full">
+                ESC o clic fuera para cerrar
               </div>
-              <div className="text-center">
-                <h3 className="text-2xl md:text-3xl font-bold text-white mb-1">{selectedImage.name}</h3>
-                <p className="text-gray-300 text-lg mb-2">{selectedImage.description}</p>
-                <p className="text-amber-400 text-sm">
-                  {language === 'es' ? 'Catálogo en preparación' : 'Catalog in preparation'}
-                </p>
+              
+              {/* Botón Anterior */}
+              <button 
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full z-[150]"
+                onClick={(e) => { e.stopPropagation(); goToPrev(); }}
+                aria-label="Anterior"
+              >
+                <ChevronLeft size={48} />
+              </button>
+              
+              {/* Botón Siguiente - CORREGIDO */}
+              <button 
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full z-[150]"
+                onClick={(e) => { e.stopPropagation(); goToNext(); }}
+                aria-label="Siguiente"
+                style={{ right: '16px' }}
+              >
+                <ChevronRight size={48} />
+              </button>
+              
+              {/* Contenido del modal */}
+              <div 
+                className="max-w-3xl w-full flex flex-col items-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="bg-white rounded-2xl p-8 md:p-12 mb-4 shadow-2xl">
+                  <img 
+                    src={selectedImage.image} 
+                    alt={selectedImage.name}
+                    className="max-w-full max-h-[50vh] md:max-h-[55vh] object-contain"
+                    style={{ minWidth: '200px', minHeight: '100px' }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = `<span class="text-3xl font-bold text-gray-800">${selectedImage.name}</span>`;
+                    }}
+                  />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold text-white mb-1">{selectedImage.name}</h3>
+                  <p className="text-gray-300">{selectedImage.description}</p>
+                  <p className="text-amber-400 text-sm mt-2">
+                    {language === 'es' ? 'Catálogo en preparación' : 'Catalog in preparation'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
