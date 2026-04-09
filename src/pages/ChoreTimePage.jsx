@@ -1,13 +1,17 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Package, Phone, Mail, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { ArrowLeft, Package, Phone, Mail, MapPin, X, ChevronLeft, ChevronRight, Box, Image as ImageIcon } from 'lucide-react';
 import { choreTimeProducts, choreTimeCategories } from '../data/choreTimeProducts';
 import SEO from '../components/SEO';
 import ShareButton from '../components/ShareButton';
+
+// Lazy load del visor 3D para no cargarlo si no se usa
+const Product3DViewer = lazy(() => import('../components/Product3DViewer'));
 
 const ChoreTimePage = () => {
   const [categoriaActiva, setCategoriaActiva] = useState('todas');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [view3D, setView3D] = useState(false); // Toggle entre 2D y 3D
 
   // Calcular productos filtrados primero
   const productosFiltrados = categoriaActiva === 'todas'
@@ -42,6 +46,7 @@ const ChoreTimePage = () => {
   const openModal = (product, index) => {
     setSelectedProduct(product);
     setSelectedIndex(index);
+    setView3D(false); // Siempre empezar en vista 2D
   };
 
   const navigateModal = (direction) => {
@@ -132,7 +137,7 @@ const ChoreTimePage = () => {
                 onClick={() => openModal(prod, index)}
                 className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer"
               >
-                <div className="h-48 bg-gray-50 flex items-center justify-center p-4">
+                <div className="h-48 bg-gray-50 flex items-center justify-center p-4 relative">
                   <img 
                     src={prod.imagen} 
                     alt={prod.nombre}
@@ -143,6 +148,13 @@ const ChoreTimePage = () => {
                       e.target.parentElement.innerHTML = '<span class="text-gray-400 text-sm">Imagen no disponible</span>'; 
                     }}
                   />
+                  {/* Badge 3D */}
+                  {prod.modelo3d && (
+                    <div className="absolute top-2 right-2 bg-p3-blue text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-md">
+                      <Box size={12} />
+                      3D
+                    </div>
+                  )}
                 </div>
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-1">
@@ -230,17 +242,58 @@ const ChoreTimePage = () => {
             </button>
 
             <div className="grid md:grid-cols-2 gap-0">
-              <div className="h-64 md:h-auto bg-gray-50 flex items-center justify-center p-6 md:rounded-l-2xl">
-                <img 
-                  src={selectedProduct.imagen} 
-                  alt={selectedProduct.nombre}
-                  className="max-h-full max-w-full object-contain"
-                  loading="lazy"
-                  onError={(e) => { 
-                    e.target.style.display = 'none'; 
-                    e.target.parentElement.innerHTML = '<span class="text-gray-400 text-sm">Imagen no disponible</span>'; 
-                  }}
-                />
+              {/* Sección de imagen/3D */}
+              <div className="relative h-64 md:h-auto md:min-h-[400px] bg-gray-50 md:rounded-l-2xl overflow-hidden">
+                {/* Toggle 2D/3D */}
+                <div className="absolute top-4 left-4 z-20 flex bg-white rounded-lg shadow-md p-1">
+                  <button
+                    onClick={() => setView3D(false)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      !view3D ? 'bg-p3-blue text-white' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <ImageIcon size={16} />
+                    2D
+                  </button>
+                  <button
+                    onClick={() => setView3D(true)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      view3D ? 'bg-p3-blue text-white' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Box size={16} />
+                    3D
+                  </button>
+                </div>
+
+                {/* Contenido: 2D o 3D */}
+                {view3D ? (
+                  <Suspense fallback={
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-p3-red"></div>
+                    </div>
+                  }>
+                    <Product3DViewer
+                      modelUrl={selectedProduct.modelo3d}
+                      posterUrl={selectedProduct.imagen}
+                      alt={selectedProduct.nombre}
+                      productName={selectedProduct.nombre}
+                    />
+                  </Suspense>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center p-6">
+                    <img 
+                      src={selectedProduct.imagen} 
+                      alt={selectedProduct.nombre}
+                      className="max-h-full max-w-full object-contain"
+                      loading="lazy"
+                      onError={(e) => { 
+                        e.target.style.display = 'none'; 
+                        e.target.parentElement.innerHTML = '<span class="text-gray-400 text-sm">Imagen no disponible</span>'; 
+                      }}
+                    />
+                  </div>
+                )}
               </div>
               <div className="p-6 md:p-8 flex flex-col">
                 <div className="text-sm font-semibold text-[#E8611A] mb-2">SKU: {selectedProduct.codigo}</div>
