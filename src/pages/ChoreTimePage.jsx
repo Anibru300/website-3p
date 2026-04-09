@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Package, Phone, Mail, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { choreTimeProducts, choreTimeCategories } from '../data/choreTimeProducts';
 import SEO from '../components/SEO';
+import ShareButton from '../components/ShareButton';
 
 const ChoreTimePage = () => {
   const [categoriaActiva, setCategoriaActiva] = useState('todas');
@@ -144,7 +145,10 @@ const ChoreTimePage = () => {
                   />
                 </div>
                 <div className="p-4">
-                  <div className="text-xs font-semibold text-[#E8611A] mb-1">SKU: {prod.codigo}</div>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <span className="text-xs font-semibold text-[#E8611A]">SKU: {prod.codigo}</span>
+                    <ShareButton product={prod} variant="icon" />
+                  </div>
                   <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">{prod.nombre}</h3>
                   <p className="text-sm text-gray-600 line-clamp-3 mb-4">{prod.specs}</p>
                   <div className="flex items-center justify-between">
@@ -266,6 +270,7 @@ const ChoreTimePage = () => {
                     <Phone size={18} />
                     Cotizar por WhatsApp
                   </a>
+                  <ShareButton product={selectedProduct} variant="button" className="flex-1" />
                   <button 
                     onClick={() => setSelectedProduct(null)}
                     className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors"
