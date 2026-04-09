@@ -1,0 +1,15 @@
+{
+  "name": "glb-color-editor",
+  "version": "1.0.0",
+  "description": "Script para agregar color a modelos GLB",
+  "type": "module",
+  "scripts": {
+    "color": "node add-color-to-glb.js",
+    "help": "node add-color-to-glb.js --help"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "^3.10.1",
+    "@gltf-transform/extensions": "^3.10.1",
+    "@gltf-transform/functions": "^3.10.1"
+  }
+}
