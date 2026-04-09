@@ -1,11 +1,10 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { ArrowLeft, Package, Phone, Mail, MapPin, X, ChevronLeft, ChevronRight, Box, Image as ImageIcon, Film } from 'lucide-react';
+import { ArrowLeft, Package, Phone, Mail, MapPin, X, ChevronLeft, ChevronRight, Image as ImageIcon, Film } from 'lucide-react';
 import { choreTimeProducts, choreTimeCategories } from '../data/choreTimeProducts';
 import SEO from '../components/SEO';
 import ShareButton from '../components/ShareButton';
 
-// Lazy load de visores
-const Product3DViewer = lazy(() => import('../components/Product3DViewer'));
+// Lazy load del visor de video
 const ProductVideoViewer = lazy(() => import('../components/ProductVideoViewer'));
 
 const ChoreTimePage = () => {
@@ -47,7 +46,7 @@ const ChoreTimePage = () => {
   const openModal = (product, index) => {
     setSelectedProduct(product);
     setSelectedIndex(index);
-    setViewMode(product.video360 ? 'video' : '2d'); // Empezar en video si existe, sino 2D
+    setViewMode('2d'); // Siempre empezar en 2D
   };
 
   const navigateModal = (direction) => {
@@ -157,12 +156,7 @@ const ChoreTimePage = () => {
                         360°
                       </div>
                     )}
-                    {prod.modelo3d && (
-                      <div className="bg-p3-blue text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-md">
-                        <Box size={12} />
-                        3D
-                      </div>
-                    )}
+  
                   </div>
                 </div>
                 <div className="p-4">
@@ -252,14 +246,10 @@ const ChoreTimePage = () => {
               <ChevronRight size={24} className="text-gray-700" />
             </button>
 
-            <div className={`grid gap-0 ${viewMode === '3d' ? 'lg:grid-cols-5' : 'md:grid-cols-2'}`}>
-              {/* Sección de imagen/3D - Más grande cuando es 3D */}
-              <div className={`relative bg-gray-50 overflow-hidden ${
-                viewMode === '3d' 
-                  ? 'lg:col-span-3 h-[50vh] lg:h-[85vh]' 
-                  : 'h-64 md:h-auto md:min-h-[450px] md:rounded-l-2xl'
-              }`}>
-                {/* Toggle 2D/3D/Video */}
+            <div className="grid md:grid-cols-2 gap-0">
+              {/* Sección de imagen/video */}
+              <div className="relative h-64 md:h-auto md:min-h-[450px] bg-gray-50 md:rounded-l-2xl overflow-hidden">
+                {/* Toggle 2D/Video */}
                 <div className="absolute top-4 left-4 z-20 flex bg-white rounded-lg shadow-md p-1">
                   <button
                     onClick={() => setViewMode('2d')}
@@ -270,17 +260,6 @@ const ChoreTimePage = () => {
                     <ImageIcon size={16} />
                     2D
                   </button>
-                  {selectedProduct.modelo3d && (
-                    <button
-                      onClick={() => setViewMode('3d')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                        viewMode === '3d' ? 'bg-p3-blue text-white' : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      <Box size={16} />
-                      3D
-                    </button>
-                  )}
                   {selectedProduct.video360 && (
                     <button
                       onClick={() => setViewMode('video')}
@@ -295,7 +274,7 @@ const ChoreTimePage = () => {
                 </div>
 
                 {/* Contenido según modo */}
-                {viewMode === 'video' && selectedProduct.video360 ? (
+                {viewMode === 'video' ? (
                   <Suspense fallback={
                     <div className="w-full h-full flex items-center justify-center bg-black">
                       <div className="text-center">
@@ -306,23 +285,6 @@ const ChoreTimePage = () => {
                   }>
                     <ProductVideoViewer
                       videoUrl={selectedProduct.video360}
-                      posterUrl={selectedProduct.imagen}
-                      alt={selectedProduct.nombre}
-                      productName={selectedProduct.nombre}
-                      productCode={selectedProduct.codigo}
-                    />
-                  </Suspense>
-                ) : viewMode === '3d' && selectedProduct.modelo3d ? (
-                  <Suspense fallback={
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-p3-blue border-t-transparent mx-auto mb-4"></div>
-                        <p className="text-gray-600 font-medium">Cargando modelo 3D...</p>
-                      </div>
-                    </div>
-                  }>
-                    <Product3DViewer
-                      modelUrl={selectedProduct.modelo3d}
                       posterUrl={selectedProduct.imagen}
                       alt={selectedProduct.nombre}
                       productName={selectedProduct.nombre}
@@ -345,9 +307,7 @@ const ChoreTimePage = () => {
                 )}
               </div>
               {/* Sección de información */}
-              <div className={`p-6 lg:p-8 flex flex-col overflow-y-auto ${
-                viewMode === '3d' ? 'lg:col-span-2 max-h-[40vh] lg:max-h-[85vh]' : ''
-              }`}>
+              <div className="p-6 lg:p-8 flex flex-col overflow-y-auto">
                 <div className="text-sm font-semibold text-[#E8611A] mb-2">SKU: {selectedProduct.codigo}</div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">{selectedProduct.nombre}</h2>
                 <p className="text-gray-600 mb-6 leading-relaxed">{selectedProduct.specs}</p>
