@@ -1,17 +1,18 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { ArrowLeft, Package, Phone, Mail, MapPin, X, ChevronLeft, ChevronRight, Box, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Package, Phone, Mail, MapPin, X, ChevronLeft, ChevronRight, Box, Image as ImageIcon, Film } from 'lucide-react';
 import { choreTimeProducts, choreTimeCategories } from '../data/choreTimeProducts';
 import SEO from '../components/SEO';
 import ShareButton from '../components/ShareButton';
 
-// Lazy load del visor 3D para no cargarlo si no se usa
+// Lazy load de visores
 const Product3DViewer = lazy(() => import('../components/Product3DViewer'));
+const ProductVideoViewer = lazy(() => import('../components/ProductVideoViewer'));
 
 const ChoreTimePage = () => {
   const [categoriaActiva, setCategoriaActiva] = useState('todas');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [view3D, setView3D] = useState(false); // Toggle entre 2D y 3D
+  const [viewMode, setViewMode] = useState('2d'); // '2d', '3d', o 'video'
 
   // Calcular productos filtrados primero
   const productosFiltrados = categoriaActiva === 'todas'
@@ -46,7 +47,7 @@ const ChoreTimePage = () => {
   const openModal = (product, index) => {
     setSelectedProduct(product);
     setSelectedIndex(index);
-    setView3D(false); // Siempre empezar en vista 2D
+    setViewMode(product.video360 ? 'video' : '2d'); // Empezar en video si existe, sino 2D
   };
 
   const navigateModal = (direction) => {
@@ -148,13 +149,21 @@ const ChoreTimePage = () => {
                       e.target.parentElement.innerHTML = '<span class="text-gray-400 text-sm">Imagen no disponible</span>'; 
                     }}
                   />
-                  {/* Badge 3D */}
-                  {prod.modelo3d && (
-                    <div className="absolute top-2 right-2 bg-p3-blue text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-md">
-                      <Box size={12} />
-                      3D
-                    </div>
-                  )}
+                  {/* Badges */}
+                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                    {prod.video360 && (
+                      <div className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-md">
+                        <Film size={12} />
+                        360°
+                      </div>
+                    )}
+                    {prod.modelo3d && (
+                      <div className="bg-p3-blue text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-md">
+                        <Box size={12} />
+                        3D
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-1">
@@ -250,30 +259,60 @@ const ChoreTimePage = () => {
                   ? 'lg:col-span-3 h-[50vh] lg:h-[85vh]' 
                   : 'h-64 md:h-auto md:min-h-[450px] md:rounded-l-2xl'
               }`}>
-                {/* Toggle 2D/3D */}
+                {/* Toggle 2D/3D/Video */}
                 <div className="absolute top-4 left-4 z-20 flex bg-white rounded-lg shadow-md p-1">
                   <button
-                    onClick={() => setView3D(false)}
+                    onClick={() => setViewMode('2d')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      !view3D ? 'bg-p3-blue text-white' : 'text-gray-600 hover:bg-gray-100'
+                      viewMode === '2d' ? 'bg-p3-blue text-white' : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
                     <ImageIcon size={16} />
                     2D
                   </button>
-                  <button
-                    onClick={() => setView3D(true)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      view3D ? 'bg-p3-blue text-white' : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Box size={16} />
-                    3D
-                  </button>
+                  {selectedProduct.modelo3d && (
+                    <button
+                      onClick={() => setViewMode('3d')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        viewMode === '3d' ? 'bg-p3-blue text-white' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Box size={16} />
+                      3D
+                    </button>
+                  )}
+                  {selectedProduct.video360 && (
+                    <button
+                      onClick={() => setViewMode('video')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        viewMode === 'video' ? 'bg-p3-blue text-white' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Film size={16} />
+                      360°
+                    </button>
+                  )}
                 </div>
 
-                {/* Contenido: 2D o 3D */}
-                {view3D ? (
+                {/* Contenido según modo */}
+                {viewMode === 'video' && selectedProduct.video360 ? (
+                  <Suspense fallback={
+                    <div className="w-full h-full flex items-center justify-center bg-black">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-500 border-t-transparent mx-auto mb-4"></div>
+                        <p className="text-white font-medium">Cargando video 360°...</p>
+                      </div>
+                    </div>
+                  }>
+                    <ProductVideoViewer
+                      videoUrl={selectedProduct.video360}
+                      posterUrl={selectedProduct.imagen}
+                      alt={selectedProduct.nombre}
+                      productName={selectedProduct.nombre}
+                      productCode={selectedProduct.codigo}
+                    />
+                  </Suspense>
+                ) : viewMode === '3d' && selectedProduct.modelo3d ? (
                   <Suspense fallback={
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
                       <div className="text-center">
