@@ -17,12 +17,16 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Parse route: separate path from query string
+  // Example: #/marcas/chore-time?producto=48299 -> path: /marcas/chore-time, query: ?producto=48299
+  const cleanRoute = route.replace('#', '') || '/';
+  const [pathPart] = cleanRoute.split('?'); // Get only the path part, ignore query string
+  const segments = pathPart.split('/').filter(Boolean);
+
   // Scroll a sección cuando la ruta apunta a un ancla de HomePage
   useEffect(() => {
-    const cleanRoute = route.replace('#', '') || '/';
-    const segments = cleanRoute.split('/').filter(Boolean);
-    const sectionId = segments[0];
     const homeSections = ['inicio', 'marcas', 'catalogos', 'contacto'];
+    const sectionId = segments[0];
 
     if (homeSections.includes(sectionId)) {
       const el = document.getElementById(sectionId);
@@ -40,10 +44,7 @@ function App() {
       // En subpáginas de marca, scrollear al inicio
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [route]);
-
-  const cleanRoute = route.replace('#', '') || '/';
-  const segments = cleanRoute.split('/').filter(Boolean);
+  }, [segments]);
 
   let content = <HomePage />;
   if (segments[0] === 'marcas') {

@@ -8,6 +8,14 @@ const ChoreTimePage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
+  // Calcular productos filtrados primero
+  const productosFiltrados = categoriaActiva === 'todas'
+    ? choreTimeProducts
+    : choreTimeProducts.filter(p => {
+        const cat = choreTimeCategories.find(c => c.id === categoriaActiva);
+        return cat ? cat.productos.includes(p.codigo) : true;
+      });
+
   // Handle URL parameters for direct product linking
   useEffect(() => {
     const hash = window.location.hash;
@@ -17,18 +25,11 @@ const ChoreTimePage = () => {
       const product = choreTimeProducts.find(p => p.codigo === productCode);
       if (product) {
         setSelectedProduct(product);
-        const index = productosFiltrados.findIndex(p => p.codigo === productCode);
+        const index = choreTimeProducts.findIndex(p => p.codigo === productCode);
         setSelectedIndex(index >= 0 ? index : 0);
       }
     }
   }, []);
-
-  const productosFiltrados = categoriaActiva === 'todas'
-    ? choreTimeProducts
-    : choreTimeProducts.filter(p => {
-        const cat = choreTimeCategories.find(c => c.id === categoriaActiva);
-        return cat ? cat.productos.includes(p.codigo) : true;
-      });
 
   const whatsappUrl = (prod) => {
     const text = encodeURIComponent(
