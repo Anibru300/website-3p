@@ -1,7 +1,7 @@
 import { Quote, Building2, MapPin, Users, Globe, Award, TrendingUp, Star } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
-import FadeInSection from './FadeInSection';
-import AnimatedCounter from './AnimatedCounter';
+import { useLanguage } from '../../context/LanguageContext';
+import { FadeInSection } from '../ui';
+import { AnimatedCounter } from '../ui';
 
 const Clients = () => {
   const { t, language } = useLanguage();

@@ -6,7 +6,7 @@ export { default as ScrollReveal } from './ScrollReveal';
 export { default as AnimatedCounter } from './AnimatedCounter';
 export { default as TypewriterText } from './TypewriterText';
 export { default as AnimatedGradientText } from './AnimatedGradientText';
-export { default as Toast } from './Toast';
+export { default as Toast, useToast, ToastProvider } from './Toast';
 export { default as AnimatedBackground } from './AnimatedBackground';
 export { default as ClickParticles } from './ClickParticles';
 export { default as CursorSpotlight } from './CursorSpotlight';

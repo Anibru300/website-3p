@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Search, Filter, Download, ChevronRight, Package, Info, X, ExternalLink } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
-import FadeInSection from './FadeInSection';
+import { useLanguage } from '../../context/LanguageContext';
+import { FadeInSection } from '../ui';
 
 const CatalogByBrand = () => {
   const { t, language } = useLanguage();

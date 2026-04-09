@@ -1,5 +1,5 @@
 import { MapPin, CheckCircle, ExternalLink, Sparkles, Award } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage } from '../../context/LanguageContext';
 import FadeInSection from './FadeInSection';
 import TiltCard from './TiltCard';
 

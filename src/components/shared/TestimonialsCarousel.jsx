@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { Quote, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 
 const TestimonialsCarousel = () => {

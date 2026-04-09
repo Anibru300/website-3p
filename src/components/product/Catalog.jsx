@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Search, Filter, Download, ChevronRight, Package, Wind, Droplets, Thermometer, Info, X, FileText } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
-import FadeInSection from './FadeInSection';
+import { useLanguage } from '../../context/LanguageContext';
+import { FadeInSection } from '../ui';
 
 const Catalog = () => {
   const { t } = useLanguage();

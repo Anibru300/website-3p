@@ -1,8 +1,8 @@
 import { Phone, Mail, MapPin, Clock, Send, User, MessageSquare, CheckCircle, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
-import { useLanguage } from '../context/LanguageContext';
-import FadeInSection from './FadeInSection';
-import { useToast } from './Toast';
+import { useLanguage } from '../../context/LanguageContext';
+import { FadeInSection } from '../ui';
+import { useToast } from '../ui';
 import emailjs from '@emailjs/browser';
 
 const Contact = () => {

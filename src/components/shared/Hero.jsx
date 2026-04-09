@@ -1,9 +1,9 @@
 import { ArrowRight, Globe, Award, Users, TrendingUp, Sparkles, Play, ChevronDown, Volume2, VolumeX } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { useLanguage } from '../context/LanguageContext';
-import AnimatedCounter from './AnimatedCounter';
-import TypewriterText from './TypewriterText';
-import MagicButton from './MagicButton';
+import { useLanguage } from '../../context/LanguageContext';
+import { AnimatedCounter } from '../ui';
+import { TypewriterText } from '../ui';
+import { MagicButton } from '../ui';
 
 const Hero = () => {
   const { t, language } = useLanguage();

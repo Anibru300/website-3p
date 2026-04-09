@@ -1,7 +1,7 @@
 import { Target, Eye, Award, CheckCircle, Users, Globe, HandHeart, Shield, Leaf, TrendingUp, Calendar } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
-import FadeInSection from './FadeInSection';
-import AnimatedCounter from './AnimatedCounter';
+import { useLanguage } from '../../context/LanguageContext';
+import { FadeInSection } from '../ui';
+import { AnimatedCounter } from '../ui';
 
 const About = () => {
   const { t } = useLanguage();

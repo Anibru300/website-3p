@@ -1,5 +1,5 @@
 import { Phone, Mail, MapPin, Facebook, Linkedin, Instagram, ArrowUp, Heart, ExternalLink } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const Footer = () => {
   const { t } = useLanguage();

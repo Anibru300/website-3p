@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { 
   X, ZoomIn, ChevronLeft, ChevronRight, Download, 
   FileText, Eye, CheckCircle, Package, ArrowRight,
   ExternalLink
 } from 'lucide-react';
-import FadeInSection from './FadeInSection';
+import { FadeInSection } from '../ui';
 
 const CatalogGallery = () => {
   const { language } = useLanguage();

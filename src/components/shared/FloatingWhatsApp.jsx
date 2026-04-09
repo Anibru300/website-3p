@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const FloatingWhatsApp = () => {
   const { t, language } = useLanguage();

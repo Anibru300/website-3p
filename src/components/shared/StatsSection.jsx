@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { TrendingUp, Users, Globe, Award, Clock, Package } from 'lucide-react';
-import AnimatedCounter from './AnimatedCounter';
+import { AnimatedCounter } from '../ui';
 
 const StatsSection = () => {
   const { language } = useLanguage();

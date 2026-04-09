@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Menu, X, Phone, Mail, ChevronRight, Globe, Search } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useLocation } from '../hooks/useHashLocation';
-import ProductSearch from './ProductSearch';
+import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { useLocation } from '../../hooks/useHashLocation';
+import ProductSearch from '../product/ProductSearch';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

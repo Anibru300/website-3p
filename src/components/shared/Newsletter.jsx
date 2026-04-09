@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Mail, Send, CheckCircle } from 'lucide-react';
-import { useToast } from './Toast';
+import { useToast } from '../ui';
 
 const Newsletter = () => {
   const [email, setEmail] = useState('');

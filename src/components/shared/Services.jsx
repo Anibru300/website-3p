@@ -1,6 +1,6 @@
 import { Truck, GraduationCap, Headphones, Package, Globe, ArrowRight } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
-import FadeInSection from './FadeInSection';
+import { useLanguage } from '../../context/LanguageContext';
+import { FadeInSection } from '../ui';
 
 const Services = () => {
   const { t } = useLanguage();

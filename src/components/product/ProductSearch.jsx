@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X, ArrowRight, Package } from 'lucide-react';
-import { choreTimeProducts } from '../data/choreTimeProducts';
+import { choreTimeProducts } from '../../data/choreTimeProducts';
 
 const ProductSearch = ({ onClose }) => {
   const [query, setQuery] = useState('');
