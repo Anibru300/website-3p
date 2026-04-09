@@ -1,5 +1,5 @@
 import { ArrowLeft, Construction, Phone, Mail } from 'lucide-react';
-import SEO from '../components/SEO';
+import { SEO } from '../components/shared';
 
 const brandData = {
   roxell: {
