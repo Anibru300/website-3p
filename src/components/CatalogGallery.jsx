@@ -261,27 +261,31 @@ const CatalogGallery = () => {
                   <span className="hidden sm:inline">Actualizado: {mainCatalog.stats.updated}</span>
                 </div>
 
-                {/* Botones de acción - CORREGIDOS */}
-                <div className="flex flex-col sm:flex-row gap-4 relative">
+                {/* Botones de acción - CORREGIDOS V2 */}
+                <div className="flex flex-col sm:flex-row gap-4" style={{ isolation: 'isolate' }}>
                   <a
                     href={mainCatalog.pdfUrl}
                     download
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-p3-red text-white font-semibold rounded-xl hover:bg-p3-red-dark transition-all shadow-lg hover:shadow-xl"
-                    style={{ position: 'relative', zIndex: 20 }}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-p3-red text-white font-semibold rounded-xl hover:bg-p3-red-dark transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                   >
                     <Download size={20} />
                     {language === 'es' ? 'Descargar Catálogo PDF' : 'Download PDF Catalog'}
                   </a>
-                  <button
-                    onClick={goToChoreTimeProducts}
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-p3-red hover:text-p3-red transition-all"
-                    style={{ position: 'relative', zIndex: 20 }}
-                    type="button"
+                  <div 
+                    className="flex-1"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      goToChoreTimeProducts();
+                    }}
+                    style={{ cursor: 'pointer' }}
                   >
-                    <Eye size={20} />
-                    {language === 'es' ? 'Ver Productos Online' : 'View Products Online'}
-                    <ArrowRight size={16} />
-                  </button>
+                    <div className="flex items-center justify-center gap-2 px-6 py-4 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-p3-red hover:text-p3-red transition-all h-full w-full">
+                      <Eye size={20} />
+                      {language === 'es' ? 'Ver Productos Online' : 'View Products Online'}
+                      <ArrowRight size={16} />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
