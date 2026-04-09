@@ -17,11 +17,16 @@ const ProductSearch = ({ onClose }) => {
   useEffect(() => {
     if (query.length >= 2) {
       const searchTerm = query.toLowerCase().trim();
-      const filtered = choreTimeProducts.filter(p => 
-        p.nombre.toLowerCase().includes(searchTerm) ||
-        p.codigo.toLowerCase().includes(searchTerm) ||
-        p.categoria.toLowerCase().includes(searchTerm)
-      );
+      const filtered = choreTimeProducts.filter(p => {
+        // Safely check properties with fallback to empty string
+        const nombre = (p.nombre || '').toLowerCase();
+        const codigo = (p.codigo || '').toLowerCase();
+        const specs = (p.specs || '').toLowerCase();
+        
+        return nombre.includes(searchTerm) ||
+               codigo.includes(searchTerm) ||
+               specs.includes(searchTerm);
+      });
       setResults(filtered.slice(0, 8));
       setIsOpen(true);
     } else {
@@ -38,9 +43,9 @@ const ProductSearch = ({ onClose }) => {
   };
 
   const highlightMatch = (text, query) => {
-    if (!query) return text;
+    if (!text || !query) return text || '';
     const regex = new RegExp(`(${query})`, 'gi');
-    const parts = text.split(regex);
+    const parts = String(text).split(regex);
     return parts.map((part, i) => 
       regex.test(part) ? <mark key={i} className="bg-yellow-200 text-gray-900">{part}</mark> : part
     );
@@ -55,7 +60,7 @@ const ProductSearch = ({ onClose }) => {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar productos por nombre, código o categoría..."
+          placeholder="Buscar productos por nombre, código o descripción..."
           className="w-full pl-12 pr-10 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-p3-red/50 focus:border-p3-red dark:bg-gray-800 dark:border-gray-700 dark:text-white"
         />
         {query && (
@@ -85,7 +90,7 @@ const ProductSearch = ({ onClose }) => {
               <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center border border-gray-200 flex-shrink-0">
                 <img
                   src={product.imagen}
-                  alt={product.nombre}
+                  alt={product.nombre || 'Producto'}
                   className="w-14 h-14 object-contain"
                   loading="lazy"
                   onError={(e) => { 
@@ -102,9 +107,11 @@ const ProductSearch = ({ onClose }) => {
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   SKU: {highlightMatch(product.codigo, query)}
                 </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 capitalize">
-                  {product.categoria}
-                </p>
+                {product.specs && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 line-clamp-1">
+                    {highlightMatch(product.specs.substring(0, 60) + '...', query)}
+                  </p>
+                )}
               </div>
               <ArrowRight className="text-gray-400 flex-shrink-0" size={18} />
             </button>
