@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import Header from './components/Header';
+import { Header } from './components/layout';
 import HomePage from './pages/HomePage';
 import ChoreTimePage from './pages/ChoreTimePage';
 import FancomPage from './pages/FancomPage';
 import GenericBrandPage from './pages/GenericBrandPage';
-import { ToastProvider } from './components/Toast';
+import { ToastProvider } from './components/ui/Toast';
 
 function App() {
   const [route, setRoute] = useState(window.location.hash || '#/');

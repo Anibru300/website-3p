@@ -1,17 +1,8 @@
-import Hero from '../components/Hero';
-import About from '../components/About';
-import Services from '../components/Services';
-import StatsSection from '../components/StatsSection';
-import BrandShowcase from '../components/BrandShowcase';
-import CatalogGallery from '../components/CatalogGallery';
-import VentilationCalculator from '../components/VentilationCalculator';
-import Clients from '../components/Clients';
-import Contact from '../components/Contact';
-import Newsletter from '../components/Newsletter';
-import Footer from '../components/Footer';
-import WhatsAppChat from '../components/WhatsAppChat';
-import BackToTop from '../components/BackToTop';
-import SEO from '../components/SEO';
+import { Hero, About, Services, StatsSection, BrandShowcase, Clients, Contact, Newsletter, WhatsAppChat, VentilationCalculator } from '../components/shared';
+import { CatalogGallery } from '../components/product';
+import { Footer } from '../components/layout';
+import { BackToTop } from '../components/layout';
+import { SEO } from '../components/shared';
 
 const HomePage = () => {
   return (

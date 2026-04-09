@@ -1,11 +1,11 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { ArrowLeft, Package, Phone, Mail, MapPin, X, ChevronLeft, ChevronRight, Image as ImageIcon, Film } from 'lucide-react';
 import { choreTimeProducts, choreTimeCategories } from '../data/choreTimeProducts';
-import SEO from '../components/SEO';
-import ShareButton from '../components/ShareButton';
+import { SEO } from '../components/shared';
+import { ShareButton } from '../components/product';
 
 // Lazy load del visor de video
-const ProductVideoViewer = lazy(() => import('../components/ProductVideoViewer'));
+const ProductVideoViewer = lazy(() => import('../components/product/ProductVideoViewer'));
 
 const ChoreTimePage = () => {
   const [categoriaActiva, setCategoriaActiva] = useState('todas');
