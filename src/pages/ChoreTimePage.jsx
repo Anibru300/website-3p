@@ -287,6 +287,7 @@ const ChoreTimePage = () => {
                       posterUrl={selectedProduct.imagen}
                       alt={selectedProduct.nombre}
                       productName={selectedProduct.nombre}
+                      productCode={selectedProduct.codigo}
                     />
                   </Suspense>
                 ) : (
