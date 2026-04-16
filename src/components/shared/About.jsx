@@ -54,7 +54,7 @@ const About = () => {
               <div className="absolute -inset-4 bg-gradient-to-r from-p3-red/20 to-p3-blue/20 rounded-3xl blur-xl animate-pulse"></div>
               <div className="relative aspect-square bg-gradient-to-br from-p3-blue to-p3-red rounded-2xl p-1">
                 <div className="w-full h-full bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center">
-                  <img src="images/logo-3p-login.png" alt="3P Logo" className="w-3/4 h-3/4 object-contain" />
+                  <img src="/images/logo-3p-login.png" alt="3P Logo" className="w-3/4 h-3/4 object-contain" />
                 </div>
               </div>
               <div className="absolute -bottom-6 -right-6 bg-gradient-to-br from-p3-red to-p3-red-dark text-white p-6 rounded-2xl shadow-xl">

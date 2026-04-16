@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
+import { choreTimeProducts } from '../../data/choreTimeProducts';
 import { 
   X, ZoomIn, ChevronLeft, ChevronRight, Download, 
   FileText, Eye, CheckCircle, Package, ArrowRight,
@@ -17,10 +18,10 @@ const CatalogGallery = () => {
     id: 'chore-time',
     name: 'CHORE-TIME',
     origin: 'USA',
-    description: language === 'es' 
-      ? 'Catálogo completo de refacciones originales para sistemas avícolas. 25 productos en stock con entrega inmediata.' 
-      : 'Complete catalog of original spare parts for poultry systems. 25 products in stock with immediate delivery.',
-    image: 'images/brands/chore-time.svg',
+    description: language === 'es'
+      ? `Catálogo completo de refacciones originales para sistemas avícolas. ${choreTimeProducts.length} productos en stock con entrega inmediata.`
+      : `Complete catalog of original spare parts for poultry systems. ${choreTimeProducts.length} products in stock with immediate delivery.`,
+    image: '/images/brands/chore-time.svg',
     pdfUrl: 'catalogs/catalogo-chore-time.pdf',
     pdfSize: '1.7 MB',
     pdfPages: '12 páginas',
@@ -33,7 +34,7 @@ const CatalogGallery = () => {
       'Accesorios y Estructura'
     ],
     stats: {
-      products: 25,
+      products: choreTimeProducts.length,
       inStock: true,
       updated: 'Abril 2026'
     }
@@ -46,7 +47,7 @@ const CatalogGallery = () => {
       name: 'FANCOM',
       origin: 'Países Bajos',
       description: language === 'es' ? 'Control climático y automatización' : 'Climate control and automation',
-      image: 'images/brands/fancom.png',
+      image: '/images/brands/fancom.png',
       status: 'coming-soon'
     },
     {
@@ -54,7 +55,7 @@ const CatalogGallery = () => {
       name: 'ROXELL',
       origin: 'Bélgica',
       description: language === 'es' ? 'Sistemas de alimentación y bebida' : 'Feeding and drinking systems',
-      image: 'images/brands/roxell.svg',
+      image: '/images/brands/roxell.svg',
       status: 'coming-soon',
       isSvg: true
     },
@@ -63,7 +64,7 @@ const CatalogGallery = () => {
       name: 'LUBING',
       origin: 'Alemania',
       description: language === 'es' ? 'Sistemas de bebida y transporte' : 'Drinking and transport systems',
-      image: 'images/brands/lubing.png',
+      image: '/images/brands/lubing.png',
       status: 'coming-soon'
     },
     {
@@ -71,7 +72,7 @@ const CatalogGallery = () => {
       name: 'LANDMECO',
       origin: 'Dinamarca',
       description: language === 'es' ? 'Equipos para avicultura' : 'Poultry equipment',
-      image: 'images/brands/landmeco.png',
+      image: '/images/brands/landmeco.png',
       status: 'coming-soon'
     },
     {
@@ -79,7 +80,7 @@ const CatalogGallery = () => {
       name: 'GEORGIA POULTRY',
       origin: 'USA',
       description: language === 'es' ? 'Equipos para avicultura' : 'Poultry equipment',
-      image: 'images/brands/georgia-poultry.png',
+      image: '/images/brands/georgia-poultry.png',
       status: 'coming-soon'
     },
     {
@@ -87,7 +88,7 @@ const CatalogGallery = () => {
       name: 'MS Schippers',
       origin: 'Países Bajos',
       description: language === 'es' ? 'Productos de higiene y bioseguridad' : 'Hygiene and biosecurity products',
-      image: 'images/brands/sbm.svg',
+      image: '/images/brands/sbm.svg',
       status: 'coming-soon',
       isSvg: true
     },
@@ -96,7 +97,7 @@ const CatalogGallery = () => {
       name: 'AMT',
       origin: 'USA',
       description: language === 'es' ? 'Accesorios y equipos para avicultura' : 'Poultry accessories and equipment',
-      image: 'images/brands/amt.png',
+      image: '/images/brands/amt.png',
       status: 'coming-soon'
     },
     {
@@ -104,7 +105,7 @@ const CatalogGallery = () => {
       name: 'ALKE',
       origin: 'Holanda',
       description: language === 'es' ? 'Sistemas de calefacción infrarroja' : 'Infrared heating systems',
-      image: 'images/brands/alke.png',
+      image: '/images/brands/alke.png',
       status: 'coming-soon'
     },
     {
@@ -112,7 +113,7 @@ const CatalogGallery = () => {
       name: 'TIGSA',
       origin: 'España',
       description: language === 'es' ? 'Equipamientos para granjas' : 'Farm equipment',
-      image: 'images/brands/tigsa.svg',
+      image: '/images/brands/tigsa.svg',
       status: 'coming-soon',
       isSvg: true
     }
@@ -339,7 +340,8 @@ const CatalogGallery = () => {
                           e.target.style.display = 'none';
                           const parent = e.target.parentElement;
                           if (parent) {
-                            parent.innerHTML = `<span class="text-lg font-bold text-gray-400">${catalog.name}</span>`;
+                            parent.textContent = catalog.name;
+                            parent.className = 'text-lg font-bold text-gray-400';
                           }
                         }}
                       />
@@ -446,7 +448,11 @@ const CatalogGallery = () => {
                     style={{ minWidth: '200px', minHeight: '100px' }}
                     onError={(e) => {
                       e.target.style.display = 'none';
-                      e.target.parentElement.innerHTML = `<span class="text-3xl font-bold text-gray-800">${selectedImage.name}</span>`;
+                      const parent = e.target.parentElement;
+                      if (parent) {
+                        parent.textContent = selectedImage.name;
+                        parent.className = 'text-3xl font-bold text-gray-800';
+                      }
                     }}
                   />
                 </div>

@@ -47,7 +47,7 @@ const FancomPage = () => {
             </div>
             <div className="flex-shrink-0">
               <img 
-                src="images/brands/fancom.png" 
+                src="/images/brands/fancom.png" 
                 alt="Fancom" 
                 className="h-24 md:h-32 w-auto bg-white rounded-2xl px-8 py-4 shadow-2xl"
               />

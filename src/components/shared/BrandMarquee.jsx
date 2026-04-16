@@ -5,12 +5,12 @@ const BrandMarquee = () => {
   const marqueeRef = useRef(null);
 
   const brands = [
-    { name: 'FANCOM', logo: 'images/brands/fancom.png' },
-    { name: 'LANDMECO', logo: 'images/brands/landmeco.png' },
-    { name: 'DACS', logo: 'images/brands/dacs.png' },
-    { name: 'LUBING', logo: 'images/brands/lubing.png' },
-    { name: 'MS Schippers', logo: 'images/brands/sbm.svg' },
-    { name: 'HOG SLAT', logo: 'images/brands/hogslat.svg' },
+    { name: 'FANCOM', logo: '/images/brands/fancom.png' },
+    { name: 'LANDMECO', logo: '/images/brands/landmeco.png' },
+    { name: 'DACS', logo: '/images/brands/dacs.png' },
+    { name: 'LUBING', logo: '/images/brands/lubing.png' },
+    { name: 'MS Schippers', logo: '/images/brands/sbm.svg' },
+    { name: 'HOG SLAT', logo: '/images/brands/hogslat.svg' },
   ];
 
   // Duplicar marcas para efecto infinito

@@ -20,7 +20,7 @@ const Brands = () => {
         'Manejo de huevos automatizado'
       ],
       color: 'from-red-600 to-red-800',
-      logo: 'images/brands/roxell.svg',
+      logo: '/images/brands/roxell.svg',
     },
     {
       name: 'LUBING',
@@ -34,7 +34,7 @@ const Brands = () => {
         'Sistema UltraFlush de limpieza ultrasónica'
       ],
       color: 'from-blue-600 to-blue-800',
-      logo: 'images/brands/lubing.png',
+      logo: '/images/brands/lubing.png',
     },
     {
       name: 'LANDMECO',
@@ -48,7 +48,7 @@ const Brands = () => {
         'Sistemas de crianza'
       ],
       color: 'from-green-600 to-teal-700',
-      logo: 'images/brands/landmeco.png',
+      logo: '/images/brands/landmeco.png',
     },
     {
       name: 'GEORGIA POULTRY',
@@ -62,7 +62,7 @@ const Brands = () => {
         'Sensores y controles'
       ],
       color: 'from-orange-500 to-red-600',
-      logo: 'images/brands/georgia-poultry.png',
+      logo: '/images/brands/georgia-poultry.png',
     },
     {
       name: 'CHORE TIME',
@@ -76,7 +76,7 @@ const Brands = () => {
         'Nidos para producción en piso'
       ],
       color: 'from-indigo-600 to-purple-700',
-      logo: 'images/brands/chore-time.svg',
+      logo: '/images/brands/chore-time.svg',
     },
     {
       name: 'FANCOM',
@@ -90,7 +90,7 @@ const Brands = () => {
         'Software de gestión de granjas'
       ],
       color: 'from-emerald-500 to-green-700',
-      logo: 'images/brands/fancom.png',
+      logo: '/images/brands/fancom.png',
     },
     {
       name: 'MS Schippers',
@@ -104,7 +104,7 @@ const Brands = () => {
         'Sistemas de limpieza'
       ],
       color: 'from-yellow-500 to-orange-600',
-      logo: 'images/brands/sbm.svg',
+      logo: '/images/brands/sbm.svg',
     },
     {
       name: 'AMT',
@@ -118,7 +118,7 @@ const Brands = () => {
         'Sistemas de alimentación complementaria'
       ],
       color: 'from-cyan-600 to-blue-700',
-      logo: 'images/brands/amt.png',
+      logo: '/images/brands/amt.png',
     },
     {
       name: 'ALKE',
@@ -132,7 +132,7 @@ const Brands = () => {
         'Equipos de regulación'
       ],
       color: 'from-amber-500 to-red-600',
-      logo: 'images/brands/alke.png',
+      logo: '/images/brands/alke.png',
     },
     {
       name: 'TIGSA',
@@ -146,7 +146,7 @@ const Brands = () => {
         'Renovación y acondicionamiento'
       ],
       color: 'from-emerald-600 to-green-700',
-      logo: 'images/brands/tigsa.svg',
+      logo: '/images/brands/tigsa.svg',
     },
   ];
 
@@ -197,7 +197,11 @@ const Brands = () => {
                         className="max-w-full max-h-full object-contain" 
                         onError={(e) => { 
                           e.target.style.display = 'none'; 
-                          e.target.parentElement.innerHTML = `<span class="text-2xl font-bold text-gray-800">${brand.name}</span>`; 
+                          const parent = e.target.parentElement;
+                          if (parent) {
+                            parent.textContent = brand.name;
+                            parent.className = 'text-2xl font-bold text-gray-800';
+                          } 
                         }} 
                       />
                     </div>

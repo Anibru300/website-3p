@@ -92,7 +92,7 @@ const ChoreTimePage = () => {
             </div>
             <div className="flex-shrink-0">
               <img 
-                src="images/brands/chore-time.svg" 
+                src="/images/brands/chore-time.svg" 
                 alt="Chore-Time" 
                 className="h-24 md:h-32 w-auto bg-white rounded-2xl px-8 py-4 shadow-2xl"
                 loading="lazy"
@@ -142,9 +142,13 @@ const ChoreTimePage = () => {
                     alt={prod.nombre}
                     className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
                     loading="lazy"
-                    onError={(e) => { 
-                      e.target.style.display = 'none'; 
-                      e.target.parentElement.innerHTML = '<span class="text-gray-400 text-sm">Imagen no disponible</span>'; 
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      const parent = e.target.parentElement;
+                      if (parent) {
+                        parent.textContent = 'Imagen no disponible';
+                        parent.className = 'text-gray-400 text-sm';
+                      }
                     }}
                   />
                   {/* Badges */}
@@ -297,9 +301,13 @@ const ChoreTimePage = () => {
                       alt={selectedProduct.nombre}
                       className="max-h-full max-w-full object-contain drop-shadow-xl"
                       loading="lazy"
-                      onError={(e) => { 
-                        e.target.style.display = 'none'; 
-                        e.target.parentElement.innerHTML = '<span class="text-gray-400 text-sm">Imagen no disponible</span>'; 
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        const parent = e.target.parentElement;
+                        if (parent) {
+                          parent.textContent = 'Imagen no disponible';
+                          parent.className = 'text-gray-400 text-sm';
+                        }
                       }}
                     />
                   </div>

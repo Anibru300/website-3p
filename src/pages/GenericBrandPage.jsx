@@ -88,13 +88,17 @@ const GenericBrandPage = ({ brandId }) => {
               style={{ backgroundColor: brand.color }}
             >
               <img 
-                src={`images/brands/${brandId}.svg`}
+                src={`/images/brands/${brandId}.svg`}
                 alt={brand.name}
                 className="w-24 h-24 object-contain"
                 loading="lazy"
                 onError={(e) => {
                   e.target.style.display = 'none';
-                  e.target.parentElement.innerHTML = `<span class="text-white text-2xl font-bold">${brand.name.charAt(0)}</span>`;
+                  const parent = e.target.parentElement;
+                  if (parent) {
+                    parent.textContent = brand.name.charAt(0);
+                    parent.className = 'text-white text-2xl font-bold';
+                  }
                 }}
               />
             </div>

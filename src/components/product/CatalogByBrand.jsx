@@ -16,7 +16,7 @@ const CatalogByBrand = () => {
       name: 'FANCOM',
       origin: 'Holanda',
       color: 'from-orange-500 to-red-600',
-      logo: 'images/brands/fancom.png',
+      logo: '/images/brands/fancom.png',
       description: language === 'es' 
         ? 'Líder mundial en sistemas de control climático'
         : 'World leader in climate control systems',
@@ -42,7 +42,7 @@ const CatalogByBrand = () => {
       name: 'LANDMECO',
       origin: 'Dinamarca',
       color: 'from-blue-500 to-blue-700',
-      logo: 'images/brands/landmeco.png',
+      logo: '/images/brands/landmeco.png',
       description: language === 'es'
         ? 'Especialistas en sistemas de alimentación'
         : 'Feeding systems specialists',
@@ -68,7 +68,7 @@ const CatalogByBrand = () => {
       name: 'ROXELL',
       origin: 'Bélgica',
       color: 'from-green-500 to-teal-600',
-      logo: 'images/brands/roxell.svg',
+      logo: '/images/brands/roxell.svg',
       description: language === 'es'
         ? 'Sistemas de alimentación y bebida'
         : 'Feeding and drinking systems',
@@ -94,7 +94,7 @@ const CatalogByBrand = () => {
       name: 'LUBING',
       origin: 'Alemania',
       color: 'from-red-500 to-red-700',
-      logo: 'images/brands/lubing.png',
+      logo: '/images/brands/lubing.png',
       description: language === 'es'
         ? 'Bebederos y sistemas de humidificación'
         : 'Drinking and humidification systems',

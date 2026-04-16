@@ -96,7 +96,7 @@ const Footer = () => {
             <div className="lg:col-span-1">
               <div className="flex items-center gap-3 mb-6">
                 <img 
-                  src="images/logo-3p-header.png" 
+                  src="/images/logo-3p-header.png" 
                   alt="3P Logo" 
                   className="h-12 w-auto"
                   onError={(e) => {

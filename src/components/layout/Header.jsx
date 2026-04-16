@@ -65,7 +65,7 @@ const Header = () => {
             <a href="/" className="flex items-center gap-3 group">
               <div className="relative">
                 <img 
-                  src="images/logo-3p-header.png" 
+                  src="/images/logo-3p-header.png" 
                   alt="3P S.A. DE C.V." 
                   className="h-14 w-auto group-hover:scale-105 transition-transform"
                   loading="lazy"

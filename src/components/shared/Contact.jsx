@@ -209,7 +209,7 @@ const Contact = () => {
                 {/* Logo de 3P superpuesto en el mapa */}
                 <div className="absolute bottom-4 left-4 bg-white dark:bg-gray-900 rounded-xl p-2 shadow-lg flex items-center gap-2">
                   <img 
-                    src="images/logo-3p-header.png" 
+                    src="/images/logo-3p-header.png" 
                     alt="3P Logo" 
                     className="h-10 w-auto"
                   />
