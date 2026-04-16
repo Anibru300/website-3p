@@ -7,19 +7,18 @@ import GenericBrandPage from './pages/GenericBrandPage';
 import { ToastProvider } from './components/ui/Toast';
 
 function App() {
-  const [route, setRoute] = useState(window.location.hash || '#/');
+  const [route, setRoute] = useState(window.location.pathname || '/');
 
   useEffect(() => {
-    const handleHashChange = () => {
-      setRoute(window.location.hash || '#/');
+    const handlePopState = () => {
+      setRoute(window.location.pathname || '/');
     };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   // Parse route: separate path from query string
-  // Example: #/marcas/chore-time?producto=48299 -> path: /marcas/chore-time, query: ?producto=48299
-  const cleanRoute = route.replace('#', '') || '/';
+  const cleanRoute = route || '/';
   const [pathPart] = cleanRoute.split('?'); // Get only the path part, ignore query string
   const segments = pathPart.split('/').filter(Boolean);
 

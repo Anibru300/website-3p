@@ -75,7 +75,7 @@ const GenericBrandPage = ({ brandId }) => {
       />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-        <a href="#/" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-8 transition-colors">
+        <a href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-8 transition-colors">
           <ArrowLeft size={18} />
           <span>Volver al inicio</span>
         </a>
@@ -135,7 +135,7 @@ const GenericBrandPage = ({ brandId }) => {
           </div>
           
           <a 
-            href="#/" 
+            href="/" 
             className="inline-flex items-center justify-center gap-2 text-p3-red hover:text-p3-red-dark font-medium transition-colors"
           >
             <ArrowLeft size={18} />

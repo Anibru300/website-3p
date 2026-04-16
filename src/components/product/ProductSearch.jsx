@@ -36,7 +36,7 @@ const ProductSearch = ({ onClose }) => {
   }, [query]);
 
   const handleSelect = (product) => {
-    window.location.hash = `#/marcas/chore-time?producto=${product.codigo}`;
+    window.location.href = `/marcas/chore-time?producto=${product.codigo}`;
     setQuery('');
     setIsOpen(false);
     if (onClose) onClose();
@@ -118,7 +118,7 @@ const ProductSearch = ({ onClose }) => {
           ))}
           <div className="p-3 bg-gray-50 dark:bg-gray-700/50 border-t dark:border-gray-700">
             <a
-              href="#/marcas/chore-time"
+              href="/marcas/chore-time"
               onClick={() => { if (onClose) onClose(); }}
               className="text-sm text-p3-red hover:text-p3-red-dark font-medium flex items-center justify-center gap-2"
             >

@@ -26,7 +26,7 @@ const FancomPage = () => {
       {/* Hero */}
       <section className="relative bg-gradient-to-br from-emerald-700 to-green-900 text-white py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <a href="#/" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-6 transition-colors">
+          <a href="/" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-6 transition-colors">
             <ArrowLeft size={18} />
             <span>Volver al inicio</span>
           </a>

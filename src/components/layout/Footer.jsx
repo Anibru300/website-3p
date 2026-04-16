@@ -6,11 +6,12 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   const quickLinks = [
-    { name: t('nav.inicio') || 'Inicio', href: '#/' },
+    { name: t('nav.inicio') || 'Inicio', href: '/' },
     { name: 'Nosotros', href: '#nosotros' },
     { name: 'Servicios', href: '#servicios' },
     { name: 'Marcas', href: '#marcas' },
     { name: t('nav.contacto') || 'Contacto', href: '#contacto' },
+    { name: 'Catálogos', href: '#catalogo-galeria' },
   ];
 
   const services = [
@@ -22,33 +23,32 @@ const Footer = () => {
   ];
 
   const brands = [
-    { name: 'Chore-Time', href: '#/marcas/chore-time', active: true },
-    { name: 'ROXELL', href: '#/marcas/roxell' },
-    { name: 'LUBING', href: '#/marcas/lubing' },
-    { name: 'LANDMECO', href: '#/marcas/landmeco' },
-    { name: 'FANCOM', href: '#/marcas/fancom' },
-    { name: 'MS Schippers', href: '#/marcas/schippers' },
-    { name: 'AMT', href: '#/marcas/amt' },
-    { name: 'ALKE', href: '#/marcas/alke' },
-    { name: 'TIGSA', href: '#/marcas/tigsa' },
-    { name: 'Georgia Poultry', href: '#/marcas/georgia-poultry' },
+    { name: 'Chore-Time', href: '/marcas/chore-time', active: true },
+    { name: 'ROXELL', href: '/marcas/roxell' },
+    { name: 'LUBING', href: '/marcas/lubing' },
+    { name: 'LANDMECO', href: '/marcas/landmeco' },
+    { name: 'FANCOM', href: '/marcas/fancom' },
+    { name: 'MS Schippers', href: '/marcas/schippers' },
+    { name: 'AMT', href: '/marcas/amt' },
+    { name: 'ALKE', href: '/marcas/alke' },
+    { name: 'TIGSA', href: '/marcas/tigsa' },
+    { name: 'Georgia Poultry', href: '/marcas/georgia-poultry' },
   ];
 
   const scrollToSection = (href) => {
-    // Si es una ruta de marca (comienza con #/marcas), dejar que el router la maneje
-    if (href.startsWith('#/')) {
-      window.location.hash = href.replace('#/', '');
+    // Si es una ruta de marca o página, navegar directamente
+    if (href.startsWith('/')) {
+      window.location.href = href;
       return;
     }
     
     // Si es el inicio
-    if (href === '#/') {
-      window.location.hash = '/';
+    if (href === '/') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     
-    // Para secciones del homepage
+    // Para secciones del homepage (anclas con #)
     const id = href.replace('#', '');
     const element = document.getElementById(id);
     if (element) {

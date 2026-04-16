@@ -8,8 +8,8 @@ const ShareButton = ({ product, variant = 'icon', className = '' }) => {
   if (!product) return null;
 
   // Generar URL del producto
-  const baseUrl = 'https://anibru300.github.io/website-3p';
-  const productUrl = `${baseUrl}/#/marcas/chore-time?producto=${product.codigo}`;
+  const baseUrl = 'https://3psadecv.com';
+  const productUrl = `${baseUrl}/marcas/chore-time?producto=${product.codigo}`;
   
   // Textos para compartir
   const shareText = `Mira esta refacción Chore-Time: ${product.nombre} (SKU: ${product.codigo})`;

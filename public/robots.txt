@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://anibru300.github.io/website-3p/sitemap.xml
+Sitemap: https://3psadecv.com/sitemap.xml
 
 # Disallow admin or private areas
 Disallow: /admin/

@@ -4,7 +4,7 @@ const SEO = ({
   title, 
   description, 
   keywords,
-  ogImage = 'https://anibru300.github.io/website-3p/og-image.jpg',
+  ogImage = 'https://3psadecv.com/og-image.jpg',
   ogType = 'website',
   canonical
 }) => {

@@ -23,10 +23,9 @@ const ChoreTimePage = () => {
 
   // Handle URL parameters for direct product linking
   useEffect(() => {
-    const hash = window.location.hash;
-    const queryMatch = hash.match(/[?&]producto=([^&]+)/);
-    if (queryMatch) {
-      const productCode = queryMatch[1];
+    const params = new URLSearchParams(window.location.search);
+    const productCode = params.get('producto');
+    if (productCode) {
       const product = choreTimeProducts.find(p => p.codigo === productCode);
       if (product) {
         setSelectedProduct(product);
@@ -71,7 +70,7 @@ const ChoreTimePage = () => {
       {/* Hero */}
       <section className="relative bg-[#1B3A5C] text-white py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <a href="#/" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-6 transition-colors">
+          <a href="/" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-6 transition-colors">
             <ArrowLeft size={18} />
             <span>Volver al inicio</span>
           </a>

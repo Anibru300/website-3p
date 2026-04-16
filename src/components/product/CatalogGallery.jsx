@@ -141,7 +141,7 @@ const CatalogGallery = () => {
 
   // Navegar a la página de productos Chore-Time
   const goToChoreTimeProducts = () => {
-    window.location.hash = '/marcas/chore-time';
+    window.location.href = '/marcas/chore-time';
   };
 
   // Cerrar modal con tecla ESC
