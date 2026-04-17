@@ -35,7 +35,7 @@ const Contact = () => {
       // CONFIGURACIÓN WEB3FORMS
       // 1. Ve a https://web3forms.com/ y obtén tu access_key gratuita
       // 2. Reemplaza 'TU_ACCESS_KEY_WEB3FORMS' con tu llave real
-      const accessKey = 'TU_ACCESS_KEY_WEB3FORMS';
+      const accessKey = '6458dc7e-0d80-4551-9b2b-3d16146d41b8';
 
       const formPayload = new FormData();
       formPayload.append('access_key', accessKey);
