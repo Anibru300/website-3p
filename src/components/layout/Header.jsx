@@ -21,7 +21,7 @@ const Header = () => {
     { name: 'Servicios', href: '#servicios' },
     { name: 'Marcas', href: '#marcas' },
     { name: 'Catálogos', href: '#catalogo-galeria' },
-    { name: t('nav.contacto') || 'Contacto', href: '#contacto' },
+    { name: t('nav.contacto') || 'Cotización', href: '#contacto' },
   ];
 
   // Todas las marcas consistentes con BrandShowcase

@@ -10,7 +10,7 @@ const Footer = () => {
     { name: 'Nosotros', href: '#nosotros' },
     { name: 'Servicios', href: '#servicios' },
     { name: 'Marcas', href: '#marcas' },
-    { name: t('nav.contacto') || 'Contacto', href: '#contacto' },
+    { name: t('nav.contacto') || 'Cotización', href: '#contacto' },
     { name: 'Catálogos', href: '#catalogo-galeria' },
   ];
 

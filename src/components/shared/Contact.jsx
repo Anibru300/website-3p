@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { FadeInSection } from '../ui';
 import { useToast } from '../ui';
-import emailjs from '@emailjs/browser';
 
 const Contact = () => {
   const { t, language } = useLanguage();
@@ -28,54 +27,56 @@ const Contact = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     // Toast de "Enviando..."
-    addToast(language === 'es' ? 'Enviando mensaje...' : 'Sending message...', 'info', 2000);
-    
+    addToast(language === 'es' ? 'Enviando cotización...' : 'Sending quote...', 'info', 2000);
+
     try {
-      // CONFIGURACIÓN EMAILJS
-      // Para que funcione, necesitas:
-      // 1. Crear cuenta gratuita en https://www.emailjs.com/
-      // 2. Crear un servicio de email (Gmail, Outlook, etc.)
-      // 3. Crear una plantilla con las variables: {{name}}, {{company}}, {{email}}, {{phone}}, {{service}}, {{message}}
-      // 4. Reemplazar los valores de abajo con tus datos reales
-      
-      const serviceId = 'TU_SERVICE_ID'; // Reemplazar con tu Service ID de EmailJS
-      const templateId = 'TU_TEMPLATE_ID'; // Reemplazar con tu Template ID de EmailJS
-      const publicKey = 'TU_PUBLIC_KEY'; // Reemplazar con tu Public Key de EmailJS
-      
-      const templateParams = {
-        from_name: formData.name,
-        company: formData.company || 'No especificada',
-        email: formData.email,
-        phone: formData.phone || 'No proporcionado',
-        service: formData.service || 'No especificado',
-        message: formData.message,
-        to_email: 'trespsadecv@hotmail.com',
-      };
-      
-      // Si no has configurado EmailJS, simulamos el envío exitoso
-      if (serviceId === 'TU_SERVICE_ID') {
-        // Simulación de envío (para demostración)
+      // CONFIGURACIÓN WEB3FORMS
+      // 1. Ve a https://web3forms.com/ y obtén tu access_key gratuita
+      // 2. Reemplaza 'TU_ACCESS_KEY_WEB3FORMS' con tu llave real
+      const accessKey = 'TU_ACCESS_KEY_WEB3FORMS';
+
+      const formPayload = new FormData();
+      formPayload.append('access_key', accessKey);
+      formPayload.append('subject', 'Nueva cotización desde 3psadecv.com');
+      formPayload.append('from_name', '3P Website');
+      formPayload.append('name', formData.name);
+      formPayload.append('email', formData.email);
+      formPayload.append('phone', formData.phone || 'No proporcionado');
+      formPayload.append('company', formData.company || 'No especificada');
+      formPayload.append('service', formData.service || 'No especificado');
+      formPayload.append('message', formData.message);
+      formPayload.append('to', 'ventas@3psadecv.com,importaciones@3psadecv.com,trespsadecv@hotmail.com');
+
+      if (accessKey === 'TU_ACCESS_KEY_WEB3FORMS') {
+        // Modo demostración: simula envío para que puedas probar el formulario
         await new Promise(resolve => setTimeout(resolve, 2000));
-        console.log('Datos que se enviarían:', templateParams);
+        console.log('Modo demo - Datos que se enviarían:', Object.fromEntries(formPayload));
       } else {
-        // Envío real con EmailJS
-        await emailjs.send(serviceId, templateId, templateParams, publicKey);
+        // Envío real con Web3Forms
+        const response = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          body: formPayload,
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Error en el envío');
+        }
       }
-      
+
       setIsSubmitting(false);
       setIsSubmitted(true);
-      
+
       // Toast de éxito
       addToast(
-        language === 'es' 
-          ? '¡Cotización enviada con éxito! Te contactaremos en menos de 24 horas.' 
+        language === 'es'
+          ? '¡Cotización enviada con éxito! Te contactaremos en menos de 24 horas.'
           : 'Quote sent successfully! We will contact you within 24 hours.',
         'success',
         5000
       );
-      
+
       // Limpiar formulario
       setFormData({
         name: '',
@@ -85,18 +86,18 @@ const Contact = () => {
         service: '',
         message: '',
       });
-      
+
       // Resetear estado después de 5 segundos
       setTimeout(() => setIsSubmitted(false), 5000);
-      
+
     } catch (error) {
       console.error('Error al enviar:', error);
       setIsSubmitting(false);
-      
+
       // Toast de error
       addToast(
-        language === 'es' 
-          ? 'Error al enviar. Por favor intenta de nuevo o contáctanos por teléfono.' 
+        language === 'es'
+          ? 'Error al enviar. Por favor intenta de nuevo o contáctanos por teléfono.'
           : 'Error sending. Please try again or contact us by phone.',
         'error',
         5000
@@ -115,8 +116,8 @@ const Contact = () => {
     {
       icon: Mail,
       title: t('contact.email'),
-      lines: ['trespsadecv@hotmail.com'],
-      href: 'mailto:trespsadecv@hotmail.com',
+      lines: ['ventas@3psadecv.com', 'importaciones@3psadecv.com', 'trespsadecv@hotmail.com'],
+      href: 'mailto:ventas@3psadecv.com',
       color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
     },
     {
@@ -351,7 +352,7 @@ const Contact = () => {
                       onFocus={() => setFocusedField('message')}
                       onBlur={() => setFocusedField(null)}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red outline-none transition-all resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                      placeholder={language === 'es' ? 'Cuéntanos sobre tu proyecto o necesidad...' : 'Tell us about your project or needs...'}
+                      placeholder={language === 'es' ? 'Cuéntanos qué necesitas cotizar...' : 'Tell us what you need a quote for...'}
                     ></textarea>
                     <div className={`absolute bottom-0 left-0 h-0.5 bg-p3-red transition-all duration-300 ${focusedField === 'message' ? 'w-full' : 'w-0'}`}></div>
                   </div>

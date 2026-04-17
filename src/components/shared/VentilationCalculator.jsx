@@ -220,7 +220,7 @@ const VentilationCalculator = () => {
                   <p className="text-sm text-amber-800">
                     Esta es una estimación técnica. Para un diseño preciso considera 
                     factores como altitud, humedad y tipo de equipamiento. 
-                    <a href="#contacto" className="font-semibold underline">Contáctanos</a> para asesoría especializada.
+                    <a href="#contacto" className="font-semibold underline">Solicita tu cotización</a> para asesoría especializada.
                   </p>
                 </div>
 

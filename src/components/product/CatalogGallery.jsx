@@ -301,8 +301,8 @@ const CatalogGallery = () => {
             </h3>
             <p className="text-gray-500 text-sm">
               {language === 'es' 
-                ? 'Catálogos en preparación. Contacta con nosotros para más información.' 
-                : 'Catalogs in preparation. Contact us for more information.'}
+                ? 'Catálogos en preparación. Escríbenos para más información.' 
+                : 'Catalogs in preparation. Write to us for more information.'}
             </p>
           </div>
 
@@ -379,15 +379,15 @@ const CatalogGallery = () => {
             </h3>
             <p className="text-white/80 mb-6 max-w-2xl mx-auto">
               {language === 'es'
-                ? 'Contáctanos y te enviaremos la información detallada de cualquier producto de nuestras marcas distribuidas.'
-                : 'Contact us and we will send you detailed information about any product from our distributed brands.'}
+                ? 'Escríbenos y te enviaremos la información detallada de cualquier producto de nuestras marcas distribuidas.'
+                : 'Write to us and we will send you detailed information about any product from our distributed brands.'}
             </p>
             <a
               href="#contacto"
               className="inline-flex items-center gap-2 px-8 py-4 bg-white text-p3-blue font-semibold rounded-xl hover:bg-gray-100 transition-all shadow-lg"
             >
               <ExternalLink size={20} />
-              {language === 'es' ? 'Solicitar Información' : 'Request Information'}
+              {language === 'es' ? 'Solicitar Cotización' : 'Request a Quote'}
             </a>
           </div>
         </FadeInSection>
