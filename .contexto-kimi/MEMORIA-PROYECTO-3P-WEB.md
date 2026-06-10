@@ -116,8 +116,9 @@ G:\Mi unidad\pagina web\CATALOGO\[MARCA]\
 - [x] Arquitectura multipágina funcional
 - [x] Quitar efectos decorativos infantiles
 - [x] **Ocultar marca Chore-Time temporalmente** (junio 2026) — ver detalles en "Cambios Recientes"
+- [x] **Configurar EmailJS** (junio 2026) — formulario de contacto funcional con Outlook
+- [x] **GitHub Actions CI/CD** — deploy automático en push a master
 - [ ] Crear páginas dedicadas para Fancom, Roxell, Lubing, etc.
-- [ ] Configurar EmailJS
 - [ ] Mejorar SEO de cada página de marca
 
 ---
