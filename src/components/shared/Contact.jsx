@@ -1,12 +1,22 @@
 import { Phone, Mail, MapPin, Clock, Send, User, MessageSquare, CheckCircle, ArrowRight } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { FadeInSection } from '../ui';
 import { useToast } from '../ui';
+import emailjs from '@emailjs/browser';
+
+// Configuración de EmailJS
+const EMAILJS_SERVICE_ID = 'service_3prclaq';
+const EMAILJS_TEMPLATE_ID = 'template_ks6s9yv';
+const EMAILJS_PUBLIC_KEY = 'bZ5Pz4T6UhA3cDcU1';
 
 const Contact = () => {
   const { t, language } = useLanguage();
   const { addToast } = useToast();
+
+  useEffect(() => {
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+  }, []);
   const [formData, setFormData] = useState({
     name: '',
     company: '',
@@ -32,47 +42,18 @@ const Contact = () => {
     addToast(language === 'es' ? 'Enviando cotización...' : 'Sending quote...', 'info', 2000);
 
     try {
-      // CONFIGURACIÓN WEB3FORMS
-      // 1. Ve a https://web3forms.com/ y obtén tu access_key gratuita
-      // 2. Reemplaza 'TU_ACCESS_KEY_WEB3FORMS' con tu llave real
-      const accessKey = '6458dc7e-0d80-4551-9b2b-3d16146d41b8';
-
-      // Usar application/json como recomienda Web3Forms para envios desde JS
-      const formPayload = {
-        access_key: accessKey,
-        subject: 'Nueva cotización desde 3psadecv.com',
-        from_name: '3P Website',
-        name: formData.name,
-        email: formData.email,
+      // Envío real con EmailJS
+      const templateParams = {
+        from_name: formData.name,
+        from_email: formData.email,
         phone: formData.phone || 'No proporcionado',
         company: formData.company || 'No especificada',
         service: formData.service || 'No especificado',
         message: formData.message,
-        // Desactivados temporalmente para pruebas:
-        // to: 'ventas@3psadecv.com,importaciones@3psadecv.com,trespsadecv@hotmail.com',
-        to: 'carlos.urbina@3psadecv.com',
-        botcheck: false, // Honeypot anti-spam
+        reply_to: formData.email,
       };
 
-      if (accessKey === 'TU_ACCESS_KEY_WEB3FORMS') {
-        // Modo demostración: simula envío para que puedas probar el formulario
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        console.log('Modo demo - Datos que se enviarían:', Object.fromEntries(formPayload));
-      } else {
-        // Envío real con Web3Forms
-        const response = await fetch('https://api.web3forms.com/submit', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify(formPayload),
-        });
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-          throw new Error(data.message || 'Error en el envío');
-        }
-      }
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
 
       setIsSubmitting(false);
       setIsSubmitted(true);
