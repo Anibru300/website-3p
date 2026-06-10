@@ -47,7 +47,9 @@ const Contact = () => {
       formPayload.append('company', formData.company || 'No especificada');
       formPayload.append('service', formData.service || 'No especificado');
       formPayload.append('message', formData.message);
-      formPayload.append('to', 'ventas@3psadecv.com,importaciones@3psadecv.com,trespsadecv@hotmail.com');
+      // Desactivados temporalmente para pruebas:
+      // formPayload.append('to', 'ventas@3psadecv.com,importaciones@3psadecv.com,trespsadecv@hotmail.com');
+      formPayload.append('to', 'carlos.urbina@3psadecv.com');
 
       if (accessKey === 'TU_ACCESS_KEY_WEB3FORMS') {
         // Modo demostración: simula envío para que puedas probar el formulario
