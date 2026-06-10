@@ -9,8 +9,8 @@ const HomePage = () => {
     <>
       <SEO 
         title="3P S.A. DE C.V. | Equipos para la Industria Avícola y Porcícola"
-        description="Más de 27 años de experiencia distribuyendo equipos de alta tecnología para la industria avícola, porcícola e invernaderos. Representantes oficiales de FANCOM, LANDMECO, LUBING, CHORE-TIME y más."
-        keywords="equipos avícolas, ventilación granjas, comederos automáticos, bebederos, industria avícola, León Guanajuato, FANCOM, LANDMECO, CHORE-TIME, ROXELL, LUBING"
+        description="Más de 27 años de experiencia distribuyendo equipos de alta tecnología para la industria avícola, porcícola e invernaderos. Representantes oficiales de FANCOM, LANDMECO, LUBING y más."
+        keywords="equipos avícolas, ventilación granjas, comederos automáticos, bebederos, industria avícola, León Guanajuato, FANCOM, LANDMECO, ROXELL, LUBING"
       />
       <main className="relative z-10">
         <Hero />

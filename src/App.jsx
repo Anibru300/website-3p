@@ -49,7 +49,8 @@ function App() {
   if (segments[0] === 'marcas') {
     const brandId = segments[1];
     if (brandId === 'chore-time') {
-      content = <ChoreTimePage />;
+      // Chore-Time oculto temporalmente - redirigir a home
+      content = <HomePage />;
     } else if (brandId === 'fancom') {
       content = <FancomPage />;
     } else if (brandId) {

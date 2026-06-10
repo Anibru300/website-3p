@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X, ArrowRight, Package } from 'lucide-react';
-import { choreTimeProducts } from '../../data/choreTimeProducts';
+// import { choreTimeProducts } from '../../data/choreTimeProducts';
 
 const ProductSearch = ({ onClose }) => {
   const [query, setQuery] = useState('');
@@ -17,16 +17,8 @@ const ProductSearch = ({ onClose }) => {
   useEffect(() => {
     if (query.length >= 2) {
       const searchTerm = query.toLowerCase().trim();
-      const filtered = choreTimeProducts.filter(p => {
-        // Safely check properties with fallback to empty string
-        const nombre = (p.nombre || '').toLowerCase();
-        const codigo = (p.codigo || '').toLowerCase();
-        const specs = (p.specs || '').toLowerCase();
-        
-        return nombre.includes(searchTerm) ||
-               codigo.includes(searchTerm) ||
-               specs.includes(searchTerm);
-      });
+      // Búsqueda de productos desactivada temporalmente
+      const filtered = []; // choreTimeProducts.filter(p => { ... });
       setResults(filtered.slice(0, 8));
       setIsOpen(true);
     } else {
@@ -116,7 +108,7 @@ const ProductSearch = ({ onClose }) => {
               <ArrowRight className="text-gray-400 flex-shrink-0" size={18} />
             </button>
           ))}
-          <div className="p-3 bg-gray-50 dark:bg-gray-700/50 border-t dark:border-gray-700">
+          {/* <div className="p-3 bg-gray-50 dark:bg-gray-700/50 border-t dark:border-gray-700">
             <a
               href="/marcas/chore-time"
               onClick={() => { if (onClose) onClose(); }}
@@ -125,7 +117,7 @@ const ProductSearch = ({ onClose }) => {
               Ver todos los productos
               <ArrowRight size={14} />
             </a>
-          </div>
+          </div> */}
         </div>
       )}
 

@@ -1,5 +1,5 @@
 # 🌐 MEMORIA - PROYECTO WEB, CATÁLOGOS Y MARKETING 3P
-> Última actualización: 2026-04-01
+> Última actualización: 2026-06-10
 > Propósito: Preservar contexto del proyecto comercial/marketing de 3P
 
 ---
@@ -49,7 +49,7 @@
 2. LUBING (Alemania)
 3. LANDMECO (Dinamarca)
 4. GEORGIA POULTRY (USA)
-5. CHORE-TIME (USA)
+5. ~~CHORE-TIME (USA)~~ — *Oculta temporalmente de la web (2026-06-10)*
 6. MS Schippers (Países Bajos)
 7. AMT (USA)
 8. ALKE (Holanda)
@@ -69,7 +69,7 @@ G:\Mi unidad\pagina web\CATALOGO\[MARCA]\
 ```
 
 ### Marcas con Catálogo
-CHORE_TIME, FANCOM, SBM, SCHIPPERS, LUBING, ALKE, LB_WHITE, ROXELL, TIGSA
+~~CHORE_TIME~~ (oculto temporalmente), FANCOM, SBM, SCHIPPERS, LUBING, ALKE, LB_WHITE, ROXELL, TIGSA
 
 ---
 
@@ -87,6 +87,7 @@ CHORE_TIME, FANCOM, SBM, SCHIPPERS, LUBING, ALKE, LB_WHITE, ROXELL, TIGSA
 ### Estado de Diseño PDF
 - **v13:** ReportLab enterprise-grade con azul acero + oro industrial, interactivo, fotos profesionales, stock real.
 - **Archivo:** `Catalogo_Chore_Time_3P_v13_fixed.pdf` (compatible con lectores estrictos)
+- **Estado web:** Catálogo y marca ocultos temporalmente de la página (junio 2026). El PDF y los assets se conservan.
 
 ---
 
@@ -114,9 +115,32 @@ CHORE_TIME, FANCOM, SBM, SCHIPPERS, LUBING, ALKE, LB_WHITE, ROXELL, TIGSA
 - [x] Migrar productos reales a la web
 - [x] Arquitectura multipágina funcional
 - [x] Quitar efectos decorativos infantiles
+- [x] **Ocultar marca Chore-Time temporalmente** (junio 2026) — ver detalles en "Cambios Recientes"
 - [ ] Crear páginas dedicadas para Fancom, Roxell, Lubing, etc.
 - [ ] Configurar EmailJS
 - [ ] Mejorar SEO de cada página de marca
+
+---
+
+## 📝 CAMBIOS RECIENTES
+
+### 2026-06-10 — Ocultar marca Chore-Time temporalmente
+> **Motivo:** Solicitud del usuario para ocultar la marca y catálogo de Chore-Time mientras se resuelve algo externo. **Nada se borró**, solo se ocultó de la interfaz visual.
+
+**Archivos modificados:**
+- `src/components/ui/Brands.jsx` — Comentado objeto CHORE TIME del array `brands`.
+- `src/components/layout/Header.jsx` — Comentado Chore-Time del dropdown "Líneas" (desktop y móvil).
+- `src/components/layout/Footer.jsx` — Comentado Chore-Time del array `brands` del footer.
+- `src/components/shared/BrandShowcase.jsx` — Comentado Chore-Time del array de marcas.
+- `src/pages/HomePage.jsx` — Eliminado CHORE-TIME de `description` y `keywords` del SEO.
+- `index.html` — Eliminado CHORE-TIME de meta tags `description`, `keywords`, `og:description`.
+- `src/components/product/CatalogGallery.jsx` — Sección del catálogo destacado Chore-Time envuelta en `{false && (...)}` (código conservado intacto).
+- `src/components/product/ProductSearch.jsx` — Desactivada búsqueda de productos Chore-Time (`const filtered = []`) y comentado enlace "Ver todos los productos".
+- `src/App.jsx` — Ruta `/marcas/chore-time` redirige a `<HomePage />` en lugar de `<ChoreTimePage />`.
+- `public/sitemap.xml` — URL de chore-time comentada.
+- `.contexto-kimi/MEMORIA-PROYECTO-3P-WEB.md` — Actualizado este archivo.
+
+**Cómo revertir:** Descomentar las líneas marcadas con `//` en los archivos listados, quitar el `{false && (...)}` en `CatalogGallery.jsx`, y restaurar la ruta en `App.jsx`.
 
 ---
 

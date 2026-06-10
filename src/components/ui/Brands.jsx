@@ -64,20 +64,20 @@ const Brands = () => {
       color: 'from-orange-500 to-red-600',
       logo: '/images/brands/georgia-poultry.png',
     },
-    {
-      name: 'CHORE TIME',
-      origin: 'Estados Unidos',
-      products: 'Sistemas Integrales Avícolas',
-      description: 'Más de 70 años de experiencia en soluciones integrales para avicultura. División de CTB, Inc. Especialistas en sistemas de alimentación y bebida.',
-      features: [
-        'Sistemas de alimentación completos',
-        'Sistemas de bebida',
-        'Aviarios sin jaula',
-        'Nidos para producción en piso'
-      ],
-      color: 'from-indigo-600 to-purple-700',
-      logo: '/images/brands/chore-time.svg',
-    },
+    // {
+    //   name: 'CHORE TIME',
+    //   origin: 'Estados Unidos',
+    //   products: 'Sistemas Integrales Avícolas',
+    //   description: 'Más de 70 años de experiencia en soluciones integrales para avicultura. División de CTB, Inc. Especialistas en sistemas de alimentación y bebida.',
+    //   features: [
+    //     'Sistemas de alimentación completos',
+    //     'Sistemas de bebida',
+    //     'Aviarios sin jaula',
+    //     'Nidos para producción en piso'
+    //   ],
+    //   color: 'from-indigo-600 to-purple-700',
+    //   logo: '/images/brands/chore-time.svg',
+    // },
     {
       name: 'FANCOM',
       origin: 'Países Bajos',

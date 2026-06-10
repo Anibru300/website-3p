@@ -23,7 +23,7 @@ const Footer = () => {
   ];
 
   const brands = [
-    { name: 'Chore-Time', href: '/marcas/chore-time', active: true },
+    // { name: 'Chore-Time', href: '/marcas/chore-time', active: true },
     { name: 'ROXELL', href: '/marcas/roxell' },
     { name: 'LUBING', href: '/marcas/lubing' },
     { name: 'LANDMECO', href: '/marcas/landmeco' },

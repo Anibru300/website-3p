@@ -5,7 +5,7 @@ const brands = [
   { name: 'LUBING', origin: 'Alemania', logo: '/images/brands/lubing.png', href: '/marcas/lubing', color: 'from-blue-600 to-blue-800' },
   { name: 'LANDMECO', origin: 'Dinamarca', logo: '/images/brands/landmeco.png', href: '/marcas/landmeco', color: 'from-green-600 to-teal-700' },
   { name: 'GEORGIA POULTRY', origin: 'USA', logo: '/images/brands/georgia-poultry.png', href: '/marcas/georgia-poultry', color: 'from-orange-500 to-red-600' },
-  { name: 'CHORE-TIME', origin: 'USA', logo: '/images/brands/chore-time.svg', href: '/marcas/chore-time', color: 'from-indigo-600 to-purple-700', active: true },
+  // { name: 'CHORE-TIME', origin: 'USA', logo: '/images/brands/chore-time.svg', href: '/marcas/chore-time', color: 'from-indigo-600 to-purple-700', active: true },
   { name: 'FANCOM', origin: 'Países Bajos', logo: '/images/brands/fancom.png', href: '/marcas/fancom', color: 'from-emerald-500 to-green-700' },
   { name: 'MS Schippers', origin: 'Países Bajos', logo: '/images/brands/sbm.svg', href: '/marcas/schippers', color: 'from-yellow-500 to-orange-600' },
   { name: 'AMT', origin: 'USA', logo: '/images/brands/amt.png', href: '/marcas/amt', color: 'from-cyan-600 to-blue-700' },

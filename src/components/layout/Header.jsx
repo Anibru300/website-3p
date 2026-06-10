@@ -26,7 +26,7 @@ const Header = () => {
 
   // Todas las marcas consistentes con BrandShowcase
   const brandLinks = [
-    { name: 'Chore-Time', href: '/marcas/chore-time' },
+    // { name: 'Chore-Time', href: '/marcas/chore-time' },
     { name: 'Fancom', href: '/marcas/fancom' },
     { name: 'Roxell', href: '/marcas/roxell' },
     { name: 'Lubing', href: '/marcas/lubing' },
@@ -101,12 +101,12 @@ const Header = () => {
                 </span>
                 <div className="absolute top-full right-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 max-h-80 overflow-y-auto">
                   <div className="py-2">
-                    <p className="px-4 py-1 text-xs text-gray-400 uppercase font-semibold">Catálogos disponibles</p>
+                    {/* <p className="px-4 py-1 text-xs text-gray-400 uppercase font-semibold">Catálogos disponibles</p>
                     <a href="/marcas/chore-time" className="flex items-center gap-2 px-4 py-2 text-sm text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/10">
                       <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                       Chore-Time (Activo)
                     </a>
-                    <div className="border-t dark:border-gray-700 my-1"></div>
+                    <div className="border-t dark:border-gray-700 my-1"></div> */}
                     <p className="px-4 py-1 text-xs text-gray-400 uppercase font-semibold">Próximamente</p>
                     {brandLinks.filter(b => b.name !== 'Chore-Time').map(b => (
                       <a key={b.name} href={b.href} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-red-50 hover:text-p3-red dark:hover:bg-red-900/10">
@@ -174,12 +174,12 @@ const Header = () => {
               </a>
             ))}
             <div className="border-t dark:border-gray-700 my-2 pt-2">
-              <p className="px-4 py-1 text-xs text-green-600 uppercase font-semibold">Catálogo Activo</p>
+              {/* <p className="px-4 py-1 text-xs text-green-600 uppercase font-semibold">Catálogo Activo</p>
               <a href="/marcas/chore-time" onClick={() => setIsMobileMenuOpen(false)} className="block px-4 py-2 text-sm text-green-700 dark:text-green-400 hover:bg-green-50">
                 Chore-Time
               </a>
-              <div className="border-t dark:border-gray-700 my-2"></div>
-              <p className="px-4 py-1 text-xs text-gray-500 uppercase">Otras Líneas</p>
+              <div className="border-t dark:border-gray-700 my-2"></div> */}
+              <p className="px-4 py-1 text-xs text-gray-500 uppercase">Líneas</p>
               {brandLinks.filter(b => b.name !== 'Chore-Time').map(b => (
                 <a key={b.name} href={b.href} onClick={() => setIsMobileMenuOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-p3-red hover:bg-red-50 dark:hover:bg-red-900/10">
                   {b.name}

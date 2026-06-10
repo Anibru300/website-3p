@@ -13,7 +13,7 @@ const CatalogGallery = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Catálogo principal - Chore-Time con PDF
+  // Catálogo principal - Chore-Time con PDF (oculto temporalmente)
   const mainCatalog = {
     id: 'chore-time',
     name: 'CHORE-TIME',
@@ -140,7 +140,7 @@ const CatalogGallery = () => {
     setSelectedImage(otherCatalogs[newIndex]);
   };
 
-  // Navegar a la página de productos Chore-Time
+  // Navegar a la página de productos Chore-Time (oculto temporalmente)
   const goToChoreTimeProducts = () => {
     window.location.href = '/marcas/chore-time';
   };
@@ -176,7 +176,8 @@ const CatalogGallery = () => {
           </p>
         </FadeInSection>
 
-        {/* CATÁLOGO DESTACADO - CHORE-TIME */}
+        {/* CATÁLOGO DESTACADO - CHORE-TIME (oculto temporalmente) */}
+        {false && (
         <FadeInSection className="mb-16">
           <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
             <div className="grid lg:grid-cols-2">
@@ -292,6 +293,7 @@ const CatalogGallery = () => {
             </div>
           </div>
         </FadeInSection>
+        )}
 
         {/* OTROS CATÁLOGOS */}
         <FadeInSection>
