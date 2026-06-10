@@ -37,19 +37,22 @@ const Contact = () => {
       // 2. Reemplaza 'TU_ACCESS_KEY_WEB3FORMS' con tu llave real
       const accessKey = '6458dc7e-0d80-4551-9b2b-3d16146d41b8';
 
-      const formPayload = new FormData();
-      formPayload.append('access_key', accessKey);
-      formPayload.append('subject', 'Nueva cotización desde 3psadecv.com');
-      formPayload.append('from_name', '3P Website');
-      formPayload.append('name', formData.name);
-      formPayload.append('email', formData.email);
-      formPayload.append('phone', formData.phone || 'No proporcionado');
-      formPayload.append('company', formData.company || 'No especificada');
-      formPayload.append('service', formData.service || 'No especificado');
-      formPayload.append('message', formData.message);
-      // Desactivados temporalmente para pruebas:
-      // formPayload.append('to', 'ventas@3psadecv.com,importaciones@3psadecv.com,trespsadecv@hotmail.com');
-      formPayload.append('to', 'carlos.urbina@3psadecv.com');
+      // Usar application/json como recomienda Web3Forms para envios desde JS
+      const formPayload = {
+        access_key: accessKey,
+        subject: 'Nueva cotización desde 3psadecv.com',
+        from_name: '3P Website',
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || 'No proporcionado',
+        company: formData.company || 'No especificada',
+        service: formData.service || 'No especificado',
+        message: formData.message,
+        // Desactivados temporalmente para pruebas:
+        // to: 'ventas@3psadecv.com,importaciones@3psadecv.com,trespsadecv@hotmail.com',
+        to: 'carlos.urbina@3psadecv.com',
+        botcheck: false, // Honeypot anti-spam
+      };
 
       if (accessKey === 'TU_ACCESS_KEY_WEB3FORMS') {
         // Modo demostración: simula envío para que puedas probar el formulario
@@ -59,7 +62,11 @@ const Contact = () => {
         // Envío real con Web3Forms
         const response = await fetch('https://api.web3forms.com/submit', {
           method: 'POST',
-          body: formPayload,
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(formPayload),
         });
         const data = await response.json();
         if (!response.ok || !data.success) {
