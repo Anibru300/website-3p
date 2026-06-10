@@ -44,8 +44,12 @@ const Contact = () => {
     try {
       // Envío real con EmailJS
       const templateParams = {
-        from_name: formData.name,
-        from_email: formData.email,
+        name: formData.name,
+        email: formData.email,
+        time: new Date().toLocaleString('es-MX', {
+          dateStyle: 'long',
+          timeStyle: 'short',
+        }),
         phone: formData.phone || 'No proporcionado',
         company: formData.company || 'No especificada',
         service: formData.service || 'No especificado',
