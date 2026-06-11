@@ -14,12 +14,6 @@ const brandData = {
     keywords: 'Lubing, bebederos avícolas, enfriamiento evaporativo, sistemas de bebida',
     color: '#00A8E8'
   },
-  landmeco: {
-    name: 'LANDMECO',
-    description: 'Sistemas de ventilación, calefacción y alimentación para avicultura. Soluciones danesas de alta eficiencia.',
-    keywords: 'Landmeco, ventilación granjas, calefacción avícola, equipos Dinamarca',
-    color: '#2D6A4F'
-  },
   'georgia-poultry': {
     name: 'GEORGIA POULTRY',
     description: 'Equipos especializados para la industria avícola. Soluciones confiables para granjas de pollos.',
@@ -32,11 +26,17 @@ const brandData = {
     keywords: 'Fancom, control ambiental, automatización granjas, sistemas Holland',
     color: '#E76F51'
   },
-  schippers: {
-    name: 'MS Schippers',
+  sbm: {
+    name: 'SBM',
     description: 'Higiene y bioseguridad para granjas. Productos especializados en limpieza y desinfección.',
-    keywords: 'MS Schippers, higiene granjas, bioseguridad, limpieza avícola',
+    keywords: 'SBM, higiene granjas, bioseguridad, limpieza avícola',
     color: '#52796F'
+  },
+  lbwhite: {
+    name: 'LB White',
+    description: 'Sistemas de calefacción y climatización para avicultura, porcicultura e invernaderos.',
+    keywords: 'LB White, calefactores avícolas, brooders, climatización granjas',
+    color: '#1e3a8a'
   },
   amt: {
     name: 'AMT',

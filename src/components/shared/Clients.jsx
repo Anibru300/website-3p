@@ -27,8 +27,8 @@ const Clients = () => {
   const testimonials = [
     {
       text: language === 'es' 
-        ? '3P ha sido nuestro proveedor de confianza por más de 10 años. Su servicio técnico y la calidad de los equipos FANCOM y LANDMECO han sido fundamentales para nuestro crecimiento.'
-        : '3P has been our trusted supplier for over 10 years. Their technical service and the quality of FANCOM and LANDMECO equipment have been fundamental to our growth.',
+        ? '3P ha sido nuestro proveedor de confianza por más de 10 años. Su servicio técnico y la calidad de los equipos FANCOM y ROXELL han sido fundamentales para nuestro crecimiento.'
+        : '3P has been our trusted supplier for over 10 years. Their technical service and the quality of FANCOM and ROXELL equipment have been fundamental to our growth.',
       author: 'Ing. Adrian Castro',
       company: 'Grupo Pecuario San Antonio',
       rating: 5,
@@ -43,8 +43,8 @@ const Clients = () => {
     },
     {
       text: language === 'es'
-        ? 'Excelente servicio de importación. Los tiempos de entrega son cumplidos y el asesoramiento técnico es de primer nivel.'
-        : 'Excellent import service. Delivery times are met and technical advice is top-notch.',
+        ? 'Excelente servicio de importación. El asesoramiento técnico es de primer nivel y el acompañamiento postventa es excepcional.'
+        : 'Excellent import service. Technical advice is top-notch and after-sales support is exceptional.',
       author: 'MVZ Mario Gabilondo',
       company: 'Gallina Pesada',
       rating: 5,

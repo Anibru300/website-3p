@@ -1,4 +1,4 @@
-import { Truck, GraduationCap, Headphones, Package, Globe, ArrowRight } from 'lucide-react';
+import { Truck, Users, Headphones, Package, Globe, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { FadeInSection } from '../ui';
 
@@ -28,7 +28,7 @@ const Services = () => {
       color: 'from-green-600 to-teal-700',
     },
     {
-      icon: GraduationCap,
+      icon: Users,
       title: t('services.training'),
       description: t('services.trainingDesc'),
       features: [t('services.features.operation'), t('services.features.maintenance'), t('services.features.troubleshooting'), t('services.features.bestPractices')],
@@ -94,29 +94,6 @@ const Services = () => {
           ))}
         </div>
 
-        {/* Banner */}
-        <FadeInSection delay={300} className="mt-16">
-          <div className="bg-gradient-to-r from-p3-blue to-p3-blue-light rounded-2xl p-8 text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-            <div className="grid md:grid-cols-2 gap-8 items-center relative z-10">
-              <div>
-                <h3 className="text-2xl font-bold mb-4">{t('services.deliveryTitle')}</h3>
-                <p className="text-gray-100 mb-4">{t('services.deliveryText1')}</p>
-                <p className="text-gray-100">{t('services.deliveryText2')}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
-                  <span className="block text-4xl font-bold mb-2">{t('services.immediate')}</span>
-                  <span className="text-sm opacity-90">{t('services.inStock')}</span>
-                </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
-                  <span className="block text-4xl font-bold mb-2">4-8</span>
-                  <span className="text-sm opacity-90">{t('services.weeks')}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </FadeInSection>
       </div>
     </section>
   );

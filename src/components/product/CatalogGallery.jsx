@@ -4,7 +4,7 @@ import { choreTimeProducts } from '../../data/choreTimeProducts';
 import { 
   X, ZoomIn, ChevronLeft, ChevronRight, Download, 
   FileText, Eye, CheckCircle, Package, ArrowRight,
-  ExternalLink
+  ExternalLink, Phone, MessageCircle
 } from 'lucide-react';
 import { FadeInSection } from '../ui';
 
@@ -19,8 +19,8 @@ const CatalogGallery = () => {
     name: 'CHORE-TIME',
     origin: 'USA',
     description: language === 'es'
-      ? `Catálogo completo de refacciones originales para sistemas avícolas. ${choreTimeProducts.length} productos en stock con entrega inmediata.`
-      : `Complete catalog of original spare parts for poultry systems. ${choreTimeProducts.length} products in stock with immediate delivery.`,
+      ? `Catálogo completo de refacciones originales para sistemas avícolas. ${choreTimeProducts.length} productos en stock.`
+      : `Complete catalog of original spare parts for poultry systems. ${choreTimeProducts.length} products in stock.`,
     image: '/images/brands/chore-time.svg',
     pdfUrl: 'catalogs/catalogo-chore-time.pdf',
     pdfSize: '1.7 MB',
@@ -41,14 +41,15 @@ const CatalogGallery = () => {
   };
 
   // Otros catálogos disponibles (sin PDF aún)
-  const otherCatalogs = [
+  const allCatalogs = [
     {
       id: 'fancom',
       name: 'FANCOM',
       origin: 'Países Bajos',
       description: language === 'es' ? 'Control climático y automatización' : 'Climate control and automation',
       image: '/images/brands/fancom.png',
-      status: 'coming-soon'
+      status: 'available',
+      href: '/marcas/fancom'
     },
     {
       id: 'roxell',
@@ -68,14 +69,6 @@ const CatalogGallery = () => {
       status: 'coming-soon'
     },
     {
-      id: 'landmeco',
-      name: 'LANDMECO',
-      origin: 'Dinamarca',
-      description: language === 'es' ? 'Equipos para avicultura' : 'Poultry equipment',
-      image: '/images/brands/landmeco.png',
-      status: 'coming-soon'
-    },
-    {
       id: 'georgia-poultry',
       name: 'GEORGIA POULTRY',
       origin: 'USA',
@@ -84,13 +77,21 @@ const CatalogGallery = () => {
       status: 'coming-soon'
     },
     {
-      id: 'schippers',
-      name: 'MS Schippers',
+      id: 'sbm',
+      name: 'SBM',
       origin: 'Países Bajos',
       description: language === 'es' ? 'Productos de higiene y bioseguridad' : 'Hygiene and biosecurity products',
       image: '/images/brands/sbm.svg',
       status: 'coming-soon',
       isSvg: true
+    },
+    {
+      id: 'lbwhite',
+      name: 'LB White',
+      origin: 'USA',
+      description: language === 'es' ? 'Sistemas de calefacción y climatización' : 'Heating and climate systems',
+      image: '/images/brands/lbwhite.png',
+      status: 'coming-soon'
     },
     {
       id: 'amt',
@@ -129,15 +130,15 @@ const CatalogGallery = () => {
   };
 
   const goToPrev = () => {
-    const newIndex = (currentIndex - 1 + otherCatalogs.length) % otherCatalogs.length;
+    const newIndex = (currentIndex - 1 + allCatalogs.length) % allCatalogs.length;
     setCurrentIndex(newIndex);
-    setSelectedImage(otherCatalogs[newIndex]);
+    setSelectedImage(allCatalogs[newIndex]);
   };
 
   const goToNext = () => {
-    const newIndex = (currentIndex + 1) % otherCatalogs.length;
+    const newIndex = (currentIndex + 1) % allCatalogs.length;
     setCurrentIndex(newIndex);
-    setSelectedImage(otherCatalogs[newIndex]);
+    setSelectedImage(allCatalogs[newIndex]);
   };
 
   // Navegar a la página de productos Chore-Time (oculto temporalmente)
@@ -295,79 +296,85 @@ const CatalogGallery = () => {
         </FadeInSection>
         )}
 
-        {/* OTROS CATÁLOGOS */}
+        {/* CATÁLOGOS DE TODAS LAS MARCAS */}
         <FadeInSection>
-          <div className="mb-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              {language === 'es' ? 'Otras Marcas' : 'Other Brands'}
-            </h3>
-            <p className="text-gray-500 text-sm">
-              {language === 'es' 
-                ? 'Catálogos en preparación. Escríbenos para más información.' 
-                : 'Catalogs in preparation. Write to us for more information.'}
-            </p>
-          </div>
-
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {otherCatalogs.map((catalog, index) => (
-              <FadeInSection key={catalog.id} delay={index * 50}>
-                <div 
-                  className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 hover:border-gray-200 cursor-pointer"
-                  onClick={() => openModal(catalog, index)}
-                >
-                  {/* Imagen del logo - CORREGIDA PARA SVGs */}
-                  <div className="h-40 bg-gray-50 flex items-center justify-center p-6 relative overflow-hidden">
-                    <div 
-                      className="relative flex items-center justify-center w-full h-full"
-                      style={{ 
-                        backgroundColor: catalog.isSvg ? 'white' : 'transparent',
-                        borderRadius: catalog.isSvg ? '8px' : '0',
-                        padding: catalog.isSvg ? '16px' : '0'
-                      }}
-                    >
-                      <img 
-                        src={catalog.image} 
-                        alt={catalog.name}
-                        className="object-contain transition-transform duration-300 group-hover:scale-110"
-                        loading="lazy"
-                        style={{ 
-                          maxWidth: catalog.isSvg ? '100%' : '80%',
-                          maxHeight: catalog.isSvg ? '100%' : '80%',
-                          width: catalog.isSvg ? 'auto' : undefined,
-                          height: catalog.isSvg ? 'auto' : undefined
+            {allCatalogs.map((catalog, index) => {
+              const CardWrapper = catalog.href ? 'a' : 'div';
+              const cardProps = catalog.href
+                ? { href: catalog.href }
+                : { onClick: () => openModal(catalog, index), role: 'button', tabIndex: 0 };
+              return (
+                <FadeInSection key={catalog.id} delay={index * 50}>
+                  <CardWrapper
+                    {...cardProps}
+                    className="group block bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 hover:border-gray-200 cursor-pointer"
+                  >
+                    {/* Imagen del logo */}
+                    <div className="h-40 bg-gray-50 flex items-center justify-center p-6 relative overflow-hidden">
+                      <div
+                        className="relative flex items-center justify-center w-full h-full"
+                        style={{
+                          backgroundColor: catalog.isSvg ? 'white' : 'transparent',
+                          borderRadius: catalog.isSvg ? '8px' : '0',
+                          padding: catalog.isSvg ? '16px' : '0'
                         }}
-                        onError={(e) => {
-                          console.error(`Error cargando imagen: ${catalog.image}`);
-                          e.target.onerror = null;
-                          e.target.style.display = 'none';
-                          const parent = e.target.parentElement;
-                          if (parent) {
-                            parent.textContent = catalog.name;
-                            parent.className = 'text-lg font-bold text-gray-400';
-                          }
-                        }}
-                      />
+                      >
+                        <img
+                          src={catalog.image}
+                          alt={catalog.name}
+                          className="object-contain transition-transform duration-300 group-hover:scale-110"
+                          loading="lazy"
+                          style={{
+                            maxWidth: catalog.isSvg ? '100%' : '80%',
+                            maxHeight: catalog.isSvg ? '100%' : '80%',
+                            width: catalog.isSvg ? 'auto' : undefined,
+                            height: catalog.isSvg ? 'auto' : undefined
+                          }}
+                          onError={(e) => {
+                            console.error(`Error cargando imagen: ${catalog.image}`);
+                            e.target.onerror = null;
+                            e.target.style.display = 'none';
+                            const parent = e.target.parentElement;
+                            if (parent) {
+                              parent.textContent = catalog.name;
+                              parent.className = 'text-lg font-bold text-gray-400';
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center pointer-events-none">
+                        {catalog.href ? (
+                          <ArrowRight className="text-p3-red opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all" size={24} />
+                        ) : (
+                          <ZoomIn className="text-gray-400 opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all" size={24} />
+                        )}
+                      </div>
                     </div>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center pointer-events-none">
-                      <ZoomIn className="text-gray-400 opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all" size={24} />
+
+                    {/* Información */}
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-bold text-gray-900">{catalog.name}</h4>
+                        <span className="text-xs text-gray-400">{catalog.origin}</span>
+                      </div>
+                      <p className="text-gray-500 text-sm mb-3">{catalog.description}</p>
+                      {catalog.href ? (
+                        <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full w-fit">
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                          {language === 'es' ? 'Ver catálogo' : 'View catalog'}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full w-fit">
+                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                          {language === 'es' ? 'Próximamente' : 'Coming Soon'}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  
-                  {/* Información */}
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-bold text-gray-900">{catalog.name}</h4>
-                      <span className="text-xs text-gray-400">{catalog.origin}</span>
-                    </div>
-                    <p className="text-gray-500 text-sm mb-3">{catalog.description}</p>
-                    <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full w-fit">
-                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
-                      {language === 'es' ? 'Próximamente' : 'Coming Soon'}
-                    </div>
-                  </div>
-                </div>
-              </FadeInSection>
-            ))}
+                  </CardWrapper>
+                </FadeInSection>
+              );
+            })}
           </div>
         </FadeInSection>
 
@@ -375,21 +382,23 @@ const CatalogGallery = () => {
         <FadeInSection className="mt-16 text-center">
           <div className="bg-p3-blue rounded-2xl p-8 md:p-12 text-white">
             <h3 className="text-2xl md:text-3xl font-bold mb-4">
-              {language === 'es' 
-                ? '¿Necesitas un catálogo específico?' 
-                : 'Need a specific catalog?'}
+              {language === 'es'
+                ? '¿Necesitas algún producto en específico?'
+                : 'Need a specific product?'}
             </h3>
             <p className="text-white/80 mb-6 max-w-2xl mx-auto">
               {language === 'es'
-                ? 'Escríbenos y te enviaremos la información detallada de cualquier producto de nuestras marcas distribuidas.'
-                : 'Write to us and we will send you detailed information about any product from our distributed brands.'}
+                ? 'Escríbenos por WhatsApp y con gusto te ayudamos a cotizar el producto que necesitas de cualquiera de nuestras marcas.'
+                : 'Write to us on WhatsApp and we will gladly help you quote the product you need from any of our brands.'}
             </p>
             <a
-              href="#contacto"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-p3-blue font-semibold rounded-xl hover:bg-gray-100 transition-all shadow-lg"
+              href="https://wa.me/524771284661?text=Hola,%20me%20interesa%20cotizar%20un%20producto%20específico."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-[#25D366] text-white font-semibold rounded-xl hover:bg-[#128C7E] transition-all shadow-lg"
             >
-              <ExternalLink size={20} />
-              {language === 'es' ? 'Solicitar Cotización' : 'Request a Quote'}
+              <Phone size={20} />
+              {language === 'es' ? 'Cotizar por WhatsApp' : 'Quote via WhatsApp'}
             </a>
           </div>
         </FadeInSection>

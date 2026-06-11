@@ -38,32 +38,6 @@ const CatalogByBrand = () => {
       ],
     },
     {
-      id: 'landmeco',
-      name: 'LANDMECO',
-      origin: 'Dinamarca',
-      color: 'from-blue-500 to-blue-700',
-      logo: '/images/brands/landmeco.png',
-      description: language === 'es'
-        ? 'Especialistas en sistemas de alimentación'
-        : 'Feeding systems specialists',
-      products: [
-        {
-          id: 3,
-          name: 'Chain Feeder',
-          category: 'Alimentación',
-          description: language === 'es' ? 'Comedero de cadena automático' : 'Automatic chain feeder',
-          specs: ['3m/4m/6m', '150kg capacidad', 'Acero inoxidable'],
-        },
-        {
-          id: 4,
-          name: 'Pan Feeder',
-          category: 'Alimentación',
-          description: language === 'es' ? 'Comedero circular' : 'Circular feeder',
-          specs: ['14 compartimentos', 'Fácil limpieza', 'Ajustable'],
-        },
-      ],
-    },
-    {
       id: 'roxell',
       name: 'ROXELL',
       origin: 'Bélgica',

@@ -24,9 +24,9 @@ const About = () => {
   ];
 
   const timeline = [
-    { year: '1997', title: t('about.founded'), desc: 'Inicio de operaciones' },
-    { year: '2010', title: 'Expansión', desc: 'Nueva ubicación León, Gto.' },
-    { year: '2024', title: 'Liderazgo', desc: '27+ años de experiencia' },
+    { year: '1997', title: t('about.timeline.founded.title'), desc: t('about.timeline.founded.desc') },
+    { year: '2010', title: t('about.timeline.expansion.title'), desc: t('about.timeline.expansion.desc') },
+    { year: '2024', title: t('about.timeline.leadership.title'), desc: t('about.timeline.leadership.desc') },
   ];
 
   return (

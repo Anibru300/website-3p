@@ -17,10 +17,10 @@ const Header = () => {
 
   const navLinks = [
     { name: t('nav.inicio') || 'Inicio', href: '/' },
-    { name: 'Nosotros', href: '#nosotros' },
-    { name: 'Servicios', href: '#servicios' },
-    { name: 'Marcas', href: '#marcas' },
-    { name: 'Catálogos', href: '#catalogo-galeria' },
+    { name: t('nav.nosotros') || 'Nosotros', href: '#nosotros' },
+    { name: t('nav.servicios') || 'Servicios', href: '#servicios' },
+    { name: t('nav.marcas') || 'Marcas', href: '#marcas' },
+    { name: t('nav.catalogo') || 'Catálogo', href: '#catalogo-galeria' },
     { name: t('nav.contacto') || 'Cotización', href: '#contacto' },
   ];
 
@@ -30,8 +30,8 @@ const Header = () => {
     { name: 'Fancom', href: '/marcas/fancom' },
     { name: 'Roxell', href: '/marcas/roxell' },
     { name: 'Lubing', href: '/marcas/lubing' },
-    { name: 'Landmeco', href: '/marcas/landmeco' },
-    { name: 'MS Schippers', href: '/marcas/schippers' },
+    { name: 'SBM', href: '/marcas/sbm' },
+    { name: 'LB White', href: '/marcas/lbwhite' },
     { name: 'AMT', href: '/marcas/amt' },
     { name: 'ALKE', href: '/marcas/alke' },
     { name: 'TIGSA', href: '/marcas/tigsa' },

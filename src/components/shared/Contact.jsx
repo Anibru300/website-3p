@@ -128,7 +128,7 @@ const Contact = () => {
     {
       icon: Clock,
       title: t('contact.hours'),
-      lines: [t('contact.schedule1'), t('contact.schedule2')],
+      lines: [t('contact.schedule1')],
       href: '#',
       color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
     },

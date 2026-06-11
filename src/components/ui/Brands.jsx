@@ -37,20 +37,6 @@ const Brands = () => {
       logo: '/images/brands/lubing.png',
     },
     {
-      name: 'LANDMECO',
-      origin: 'Dinamarca',
-      products: 'Equipos para Avicultura',
-      description: 'Mayor productor de equipos para avicultura de Escandinavia. Más de 90 años de experiencia en sistemas para pollos, ponedoras, reproductoras y recria.',
-      features: [
-        'Sistema de alimentación patentado Kick-off',
-        'Aviarios y jaulas sin jaula',
-        'Nidos centralizados',
-        'Sistemas de crianza'
-      ],
-      color: 'from-green-600 to-teal-700',
-      logo: '/images/brands/landmeco.png',
-    },
-    {
       name: 'GEORGIA POULTRY',
       origin: 'Estados Unidos',
       products: 'Equipos para Avicultura',
@@ -93,7 +79,7 @@ const Brands = () => {
       logo: '/images/brands/fancom.png',
     },
     {
-      name: 'MS Schippers',
+      name: 'SBM',
       origin: 'Países Bajos',
       products: 'Productos de Higiene y Bioseguridad',
       description: 'Empresa líder en productos de higiene, limpieza, desinfección y manejo para la industria avícola y porcina. Soluciones integrales de bioseguridad.',
@@ -105,6 +91,20 @@ const Brands = () => {
       ],
       color: 'from-yellow-500 to-orange-600',
       logo: '/images/brands/sbm.svg',
+    },
+    {
+      name: 'LB White',
+      origin: 'Estados Unidos',
+      products: 'Sistemas de Calefacción y Climatización',
+      description: 'Especialistas en calefactores, brooders y sistemas de enfriamiento evaporativo para avicultura, porcicultura e invernaderos. Más de 75 años de experiencia.',
+      features: [
+        'Calefactores de aire forzado',
+        'Brooders y criadoreos',
+        'Sistemas de enfriamiento evaporativo',
+        'Ventilación y control climático'
+      ],
+      color: 'from-blue-700 to-blue-900',
+      logo: '/images/brands/lbwhite.png',
     },
     {
       name: 'AMT',

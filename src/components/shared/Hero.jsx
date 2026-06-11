@@ -168,7 +168,7 @@ const Hero = () => {
                 variant="secondary"
                 icon={Play}
               >
-                {language === 'es' ? 'Ver Catálogo' : 'View Catalog'}
+                {t('hero.viewCatalog')}
               </MagicButton>
             </div>
 

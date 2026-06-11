@@ -6,10 +6,10 @@ const BrandMarquee = () => {
 
   const brands = [
     { name: 'FANCOM', logo: '/images/brands/fancom.png' },
-    { name: 'LANDMECO', logo: '/images/brands/landmeco.png' },
+    { name: 'SBM', logo: '/images/brands/sbm.svg' },
+    { name: 'LB White', logo: '/images/brands/lbwhite.png' },
     { name: 'DACS', logo: '/images/brands/dacs.png' },
     { name: 'LUBING', logo: '/images/brands/lubing.png' },
-    { name: 'MS Schippers', logo: '/images/brands/sbm.svg' },
     { name: 'HOG SLAT', logo: '/images/brands/hogslat.svg' },
   ];
 

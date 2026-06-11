@@ -63,7 +63,7 @@ const ChoreTimePage = () => {
     <div className="min-h-screen bg-white">
       <SEO 
         title="Chore-Time | Refacciones Originales - 3P S.A. DE C.V."
-        description="Catálogo de refacciones originales Chore-Time. Inventario disponible de piezas para sistemas de avicultura. Entrega inmediata desde León, Guanajuato."
+        description="Catálogo de refacciones originales Chore-Time. Inventario disponible de piezas para sistemas de avicultura."
         keywords="Chore-Time, refacciones avícolas, piezas originales, comederos automáticos, bebederos, ventilación, CTB"
       />
       
@@ -81,8 +81,7 @@ const ChoreTimePage = () => {
               </div>
               <h1 className="text-4xl md:text-5xl font-bold mb-4">Refacciones Originales Chore-Time</h1>
               <p className="text-lg text-white/80 mb-6">
-                Inventario disponible de piezas originales para sistemas de avicultura. 
-                Entrega inmediata desde León, Guanajuato.
+                Inventario disponible de piezas originales para sistemas de avicultura.
               </p>
               <div className="flex flex-wrap gap-4 text-sm text-white/70">
                 <span className="flex items-center gap-1"><Package size={16} /> {choreTimeProducts.length} productos en stock</span>
@@ -322,7 +321,7 @@ const ChoreTimePage = () => {
                 <div className="space-y-3 mb-8">
                   <div className="flex items-center gap-3 text-sm text-gray-700">
                     <MapPin size={18} className="text-gray-400" />
-                    <span>Entrega desde León, Guanajuato</span>
+                    <span>Disponible desde León, Guanajuato</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-gray-700">
                     <Package size={18} className="text-gray-400" />

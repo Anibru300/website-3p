@@ -31,16 +31,6 @@ const Catalog = () => {
       specs: { power: '1.5 kW', voltage: '220V', weight: '45 kg' },
     },
     {
-      id: 2,
-      name: 'Comedero LANDMECO Chain',
-      brand: 'LANDMECO',
-      category: 'feeding',
-      image: null,
-      description: 'Sistema de alimentación por cadena para pollos de engorda.',
-      features: ['Cadena de acero inoxidable', 'Control de nivel', 'Fácil limpieza'],
-      specs: { length: '3m / 4m / 6m', capacity: '150 kg', material: 'Acero inoxidable' },
-    },
-    {
       id: 3,
       name: 'Bebedero LUBING Nipple',
       brand: 'LUBING',

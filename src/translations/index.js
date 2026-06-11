@@ -21,6 +21,7 @@ export const translations = {
       scrollDown: 'Descubre más',
       years: 'Años',
       experience: 'de Experiencia',
+      viewCatalog: 'Ver Catálogo',
       countries: 'Países Atendidos',
       clients: 'Clientes Satisfechos',
       iso: 'Calidad',
@@ -51,19 +52,25 @@ export const translations = {
       recognitions: 'Reconocimientos y Membresías',
       founded: 'Año de fundación',
       employees: 'Empleados en operaciones',
+      experience: 'Años de Experiencia',
+      timeline: {
+        founded: { title: 'Fundación', desc: 'Inicio de operaciones en León, Guanajuato.' },
+        expansion: { title: 'Expansión', desc: 'Nueva ubicación en León, Guanajuato.' },
+        leadership: { title: 'Liderazgo', desc: 'Más de 27 años de experiencia en el sector.' },
+      },
     },
     services: {
       badge: 'Nuestros Servicios',
       title: 'Soluciones integrales para su granja',
       subtitle: 'Ofrecemos un servicio completo que incluye desde la asesoría inicial hasta el soporte postventa, garantizando la satisfacción total de nuestros clientes.',
       equipment: 'Venta de Equipos',
-      equipmentDesc: 'Distribución de equipos de alta calidad para la industria avícola, porcícola e invernaderos. Contamos con inventario en stock para entrega inmediata.',
+      equipmentDesc: 'Distribución de equipos de alta calidad para la industria avícola, porcícola e invernaderos. Contamos con inventario en stock para atender tus necesidades.',
       import: 'Importaciones',
       importDesc: 'Especialistas en importación de equipos desde Europa y Norteamérica. Manejamos divisas en Dólares y Euros con proveedores confiables.',
       export: 'Exportaciones',
       exportDesc: 'Atendemos clientes en Centroamérica y Sudamérica con equipos de la más alta calidad para proyectos avícolas internacionales.',
-      training: 'Capacitación',
-      trainingDesc: 'Capacitamos al personal del cliente en el funcionamiento y manejo adecuado de los sistemas instalados.',
+      training: 'Acompañamiento de uso del Equipo',
+      trainingDesc: 'Acompañamos al personal del cliente en el funcionamiento y manejo adecuado de los equipos instalados.',
       support: 'Servicio Postventa',
       supportDesc: 'Acompañamiento continuo con servicio técnico especializado y atención personalizada para garantizar el óptimo funcionamiento.',
       features: {
@@ -88,12 +95,6 @@ export const translations = {
         maintenanceService: 'Mantenimiento',
         warranty: 'Garantía extendida',
       },
-      deliveryTitle: 'Tiempos de Entrega',
-      deliveryText1: 'Los plazos pactados con el cliente dependen de la disponibilidad en stock. Si el material está disponible, la entrega se realiza a la brevedad posible.',
-      deliveryText2: 'Si no se cuenta con el material solicitado, se pacta un plazo estimado que oscila entre 4 a 8 semanas.',
-      immediate: 'Inmediata',
-      inStock: 'Si hay stock',
-      weeks: 'Semanas si no hay stock',
       seeMore: 'Ver más',
     },
     brands: {
@@ -107,10 +108,6 @@ export const translations = {
         products: 'Sistemas de control y automatización',
         description: 'Líder mundial en sistemas de ventilación y control climático para granjas avícolas y porcícolas.',
       },
-      landmeco: {
-        products: 'Comederos automáticos',
-        description: 'Especialistas en sistemas de alimentación automática de alta eficiencia para pollos de engorda y reproductoras.',
-      },
       dacs: {
         products: 'Ventiladores de alta tecnología',
         description: 'Ventiladores de velocidad variable con tecnología de celdas solares para máxima eficiencia energética.',
@@ -119,9 +116,13 @@ export const translations = {
         products: 'Bebederos y sistemas de humidificación',
         description: 'Tecnología alemana de precisión para sistemas de bebederos, pared húmeda, foggers y transportadores de huevo.',
       },
-      msSchippers: {
+      sbm: {
         products: 'Equipos e higiene para ganadería',
         description: 'Líder europeo en equipos, higiene y productos para el manejo de ganadería avícola y porcícola.',
+      },
+      lbWhite: {
+        products: 'Sistemas de calefacción y climatización',
+        description: 'Especialistas en calefactores, brooders y sistemas de enfriamiento evaporativo para avicultura y porcicultura.',
       },
       hogSlat: {
         products: 'Comederos y silos',
@@ -207,7 +208,6 @@ export const translations = {
       address: 'Dirección',
       hours: 'Horario de Atención',
       schedule1: 'Lunes a Viernes: 9:00 - 18:00',
-      schedule2: 'Sábado: 9:00 - 13:00',
       formFields: {
         name: 'Nombre completo',
         company: 'Empresa',
@@ -266,6 +266,7 @@ export const translations = {
       scrollDown: 'Discover more',
       years: 'Years',
       experience: 'of Experience',
+      viewCatalog: 'View Catalog',
       countries: 'Countries Served',
       clients: 'Satisfied Clients',
       iso: 'Quality',
@@ -296,19 +297,25 @@ export const translations = {
       recognitions: 'Recognitions & Memberships',
       founded: 'Founded',
       employees: 'Employees in operations',
+      experience: 'Years of Experience',
+      timeline: {
+        founded: { title: 'Founded', desc: 'Operations began in León, Guanajuato.' },
+        expansion: { title: 'Expansion', desc: 'New location in León, Guanajuato.' },
+        leadership: { title: 'Leadership', desc: 'More than 27 years of experience in the industry.' },
+      },
     },
     services: {
       badge: 'Our Services',
       title: 'Comprehensive solutions for your farm',
       subtitle: 'We offer a complete service that includes everything from initial advice to after-sales support, guaranteeing total customer satisfaction.',
       equipment: 'Equipment Sales',
-      equipmentDesc: 'Distribution of high-quality equipment for the poultry, swine, and greenhouse industries. We have inventory in stock for immediate delivery.',
+      equipmentDesc: 'Distribution of high-quality equipment for the poultry, swine, and greenhouse industries. We have inventory in stock to meet your needs.',
       import: 'Imports',
       importDesc: 'Specialists in importing equipment from Europe and North America. We handle currencies in Dollars and Euros with reliable suppliers.',
       export: 'Exports',
       exportDesc: 'We serve clients in Central and South America with the highest quality equipment for international poultry projects.',
-      training: 'Training',
-      trainingDesc: 'We train client personnel in the operation and proper handling of installed systems.',
+      training: 'Equipment Use Support',
+      trainingDesc: 'We accompany client personnel in the operation and proper handling of installed equipment.',
       support: 'After-Sales Service',
       supportDesc: 'Continuous support with specialized technical service and personalized attention to ensure optimal operation.',
       features: {
@@ -333,12 +340,6 @@ export const translations = {
         maintenanceService: 'Maintenance',
         warranty: 'Extended Warranty',
       },
-      deliveryTitle: 'Delivery Times',
-      deliveryText1: 'Delivery times depend on stock availability. If the material is available, delivery is made as soon as possible.',
-      deliveryText2: 'If the requested material is not in stock, an estimated timeframe of 4 to 8 weeks is agreed upon.',
-      immediate: 'Immediate',
-      inStock: 'If in stock',
-      weeks: 'Weeks if not in stock',
       seeMore: 'See more',
     },
     brands: {
@@ -352,10 +353,6 @@ export const translations = {
         products: 'Control and automation systems',
         description: 'World leader in ventilation and climate control systems for poultry and swine farms.',
       },
-      landmeco: {
-        products: 'Automatic feeders',
-        description: 'Specialists in high-efficiency automatic feeding systems for broilers and breeders.',
-      },
       dacs: {
         products: 'High-tech ventilation fans',
         description: 'Variable speed fans with solar cell technology for maximum energy efficiency.',
@@ -364,9 +361,13 @@ export const translations = {
         products: 'Drinking and humidification systems',
         description: 'German precision technology for drinking systems, cooling pads, foggers, and egg conveyors.',
       },
-      msSchippers: {
+      sbm: {
         products: 'Livestock equipment and hygiene',
         description: 'European leader in equipment, hygiene, and products for poultry and swine management.',
+      },
+      lbWhite: {
+        products: 'Heating and climate systems',
+        description: 'Specialists in heaters, brooders, and evaporative cooling systems for poultry and swine.',
       },
       hogSlat: {
         products: 'Feeders and silos',
@@ -452,7 +453,6 @@ export const translations = {
       address: 'Address',
       hours: 'Business Hours',
       schedule1: 'Monday to Friday: 9:00 AM - 6:00 PM',
-      schedule2: 'Saturday: 9:00 AM - 1:00 PM',
       formFields: {
         name: 'Full name',
         company: 'Company',

@@ -200,7 +200,7 @@ const FancomPage = () => {
                 <div className="space-y-3 mb-8">
                   <div className="flex items-center gap-3 text-sm text-gray-700">
                     <MapPin size={18} className="text-gray-400" />
-                    <span>Entrega desde León, Guanajuato</span>
+                    <span>Disponible desde León, Guanajuato</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-gray-700">
                     <Package size={18} className="text-gray-400" />
