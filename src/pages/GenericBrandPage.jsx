@@ -26,11 +26,19 @@ const brandData = {
     keywords: 'Fancom, control ambiental, automatización granjas, sistemas Holland',
     color: '#E76F51'
   },
+  'ms-schippers': {
+    name: 'MS Schippers',
+    description: 'Higiene y bioseguridad para granjas. Productos especializados en limpieza y desinfección.',
+    keywords: 'MS Schippers, higiene granjas, bioseguridad, limpieza avícola',
+    color: '#0F766E',
+    image: '/images/brands/ms-schippers.svg'
+  },
   sbm: {
     name: 'SBM',
-    description: 'Higiene y bioseguridad para granjas. Productos especializados en limpieza y desinfección.',
-    keywords: 'SBM, higiene granjas, bioseguridad, limpieza avícola',
-    color: '#52796F'
+    description: 'Sistemas de calefacción y climatización para avicultura y porcicultura.',
+    keywords: 'SBM, calefacción avícola, brooders, climatización granjas',
+    color: '#F97316',
+    image: '/images/brands/sbm.png'
   },
   lbwhite: {
     name: 'LB White',
@@ -88,7 +96,7 @@ const GenericBrandPage = ({ brandId }) => {
               style={{ backgroundColor: brand.color }}
             >
               <img 
-                src={`/images/brands/${brandId}.svg`}
+                src={brand.image || `/images/brands/${brandId}.svg`}
                 alt={brand.name}
                 className="w-24 h-24 object-contain"
                 loading="lazy"

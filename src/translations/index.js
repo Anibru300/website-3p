@@ -117,6 +117,10 @@ export const translations = {
         description: 'Tecnología alemana de precisión para sistemas de bebederos, pared húmeda, foggers y transportadores de huevo.',
       },
       sbm: {
+        products: 'Sistemas de calefacción para avicultura',
+        description: 'Especialistas en sistemas de calefacción por infrarrojos, criadoreos y equipos climáticos para granjas avícolas y porcícolas.',
+      },
+      msSchippers: {
         products: 'Equipos e higiene para ganadería',
         description: 'Líder europeo en equipos, higiene y productos para el manejo de ganadería avícola y porcícola.',
       },
@@ -362,6 +366,10 @@ export const translations = {
         description: 'German precision technology for drinking systems, cooling pads, foggers, and egg conveyors.',
       },
       sbm: {
+        products: 'Heating systems for poultry',
+        description: 'Specialists in infrared heating systems, brooders, and climate equipment for poultry and swine farms.',
+      },
+      msSchippers: {
         products: 'Livestock equipment and hygiene',
         description: 'European leader in equipment, hygiene, and products for poultry and swine management.',
       },

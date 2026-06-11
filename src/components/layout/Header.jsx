@@ -30,6 +30,7 @@ const Header = () => {
     { name: 'Fancom', href: '/marcas/fancom' },
     { name: 'Roxell', href: '/marcas/roxell' },
     { name: 'Lubing', href: '/marcas/lubing' },
+    { name: 'MS Schippers', href: '/marcas/ms-schippers' },
     { name: 'SBM', href: '/marcas/sbm' },
     { name: 'LB White', href: '/marcas/lbwhite' },
     { name: 'AMT', href: '/marcas/amt' },
@@ -46,7 +47,7 @@ const Header = () => {
           <div className="flex items-center gap-6">
             <a href="tel:+524771284661" className="flex items-center gap-2 hover:text-yellow-300 transition-colors">
               <Phone size={14} />
-              <span>+52 1 477 128 4661</span>
+              <span>+52 477 128 4661 / +52 477 774 8323 / +52 477 774 8326</span>
             </a>
             <a href="mailto:trespsadecv@hotmail.com" className="hidden sm:flex items-center gap-2 hover:text-yellow-300 transition-colors">
               <Mail size={14} />

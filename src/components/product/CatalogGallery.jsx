@@ -77,13 +77,21 @@ const CatalogGallery = () => {
       status: 'coming-soon'
     },
     {
-      id: 'sbm',
-      name: 'SBM',
+      id: 'ms-schippers',
+      name: 'MS Schippers',
       origin: 'Países Bajos',
       description: language === 'es' ? 'Productos de higiene y bioseguridad' : 'Hygiene and biosecurity products',
-      image: '/images/brands/sbm.svg',
+      image: '/images/brands/ms-schippers.svg',
       status: 'coming-soon',
       isSvg: true
+    },
+    {
+      id: 'sbm',
+      name: 'SBM',
+      origin: 'Francia',
+      description: language === 'es' ? 'Calefacción y climatización' : 'Heating and climate systems',
+      image: '/images/brands/sbm.png',
+      status: 'coming-soon'
     },
     {
       id: 'lbwhite',

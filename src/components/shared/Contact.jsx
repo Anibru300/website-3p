@@ -103,7 +103,7 @@ const Contact = () => {
     {
       icon: Phone,
       title: t('contact.phones'),
-      lines: ['+52 1 477 128 4661', '+52 1 479 229 8907', '+52 1 479 229 8904'],
+      lines: ['+52 477 128 4661', '+52 477 774 8323', '+52 477 774 8326'],
       href: 'tel:+524777748323',
       color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
     },

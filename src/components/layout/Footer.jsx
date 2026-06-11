@@ -27,6 +27,7 @@ const Footer = () => {
     { name: 'ROXELL', href: '/marcas/roxell' },
     { name: 'LUBING', href: '/marcas/lubing' },
     { name: 'FANCOM', href: '/marcas/fancom' },
+    { name: 'MS Schippers', href: '/marcas/ms-schippers' },
     { name: 'SBM', href: '/marcas/sbm' },
     { name: 'LB White', href: '/marcas/lbwhite' },
     { name: 'AMT', href: '/marcas/amt' },
@@ -177,8 +178,8 @@ const Footer = () => {
                     <div>
                       <p className="text-sm text-gray-500">{t('contact.phones')}</p>
                       <p>+52 1 477 128 4661</p>
-                      <p>+52 1 479 229 8907</p>
-                      <p>+52 1 479 229 8904</p>
+                      <p>+52 1 477 774 8323</p>
+                      <p>+52 1 477 774 8326</p>
                     </div>
                   </a>
                 </li>

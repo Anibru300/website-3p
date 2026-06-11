@@ -79,7 +79,7 @@ const Brands = () => {
       logo: '/images/brands/fancom.png',
     },
     {
-      name: 'SBM',
+      name: 'MS Schippers',
       origin: 'Países Bajos',
       products: 'Productos de Higiene y Bioseguridad',
       description: 'Empresa líder en productos de higiene, limpieza, desinfección y manejo para la industria avícola y porcina. Soluciones integrales de bioseguridad.',
@@ -89,8 +89,22 @@ const Brands = () => {
         'Productos veterinarios',
         'Sistemas de limpieza'
       ],
+      color: 'from-green-600 to-teal-700',
+      logo: '/images/brands/ms-schippers.svg',
+    },
+    {
+      name: 'SBM',
+      origin: 'Francia',
+      products: 'Sistemas de Calefacción y Climatización',
+      description: 'Grupo francés especializado en calefacción por infrarrojos, criadoreos y equipos climáticos para avicultura y porcicultura.',
+      features: [
+        'Calefactores de infrarrojos',
+        'Criadoreos y brooders',
+        'Climatización para granjas',
+        'Sistemas de regulación térmica'
+      ],
       color: 'from-yellow-500 to-orange-600',
-      logo: '/images/brands/sbm.svg',
+      logo: '/images/brands/sbm.png',
     },
     {
       name: 'LB White',
