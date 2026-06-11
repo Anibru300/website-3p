@@ -190,9 +190,9 @@ const Hero = () => {
           {/* Logo 3P animado */}
           <div className="hidden lg:flex justify-center items-center">
             <div className="relative">
-              <div className="w-96 h-96 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 shadow-2xl">
-                <div className="w-80 h-80 bg-white rounded-full flex items-center justify-center shadow-inner animate-float">
-                  <img src="/images/logo-3p-login.png" alt="3P Logo" className="w-64 h-64 object-contain" />
+              <div className="w-[26rem] h-[20rem] bg-white/10 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center border border-white/30 shadow-2xl">
+                <div className="w-[22rem] h-[16rem] bg-white rounded-[2rem] flex items-center justify-center shadow-inner animate-float px-8 py-4">
+                  <img src="/images/logo-3p-login.png" alt="3P Logo" className="w-full h-full object-contain" />
                 </div>
               </div>
               <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-p3-red to-red-600 rounded-2xl flex flex-col items-center justify-center shadow-lg">
