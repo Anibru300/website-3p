@@ -14,7 +14,7 @@ const CatalogByBrand = () => {
     {
       id: 'fancom',
       name: 'FANCOM',
-      origin: 'Holanda',
+      origin: 'Países Bajos',
       color: 'from-orange-500 to-red-600',
       logo: '/images/brands/fancom.png',
       description: language === 'es' 

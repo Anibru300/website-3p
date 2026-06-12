@@ -112,7 +112,7 @@ const CatalogGallery = () => {
     {
       id: 'alke',
       name: 'ALKE',
-      origin: 'Holanda',
+      origin: language === 'es' ? 'Países Bajos' : 'Netherlands',
       description: language === 'es' ? 'Sistemas de calefacción infrarroja' : 'Infrared heating systems',
       image: '/images/brands/alke.png',
       status: 'coming-soon'

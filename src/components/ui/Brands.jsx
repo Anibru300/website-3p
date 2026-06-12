@@ -136,7 +136,7 @@ const Brands = () => {
     },
     {
       name: 'ALKE',
-      origin: 'Holanda',
+      origin: 'Países Bajos',
       products: 'Sistemas de Calefacción',
       description: 'Especialistas en sistemas de calefacción por infrarrojos para avicultura y ganadería. Más de 40 años de experiencia y más de 1.6 millones de calentadores vendidos.',
       features: [
