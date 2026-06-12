@@ -159,7 +159,7 @@ const Brands = () => {
         'Equipos para avicultura y porcicultura',
         'Renovación y acondicionamiento'
       ],
-      color: 'from-emerald-600 to-green-700',
+      color: 'from-p3-red to-red-700',
       logo: '/images/brands/tigsa.svg',
     },
   ];

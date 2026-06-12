@@ -11,7 +11,7 @@ const brands = [
   { name: 'LB White', origin: 'USA', logo: '/images/brands/lbwhite.png', href: '/marcas/lbwhite', color: 'from-blue-700 to-blue-900' },
   { name: 'AMT', origin: 'USA', logo: '/images/brands/amt.png', href: '/marcas/amt', color: 'from-cyan-600 to-blue-700' },
   { name: 'ALKE', origin: 'Países Bajos', logo: '/images/brands/alke.png', href: '/marcas/alke', color: 'from-amber-500 to-red-600' },
-  { name: 'TIGSA', origin: 'España', logo: '/images/brands/tigsa.svg', href: '/marcas/tigsa', color: 'from-emerald-600 to-green-700' },
+  { name: 'TIGSA', origin: 'España', logo: '/images/brands/tigsa.svg', href: '/marcas/tigsa', color: 'from-p3-red to-red-700' },
 ];
 
 const BrandShowcase = () => {
