@@ -24,19 +24,23 @@ function App() {
 
   // Scroll a sección cuando la ruta apunta a un ancla de HomePage
   useEffect(() => {
-    const homeSections = ['inicio', 'marcas', 'catalogos', 'contacto'];
-    const sectionId = segments[0];
+    const homeSections = ['inicio', 'nosotros', 'servicios', 'marcas', 'catalogos', 'contacto'];
+    const hash = window.location.hash ? window.location.hash.slice(1) : '';
+    const sectionId = hash || segments[0];
 
     if (homeSections.includes(sectionId)) {
-      const el = document.getElementById(sectionId);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
-      } else {
+      const scrollToId = (id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+          return true;
+        }
+        return false;
+      };
+
+      if (!scrollToId(sectionId)) {
         // Si la sección aún no está renderizada, esperamos un poco
-        const t = setTimeout(() => {
-          const retry = document.getElementById(sectionId);
-          if (retry) retry.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+        const t = setTimeout(() => scrollToId(sectionId), 150);
         return () => clearTimeout(t);
       }
     } else if (segments[0] === 'marcas' && segments[1]) {

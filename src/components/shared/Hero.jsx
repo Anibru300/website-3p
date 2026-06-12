@@ -201,9 +201,9 @@ const Hero = () => {
                 <span className="text-xs text-white/80">{t('hero.years')}</span>
               </div>
               <div className="absolute -bottom-4 -left-4 w-28 h-28 bg-white rounded-2xl flex flex-col items-center justify-center shadow-lg">
-                <Award size={28} className="text-p3-blue mb-1" />
-                <span className="text-lg font-bold text-p3-blue">ISO</span>
-                <span className="text-xs text-gray-500">{t('hero.iso')}</span>
+                <Globe size={28} className="text-p3-blue mb-1" />
+                <span className="text-lg font-bold text-p3-blue">10+</span>
+                <span className="text-xs text-gray-500">{t('hero.countries')}</span>
               </div>
             </div>
           </div>

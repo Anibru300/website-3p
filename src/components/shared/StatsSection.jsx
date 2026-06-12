@@ -64,9 +64,9 @@ const StatsSection = () => {
     },
     { 
       icon: Award, 
-      value: 15, 
+      value: 500, 
       suffix: '+', 
-      label: language === 'es' ? 'Certificaciones' : 'Certifications',
+      label: language === 'es' ? 'Proyectos Exitosos' : 'Successful Projects',
       color: 'from-pink-600 to-rose-700'
     },
   ];

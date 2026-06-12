@@ -15,14 +15,33 @@ const Header = () => {
 
   const isHome = location.pathname === '/';
 
-  const navLinks = [
-    { name: t('nav.inicio') || 'Inicio', href: '/' },
-    { name: t('nav.nosotros') || 'Nosotros', href: '#nosotros' },
-    { name: t('nav.servicios') || 'Servicios', href: '#servicios' },
-    { name: t('nav.marcas') || 'Marcas', href: '#marcas' },
-    { name: t('nav.catalogo') || 'Catálogo', href: '#catalogo-galeria' },
-    { name: t('nav.contacto') || 'Cotización', href: '#contacto' },
+  const baseNavLinks = [
+    { name: t('nav.inicio') || 'Inicio', href: '/', section: null },
+    { name: t('nav.nosotros') || 'Nosotros', href: '#nosotros', section: 'nosotros' },
+    { name: t('nav.servicios') || 'Servicios', href: '#servicios', section: 'servicios' },
+    { name: t('nav.marcas') || 'Marcas', href: '#marcas', section: 'marcas' },
+    { name: t('nav.catalogo') || 'Catálogo', href: '#catalogos', section: 'catalogos' },
+    { name: t('nav.contacto') || 'Cotización', href: '#contacto', section: 'contacto' },
   ];
+
+  const navLinks = baseNavLinks.map(link => ({
+    ...link,
+    href: isHome || !link.section ? link.href : `/${link.href}`,
+  }));
+
+  const navigateToSection = (e, sectionId, href) => {
+    if (!sectionId) return; // Enlace "Inicio", comportamiento por defecto
+    e.preventDefault();
+
+    if (isHome) {
+      const el = document.getElementById(sectionId);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      const newUrl = `/${href}`;
+      window.history.pushState({ path: newUrl }, '', newUrl);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  };
 
   // Todas las marcas consistentes con BrandShowcase
   const brandLinks = [
@@ -82,11 +101,12 @@ const Header = () => {
             {/* Desktop nav */}
             <div className="hidden xl:flex items-center gap-1">
               {navLinks.map((link) => {
-                const isActive = isHome && (location.hash === link.href.replace('#', '') || (link.href === '/' && location.hash === ''));
+                const isActive = isHome && (location.hash === link.section || (!link.section && location.hash === ''));
                 return (
                   <a
                     key={link.name}
                     href={link.href}
+                    onClick={(e) => navigateToSection(e, link.section, baseNavLinks.find(b => b.name === link.name)?.href)}
                     className={`relative px-3 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${isActive ? 'text-p3-red bg-red-50 dark:bg-red-900/20' : 'text-gray-700 dark:text-gray-300 hover:text-p3-red hover:bg-red-50 dark:hover:bg-red-900/10'}`}
                   >
                     {link.name}
@@ -132,7 +152,11 @@ const Header = () => {
                 <Globe size={16} className="mr-1" />
                 {language.toUpperCase()}
               </button>
-              <a href="#contacto" className="group px-6 py-2.5 bg-p3-red text-white font-medium rounded-lg hover:bg-p3-red-dark transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-p3-red/30 hover:-translate-y-0.5 flex items-center gap-2">
+              <a
+                href={isHome ? '#contacto' : '/#contacto'}
+                onClick={(e) => navigateToSection(e, 'contacto', '#contacto')}
+                className="group px-6 py-2.5 bg-p3-red text-white font-medium rounded-lg hover:bg-p3-red-dark transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-p3-red/30 hover:-translate-y-0.5 flex items-center gap-2"
+              >
                 {t('nav.cotizar') || 'Cotizar'}
                 <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
               </a>
@@ -168,7 +192,10 @@ const Header = () => {
               <a
                 key={link.name}
                 href={link.href}
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={(e) => {
+                  setIsMobileMenuOpen(false);
+                  navigateToSection(e, link.section, baseNavLinks.find(b => b.name === link.name)?.href);
+                }}
                 className="block px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:text-p3-red hover:bg-red-50 dark:hover:bg-red-900/10 mb-1"
               >
                 {link.name}

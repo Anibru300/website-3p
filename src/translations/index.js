@@ -24,7 +24,6 @@ export const translations = {
       viewCatalog: 'Ver Catálogo',
       countries: 'Países Atendidos',
       clients: 'Clientes Satisfechos',
-      iso: 'Calidad',
     },
     about: {
       badge: 'Sobre Nosotros',
@@ -273,7 +272,6 @@ export const translations = {
       viewCatalog: 'View Catalog',
       countries: 'Countries Served',
       clients: 'Satisfied Clients',
-      iso: 'Quality',
     },
     about: {
       badge: 'About Us',
