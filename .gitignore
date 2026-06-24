@@ -32,3 +32,10 @@ dist-ssr
 .cache
 .temp
 *.tmp
+
+# Materials and generated assets
+CATALOGO AUTORIZADO PARA PAGINA WEB/
+gh-pages-assets/
+
+# Local project memory
+.contexto-kimi/

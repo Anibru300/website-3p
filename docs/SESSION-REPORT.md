@@ -1,52 +1,69 @@
-# Reporte de Sesión - 16 de abril de 2026
+# Reporte de Sesión - 24 de junio de 2026
 ## Proyecto: 3P S.A. de C.V. Website (https://3psadecv.com)
 
 ---
 
 ## 1. Resumen de lo realizado hoy
 
-### a) Migración de "Contacto" → "Cotización" (UX/Renaming)
-Se cambió el lenguaje de todo el sitio para que la sección de contacto se perciba como **solicitud de cotización**, alineado con el objetivo de negocio.
+### a) Mejoras en la sección de clientes internacionales
+Se reemplazaron los emojis de banderas por imágenes reales desde `flagcdn.com`, para que se vean consistentes en todos los navegadores y dispositivos.
 
 **Archivos modificados:**
-- `src/translations/index.js` - Todos los textos bilingües (es/en) de nav, hero, contact, footer.
-- `src/components/layout/Header.jsx` - Link de navegación principal.
-- `src/components/layout/Footer.jsx` - Quick links y CTA del footer.
-- `src/components/shared/Contact.jsx` - Badge, título, subtítulo, botón, mensajes de éxito/error.
-- `src/components/shared/VentilationCalculator.jsx` - Link de asesoría especializada.
-- `src/components/product/CatalogGallery.jsx` - Textos de CTA en la galería de catálogos.
-- `src/components/product/Catalog.jsx` / `CatalogByBrand.jsx` - Botones de solicitud (ya usaban `requestQuote`).
+- `src/components/shared/Clients.jsx`
 
 **Cambios clave:**
-- Nav: `Contacto` → `Cotización` / `Quote`
-- Hero CTA: `Solicitar Cotización` / `Request a Quote`
-- Sección #contacto: `¿Listo para cotizar?` / `Ready to request a quote?`
-- Botón formulario: `Enviar Cotización` / `Send Quote`
-- Toast éxito: `¡Cotización enviada con éxito!`
-- VentilationCalculator: `Contáctanos` → `Solicita tu cotización`
-- CatalogGallery: `Solicitar Información` → `Solicitar Cotización`
+- Cada país ahora muestra su bandera como imagen redonda.
+- Se mantienen los 6 países: Argentina, Colombia, Perú, El Salvador, Guatemala, Estados Unidos.
 
-### b) Integración de Web3Forms para envío real de correos
-Se reemplazó el envío simulado (modo demo) por la integración con **Web3Forms**.
+### b) Limpieza de contenido obsoleto
+Se eliminaron del sitio elementos que ya no eran necesarios.
 
-**Archivo:** `src/components/shared/Contact.jsx`
+**Archivos modificados:**
+- `src/components/layout/Header.jsx`
+- `src/components/layout/Footer.jsx`
+- `src/components/shared/BrandShowcase.jsx`
+- `src/components/product/CatalogGallery.jsx`
+- `src/pages/HomePage.jsx`
+- `src/components/shared/GenericBrandPage.jsx`
+- `index.html`
+- `public/sitemap.xml`
+
+**Cambios clave:**
+- **ROXELL** eliminado completamente de marcas, catálogos, header, footer y SEO.
+- **Newsletter** eliminado de la página de inicio (el componente se conserva para uso futuro).
+- **Testimonios de ejemplo** eliminados; se borró `src/components/shared/TestimonialsCarousel.jsx`.
+- **Catálogo Fancom** desactivado: ahora aparece como "Próximamente" y `/marcas/fancom` muestra la página genérica de desarrollo.
+
+### c) Formulario de reseñas funcional con EmailJS
+Se convirtió el formulario de reseñas en un formulario real que envía cada comentario directamente al correo del negocio.
+
+**Archivo:** `src/components/shared/ReviewForm.jsx`
 
 **Configuración:**
-- `access_key`: `6458dc7e-0d80-4551-9b2b-3d16146d41b8`
-- Endpoint: `https://api.web3forms.com/submit`
-- Método: `POST` con `FormData`
-- Campos enviados:
-  - `name`, `email`, `phone`, `company`, `service`, `message`
-  - `subject`: "Nueva cotización desde 3psadecv.com"
-  - `from_name`: "3P Website"
-  - `to`: `ventas@3psadecv.com,importaciones@3psadecv.com,trespsadecv@hotmail.com`
+- **Service ID:** `service_3prclaq`
+- **Template ID:** `template_y153mic`
+- **Public Key:** `bZ5Pz4T6UhA3cDcU1`
+- **Destinatario:** `carlos.urbina@3psadecv.com`
 
-**Estado:** ACTIVO y desplegado en producción.
+**Campos del formulario:**
+- Nombre (obligatorio)
+- Correo electrónico (opcional)
+- Empresa (opcional)
+- Calificación con estrellas 1-5 (obligatoria)
+- Comentario (obligatorio)
 
-### c) Build y deploy exitoso
-- Se realizó build limpio desde `C:\temp\3p-website-deploy` (evitando `node_modules` corrupto de Google Drive).
-- Deploy a `gh-pages` exitoso.
-- Commit en `master`: `7859906` feat: activa Web3Forms con access_key real.
+**Anti-spam:**
+- Se agregó un campo **honeypot** oculto en `ReviewForm.jsx` y `Contact.jsx`.
+- Si un bot llena ese campo, el envío se rechaza silenciosamente.
+
+### d) Enlaces oficiales de marcas
+Las tarjetas y menús de marcas ahora abren los sitios oficiales de cada fabricante en una nueva pestaña.
+
+**Destacado:**
+- **LUBING** apunta ahora a `https://lubmesam.com.mx/` (Lubing Mesoamérica).
+
+### e) Actualización de textos en ambos idiomas
+Se agregó el namespace `reviews` en `src/translations/index.js` para mantener todos los textos del formulario en español e inglés.
 
 ---
 
@@ -55,96 +72,97 @@ Se reemplazó el envío simulado (modo demo) por la integración con **Web3Forms
 | Área | Estado |
 |------|--------|
 | Dominio custom `3psadecv.com` | ✅ Funcional |
-| HTTPS forzado | ✅ Activo |
-| Router limpio (sin `#`) | ✅ Funcional |
-| Imágenes con rutas absolutas (`/images/...`) | ✅ Funcional en rutas anidadas |
-| SPA fallback (`404.html`) | ✅ Desplegado |
-| Formulario de cotización con Web3Forms | ✅ **ACTIVO EN PRODUCCIÓN** |
-| Traducciones es/en | ✅ Actualizadas |
-| `node_modules` estable | ✅ Solo en `C:\temp\3p-website-deploy` |
+| Deploy automático con GitHub Actions | ✅ Activo |
+| Formulario de cotización con EmailJS | ✅ Funcional en producción |
+| Formulario de reseñas con EmailJS | ✅ Funcional en producción |
+| Banderas reales en clientes internacionales | ✅ Desplegado |
+| ROXELL eliminado del sitio | ✅ Completado |
+| Fancom como próximamente | ✅ Completado |
+| Anti-spam honeypot en formularios | ✅ Completado |
+| `npm run build` | ✅ Sin errores |
+| `npm run lint` | ✅ Sin errores |
 
 ---
 
-## 3. Qué falta probar / verificar
+## 3. Archivos archivados / limpieza realizada
+
+Para mantener el repositorio ordenado, se movieron a `src/_archive/` los archivos de Fancom que ya no se usan en la interfaz activa:
+
+- `src/pages/FancomPage.jsx` → `src/_archive/pages/FancomPage.jsx`
+- `src/data/fancomProducts.js` → `src/_archive/data/fancomProducts.js`
+
+Se agregó un `README.md` dentro de `src/_archive/` indicando qué archivos están allí y por qué.
+
+**Nota:** Los archivos no se borraron; solo se movieron a una carpeta de archivo para que no aparezcan en el árbol de componentes activos.
+
+---
+
+## 4. Carpetas ignoradas por Git
+
+Se actualizó `.gitignore` para que no aparezcan como "sin seguimiento" las carpetas de materiales de trabajo y assets generados:
+
+- `CATALOGO AUTORIZADO PARA PAGINA WEB/`
+- `gh-pages-assets/`
+
+Esto limpia el panel de Source Control de VS Code y evita subir archivos que no son parte del sitio.
+
+---
+
+## 5. Qué falta probar / verificar
 
 ### Prioridad Alta
-1. **Probar el formulario de cotización en vivo**
-   - Ir a `https://3psadecv.com/#contacto` (o navegar hasta la sección Cotización).
-   - Llenar el formulario con datos reales y enviar.
-   - Verificar que los 3 correos destinatarios reciban el email:
-     - `ventas@3psadecv.com`
-     - `importaciones@3psadecv.com`
-     - `trespsadecv@hotmail.com`
-   - Verificar que el correo de Web3Forms no caiga en spam.
+1. **Probar el formulario de reseñas en vivo**
+   - Ir a `https://3psadecv.com/#resenas`.
+   - Enviar una reseña con y sin correo/empresa.
+   - Verificar que llegue a `carlos.urbina@3psadecv.com`.
 
-2. **Verificar el dashboard de Web3Forms**
-   - Revisar en https://web3forms.com/ que el formulario "3P" tenga como allowed domain `3psadecv.com` (o `*`).
-   - Confirmar que el límite mensual (1,000 envíos gratis) esté disponible.
-
-3. **Validar que el `replyto` funcione correctamente**
-   - Actualmente no se envía explícitamente `replyto` en el FormData. Web3Forms usa el campo `email` como remitente, pero conviene confirmar que al dar "Responder" en el correo recibido, apunte al email del usuario que llenó el formulario.
+2. **Verificar anti-spam**
+   - Confirmar que formularios normales siguen funcionando.
 
 ### Prioridad Media
-4. **Revisar textos sueltos de "contacto" en comentarios JSX**
-   - Aún hay comentarios como `{/* Información de contacto y Mapa */}` en `Contact.jsx`. No afectan al usuario, pero se pueden limpiar.
-
-5. **Revisar `package-lock.json` desfasado**
-   - En la carpeta de Google Drive aparece `D package-lock.json` (deleted) en el `git status` anterior. En `C:\temp\3p-website-deploy` el `package-lock.json` existe y está actualizado. Si se abandona la carpeta de Google Drive, esto ya no es problema.
+3. **Revisar que los enlaces oficiales de marcas abran correctamente** en nueva pestaña.
+4. **Revisar SEO** después de eliminar ROXELL y Fancom del sitemap.
 
 ---
 
-## 4. Posibles mejoras para la siguiente sesión
+## 6. Posibles mejoras para la siguiente sesión
 
-### a) Formulario / Web3Forms
-- **Agregar `replyto` explícito** si Web3Forms no lo infiere automáticamente del campo `email`:
-  ```js
-  formPayload.append('replyto', formData.email);
-  ```
-- **Anti-spam / honeypot**: Web3Forms recomienda agregar un campo oculto (`botcheck`) para evitar spam. Se puede añadir fácilmente.
-- **Redirección o página de agradecimiento**: Actualmente se muestra un toast y se limpia el formulario. Opcionalmente se podría redirigir a una URL de "Gracias" o mostrar un modal más visual.
-
-### b) SEO y Marketing
-- **Meta tags Open Graph / Twitter Cards**: Falta optimizar los `<meta property="og:*">` en `index.html` para compartir en redes sociales.
-- **Google Analytics / Tag Manager**: No hay scripts de seguimiento. Si el objetivo es generar leads, se recomienda instalar GA4 o GTM para trackear envíos de formulario.
-
-### c) Rendimiento
-- **Lazy loading de imágenes**: Algunas imágenes grandes de productos podrían tener `loading="lazy"` para mejorar LCP.
-- **Optimización de imágenes**: Revisar si hay imágenes en `/images` que pesen más de 200KB y comprimirlas.
-
-### d) Funcionalidad
-- **Filtros de catálogo**: El catálogo de Chore-Time es estático. Se podría agregar un buscador interno de productos o filtros por categoría.
-- **PDF viewer inline**: En lugar de solo descargar PDFs, se podría integrar un visor ligero (ej. `react-pdf`) para previsualizar catálogos.
-
-### e) Mantenimiento técnico
-- **Abandonar definitivamente la carpeta de Google Drive** como workspace de desarrollo. De ahora en adelante, todo desarrollo y deploy debe hacerse desde `C:\temp\3p-website-deploy`.
-- **Documentar el flujo de deploy** para el equipo (si aplica).
+- **Página de reseñas publicadas:** guardar reseñas aprobadas en Google Sheets/Airtable y mostrarlas en el sitio.
+- **reCAPTCHA v3:** subir de nivel la protección anti-spam si llega mucho spam.
+- **SEO local:** agregar datos estructurados `schema.org/LocalBusiness`.
+- **Optimización de imágenes:** convertir imágenes grandes a WebP/AVIF con lazy loading.
+- **Páginas de productos por marca:** activar catálogos reales cuando haya fotos y fichas técnicas disponibles.
 
 ---
 
-## 5. Estructura de trabajo recomendada
+## 7. Estructura de trabajo
 
-**Carpeta oficial de trabajo:** `C:\temp\3p-website-deploy`
+**Carpeta de trabajo actual:** `G:\Mi unidad\pagina web\3p-website`
 
-**Flujo de deploy rápido:**
+**Flujo de deploy:**
 ```powershell
-cd C:\temp\3p-website-deploy
+cd "G:\Mi unidad\pagina web\3p-website"
 git pull origin master
-npm run deploy
+npm run build
+npm run lint
+git add .
+git commit -m "mensaje"
+git push origin master
 ```
 
-**Nota:** La carpeta `G:\Mi unidad\pagina web\3p-website` puede renombrarse a `...\3p-website-BACKUP` y eventualmente eliminarse, ya que `master` en GitHub tiene el código más reciente y `C:\temp\3p-website-deploy` es el workspace estable.
+El deploy a GitHub Pages ocurre automáticamente vía `.github/workflows/deploy.yml`.
 
 ---
 
-## 6. Contactos / Referencias
+## 8. Contactos / Referencias
 
 - **Repositorio:** `https://github.com/Anibru300/website-3p.git`
 - **Rama de código fuente:** `master`
 - **Rama de despliegue:** `gh-pages`
 - **Dominio en vivo:** `https://3psadecv.com`
-- **Servicio de formularios:** https://web3forms.com/
-- **Access Key activa:** `6458dc7e-0d80-4551-9b2b-3d16146d41b8`
+- **Servicio de correo:** EmailJS
+- **Correo de reseñas:** `carlos.urbina@3psadecv.com`
 
 ---
 
-**Próxima sesión:** Comenzar probando el envío de emails desde el sitio en vivo y, si todo funciona, proceder a las mejoras de SEO/tracking o ajustes finos del formulario.
+**Próxima sesión:** Probar el envío de reseñas en vivo y evaluar si se necesita reCAPTCHA u otra mejora.
