@@ -43,17 +43,17 @@ const Header = () => {
     }
   };
 
-  // Marcas con sitios oficiales externos
+  // Líneas / catálogos de marcas (rutas internas)
   const brandLinks = [
-    { name: 'Fancom', href: 'https://www.fancom.com' },
-    { name: 'Lubing', href: 'https://lubmesam.com.mx/' },
-    { name: 'MS Schippers', href: 'https://www.msschippers.com' },
-    { name: 'SBM', href: 'https://www.sbm.fr' },
-    { name: 'LB White', href: 'https://www.lbwhite.com' },
-    { name: 'AMT', href: 'https://www.amt-usa.com' },
-    { name: 'ALKE', href: 'https://www.alke.nl' },
-    { name: 'TIGSA', href: 'https://tigsa.com' },
-    { name: 'Georgia Poultry', href: 'https://www.gapoultry.com' },
+    { name: 'Fancom', href: '/marcas/fancom' },
+    { name: 'Lubing', href: '/marcas/lubing' },
+    { name: 'MS Schippers', href: '/marcas/ms-schippers' },
+    { name: 'SBM', href: '/marcas/sbm' },
+    { name: 'LB White', href: '/marcas/lbwhite' },
+    { name: 'AMT', href: '/marcas/amt' },
+    { name: 'ALKE', href: '/marcas/alke' },
+    { name: 'TIGSA', href: '/marcas/tigsa' },
+    { name: 'Georgia Poultry', href: '/marcas/georgia-poultry' },
   ];
 
   return (
@@ -131,8 +131,6 @@ const Header = () => {
                       <a
                         key={b.name}
                         href={b.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-red-50 hover:text-p3-red dark:hover:bg-red-900/10"
                       >
                         {b.name}
@@ -216,8 +214,6 @@ const Header = () => {
                 <a
                   key={b.name}
                   href={b.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-p3-red hover:bg-red-50 dark:hover:bg-red-900/10"
                 >

@@ -48,7 +48,8 @@ const CatalogGallery = () => {
       origin: 'Países Bajos',
       description: language === 'es' ? 'Control climático y automatización' : 'Climate control and automation',
       image: '/images/brands/fancom.png',
-      status: 'coming-soon'
+      status: 'coming-soon',
+      href: '/marcas/fancom'
     },
     {
       id: 'lubing',
@@ -56,7 +57,8 @@ const CatalogGallery = () => {
       origin: 'Alemania',
       description: language === 'es' ? 'Sistemas de bebida y transporte' : 'Drinking and transport systems',
       image: '/images/brands/lubing.png',
-      status: 'coming-soon'
+      status: 'coming-soon',
+      href: '/marcas/lubing'
     },
     {
       id: 'georgia-poultry',
@@ -64,7 +66,8 @@ const CatalogGallery = () => {
       origin: 'USA',
       description: language === 'es' ? 'Equipos para avicultura' : 'Poultry equipment',
       image: '/images/brands/georgia-poultry.png',
-      status: 'coming-soon'
+      status: 'coming-soon',
+      href: '/marcas/georgia-poultry'
     },
     {
       id: 'ms-schippers',
@@ -73,7 +76,8 @@ const CatalogGallery = () => {
       description: language === 'es' ? 'Productos de higiene y bioseguridad' : 'Hygiene and biosecurity products',
       image: '/images/brands/ms-schippers.svg',
       status: 'coming-soon',
-      isSvg: true
+      isSvg: true,
+      href: '/marcas/ms-schippers'
     },
     {
       id: 'sbm',
@@ -81,7 +85,8 @@ const CatalogGallery = () => {
       origin: 'Francia',
       description: language === 'es' ? 'Calefacción y climatización' : 'Heating and climate systems',
       image: '/images/brands/sbm.png',
-      status: 'coming-soon'
+      status: 'coming-soon',
+      href: '/marcas/sbm'
     },
     {
       id: 'lbwhite',
@@ -89,7 +94,8 @@ const CatalogGallery = () => {
       origin: 'USA',
       description: language === 'es' ? 'Sistemas de calefacción y climatización' : 'Heating and climate systems',
       image: '/images/brands/lbwhite.png',
-      status: 'coming-soon'
+      status: 'coming-soon',
+      href: '/marcas/lbwhite'
     },
     {
       id: 'amt',
@@ -97,7 +103,8 @@ const CatalogGallery = () => {
       origin: 'USA',
       description: language === 'es' ? 'Accesorios y equipos para avicultura' : 'Poultry accessories and equipment',
       image: '/images/brands/amt.png',
-      status: 'coming-soon'
+      status: 'coming-soon',
+      href: '/marcas/amt'
     },
     {
       id: 'alke',
@@ -105,7 +112,8 @@ const CatalogGallery = () => {
       origin: language === 'es' ? 'Países Bajos' : 'Netherlands',
       description: language === 'es' ? 'Sistemas de calefacción infrarroja' : 'Infrared heating systems',
       image: '/images/brands/alke.png',
-      status: 'coming-soon'
+      status: 'coming-soon',
+      href: '/marcas/alke'
     },
     {
       id: 'tigsa',
@@ -114,7 +122,8 @@ const CatalogGallery = () => {
       description: language === 'es' ? 'Equipamientos para granjas' : 'Farm equipment',
       image: '/images/brands/tigsa.svg',
       status: 'coming-soon',
-      isSvg: true
+      isSvg: true,
+      href: '/marcas/tigsa'
     }
   ];
 
