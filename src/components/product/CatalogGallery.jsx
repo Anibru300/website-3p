@@ -40,7 +40,7 @@ const CatalogGallery = () => {
     }
   };
 
-  // Otros catálogos disponibles (sin PDF aún)
+  // Catálogos en desarrollo
   const allCatalogs = [
     {
       id: 'fancom',
@@ -48,8 +48,7 @@ const CatalogGallery = () => {
       origin: 'Países Bajos',
       description: language === 'es' ? 'Control climático y automatización' : 'Climate control and automation',
       image: '/images/brands/fancom.png',
-      status: 'available',
-      href: '/marcas/fancom'
+      status: 'coming-soon'
     },
     {
       id: 'lubing',

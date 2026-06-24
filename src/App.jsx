@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Header } from './components/layout';
 import HomePage from './pages/HomePage';
 import ChoreTimePage from './pages/ChoreTimePage';
-import FancomPage from './pages/FancomPage';
 import GenericBrandPage from './pages/GenericBrandPage';
 import { ToastProvider } from './components/ui/Toast';
 
@@ -55,8 +54,6 @@ function App() {
     if (brandId === 'chore-time') {
       // Chore-Time oculto temporalmente - redirigir a home
       content = <HomePage />;
-    } else if (brandId === 'fancom') {
-      content = <FancomPage />;
     } else if (brandId) {
       content = <GenericBrandPage brandId={brandId} />;
     }
