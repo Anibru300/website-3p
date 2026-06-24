@@ -38,32 +38,6 @@ const CatalogByBrand = () => {
       ],
     },
     {
-      id: 'roxell',
-      name: 'ROXELL',
-      origin: 'Bélgica',
-      color: 'from-green-500 to-teal-600',
-      logo: '/images/brands/roxell.svg',
-      description: language === 'es'
-        ? 'Sistemas de alimentación y bebida'
-        : 'Feeding and drinking systems',
-      products: [
-        {
-          id: 5,
-          name: 'Feeder Pan',
-          category: 'Alimentación',
-          description: language === 'es' ? 'Comedero circular de alta capacidad' : 'High capacity circular feeder',
-          specs: ['14 compartimentos', 'Anti-desperdicio', 'Fácil limpieza'],
-        },
-        {
-          id: 6,
-          name: 'Nipple Drinker',
-          category: 'Bebida',
-          description: language === 'es' ? 'Bebedero nipple de precisión' : 'Precision nipple drinker',
-          specs: ['360° activación', 'Anti-goteo', 'Alta durabilidad'],
-        },
-      ],
-    },
-    {
       id: 'lubing',
       name: 'LUBING',
       origin: 'Alemania',

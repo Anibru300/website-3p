@@ -1,54 +1,27 @@
-import { Quote, Building2, MapPin, Users, Globe, Award, TrendingUp, Star } from 'lucide-react';
+import { Building2, Globe, Users, Award, TrendingUp, MapPin } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { FadeInSection } from '../ui';
 import { AnimatedCounter } from '../ui';
 
 const Clients = () => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
 
   const nationalClients = [
-    { name: 'Avícola San Andrés', contact: 'Lic. Luis Fernando Sandoval', location: 'México' },
-    { name: "Pilgrim's Pride", contact: 'Enrique Cano Jimenez', location: 'México' },
-    { name: 'Grupo Pecuario San Antonio', contact: 'Ing. Adrian Castro', location: 'México' },
-    { name: 'Gallina Pesada S.A.P.I.', contact: 'MVZ Mario Gabilondo', location: 'México' },
-    { name: 'Avícola y Porcícola de los Altos', contact: 'LAF. Delia Palos de Alba', location: 'México' },
-    { name: 'Aparcerías Avícolas', contact: 'Varios', location: 'México' },
+    { name: 'Avícola San Andrés', location: 'México' },
+    { name: "Pilgrim's Pride", location: 'México' },
+    { name: 'Grupo Pecuario San Antonio', location: 'México' },
+    { name: 'Gallina Pesada S.A.P.I.', location: 'México' },
+    { name: 'Avícola y Porcícola de los Altos', location: 'México' },
+    { name: 'Aparcerías Avícolas', location: 'México' },
   ];
 
   const internationalClients = [
-    { name: 'A&M Inversiones S.A.', location: 'El Salvador' },
-    { name: 'Hongos del Pilar', location: 'Argentina' },
-    { name: 'Pat Fitz Mushrooms', location: 'California, USA' },
-    { name: 'Cooperativa Integral de Producción', location: 'Guatemala' },
-    { name: 'MCH Equavic EIRL', location: 'Sudamérica' },
-    { name: 'Agronegocios de Guatemala S.A.', location: 'Guatemala' },
-  ];
-
-  const testimonials = [
-    {
-      text: language === 'es' 
-        ? '3P ha sido nuestro proveedor de confianza por más de 10 años. Su servicio técnico y la calidad de los equipos FANCOM y ROXELL han sido fundamentales para nuestro crecimiento.'
-        : '3P has been our trusted supplier for over 10 years. Their technical service and the quality of FANCOM and ROXELL equipment have been fundamental to our growth.',
-      author: 'Ing. Adrian Castro',
-      company: 'Grupo Pecuario San Antonio',
-      rating: 5,
-    },
-    {
-      text: language === 'es'
-        ? 'La atención personalizada y el soporte postventa que nos brinda 3P es excepcional. Siempre están disponibles cuando los necesitamos.'
-        : 'The personalized attention and after-sales support provided by 3P is exceptional. They are always available when we need them.',
-      author: 'Lic. Luis Fernando Sandoval',
-      company: 'Avícola San Andrés',
-      rating: 5,
-    },
-    {
-      text: language === 'es'
-        ? 'Excelente servicio de importación. El asesoramiento técnico es de primer nivel y el acompañamiento postventa es excepcional.'
-        : 'Excellent import service. Technical advice is top-notch and after-sales support is exceptional.',
-      author: 'MVZ Mario Gabilondo',
-      company: 'Gallina Pesada',
-      rating: 5,
-    },
+    { country: 'Argentina', flag: '🇦🇷' },
+    { country: 'Colombia', flag: '🇨🇴' },
+    { country: 'Perú', flag: '🇵🇪' },
+    { country: 'El Salvador', flag: '🇸🇻' },
+    { country: 'Guatemala', flag: '🇬🇹' },
+    { country: 'Estados Unidos', flag: '🇺🇸' },
   ];
 
   const stats = [
@@ -60,8 +33,6 @@ const Clients = () => {
 
   return (
     <section id="clientes" className="py-20 relative overflow-hidden">
-      {/* Fondo transparente - los animalitos del fondo global se verán aquí */}
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Encabezado */}
         <FadeInSection className="text-center mb-16">
@@ -105,8 +76,7 @@ const Clients = () => {
             {nationalClients.map((client, index) => (
               <FadeInSection key={index} delay={index * 100}>
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-transparent hover:border-p3-red/20 dark:border-gray-700">
-                  <h4 className="font-bold text-p3-dark dark:text-white mb-1">{client.name}</h4>
-                  <p className="text-sm text-p3-blue mb-2">{client.contact}</p>
+                  <h4 className="font-bold text-p3-dark dark:text-white mb-2">{client.name}</h4>
                   <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
                     <MapPin size={14} />
                     <span>{client.location}</span>
@@ -125,43 +95,12 @@ const Clients = () => {
             </div>
             {t('clients.internationalClients')}
           </h3>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
             {internationalClients.map((client, index) => (
               <FadeInSection key={index} delay={index * 100}>
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-transparent hover:border-p3-blue/20 dark:border-gray-700">
-                  <h4 className="font-bold text-p3-dark dark:text-white mb-1">{client.name}</h4>
-                  <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
-                    <MapPin size={14} />
-                    <span>{client.location}</span>
-                  </div>
-                </div>
-              </FadeInSection>
-            ))}
-          </div>
-        </div>
-
-        {/* Testimonios */}
-        <div>
-          <h3 className="text-2xl font-bold text-p3-dark dark:text-white text-center mb-10">
-            {t('clients.testimonials')}
-          </h3>
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <FadeInSection key={index} delay={index * 150}>
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all hover:-translate-y-2 relative group">
-                  <Quote className="absolute top-6 right-6 text-p3-red/20 group-hover:text-p3-red/30 transition-colors" size={40} />
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} size={18} className="text-yellow-400 fill-yellow-400" />
-                    ))}
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed italic">
-                    "{testimonial.text}"
-                  </p>
-                  <div className="border-t dark:border-gray-700 pt-4">
-                    <p className="font-semibold text-p3-dark dark:text-white">{testimonial.author}</p>
-                    <p className="text-sm text-p3-blue">{testimonial.company}</p>
-                  </div>
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-transparent hover:border-p3-blue/20 dark:border-gray-700 text-center">
+                  <div className="text-5xl mb-3">{client.flag}</div>
+                  <h4 className="font-bold text-p3-dark dark:text-white text-sm">{client.country}</h4>
                 </div>
               </FadeInSection>
             ))}

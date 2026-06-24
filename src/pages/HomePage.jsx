@@ -1,4 +1,4 @@
-import { Hero, About, Services, StatsSection, BrandShowcase, Clients, Contact, Newsletter, WhatsAppChat, VentilationCalculator } from '../components/shared';
+import { Hero, About, Services, StatsSection, BrandShowcase, Clients, Contact, ReviewForm, WhatsAppChat, VentilationCalculator } from '../components/shared';
 import { CatalogGallery } from '../components/product';
 import { Footer } from '../components/layout';
 import { BackToTop } from '../components/layout';
@@ -9,8 +9,8 @@ const HomePage = () => {
     <>
       <SEO 
         title="3P S.A. DE C.V. | Equipos para la Industria Avícola y Porcícola"
-        description="Más de 27 años de experiencia distribuyendo equipos de alta tecnología para la industria avícola, porcícola e invernaderos. Representantes oficiales de FANCOM, MS Schippers, SBM, LB White, ROXELL, LUBING y más."
-        keywords="equipos avícolas, ventilación granjas, comederos automáticos, bebederos, industria avícola, León Guanajuato, FANCOM, MS Schippers, SBM, LB White, ROXELL, LUBING"
+        description="Más de 27 años de experiencia distribuyendo equipos de alta tecnología para la industria avícola, porcícola e invernaderos. Representantes oficiales de FANCOM, MS Schippers, SBM, LB White, LUBING y más."
+        keywords="equipos avícolas, ventilación granjas, comederos automáticos, bebederos, industria avícola, León Guanajuato, FANCOM, MS Schippers, SBM, LB White, LUBING"
       />
       <main className="relative z-10">
         <Hero />
@@ -23,8 +23,8 @@ const HomePage = () => {
         </section>
         <VentilationCalculator />
         <Clients />
+        <ReviewForm />
         <Contact />
-        <Newsletter />
       </main>
       <Footer />
       <WhatsAppChat />

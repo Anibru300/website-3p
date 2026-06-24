@@ -43,19 +43,17 @@ const Header = () => {
     }
   };
 
-  // Todas las marcas consistentes con BrandShowcase
+  // Marcas con sitios oficiales externos
   const brandLinks = [
-    // { name: 'Chore-Time', href: '/marcas/chore-time' },
-    { name: 'Fancom', href: '/marcas/fancom' },
-    { name: 'Roxell', href: '/marcas/roxell' },
-    { name: 'Lubing', href: '/marcas/lubing' },
-    { name: 'MS Schippers', href: '/marcas/ms-schippers' },
-    { name: 'SBM', href: '/marcas/sbm' },
-    { name: 'LB White', href: '/marcas/lbwhite' },
-    { name: 'AMT', href: '/marcas/amt' },
-    { name: 'ALKE', href: '/marcas/alke' },
-    { name: 'TIGSA', href: '/marcas/tigsa' },
-    { name: 'Georgia Poultry', href: '/marcas/georgia-poultry' },
+    { name: 'Fancom', href: 'https://www.fancom.com' },
+    { name: 'Lubing', href: 'https://www.lubing.de' },
+    { name: 'MS Schippers', href: 'https://www.msschippers.com' },
+    { name: 'SBM', href: 'https://www.sbm.fr' },
+    { name: 'LB White', href: 'https://www.lbwhite.com' },
+    { name: 'AMT', href: 'https://www.amt-usa.com' },
+    { name: 'ALKE', href: 'https://www.alke.nl' },
+    { name: 'TIGSA', href: 'https://tigsa.com' },
+    { name: 'Georgia Poultry', href: 'https://www.gapoultry.com' },
   ];
 
   return (
@@ -129,8 +127,14 @@ const Header = () => {
                     </a>
                     <div className="border-t dark:border-gray-700 my-1"></div> */}
                     <p className="px-4 py-1 text-xs text-gray-400 uppercase font-semibold">Próximamente</p>
-                    {brandLinks.filter(b => b.name !== 'Chore-Time').map(b => (
-                      <a key={b.name} href={b.href} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-red-50 hover:text-p3-red dark:hover:bg-red-900/10">
+                    {brandLinks.map(b => (
+                      <a
+                        key={b.name}
+                        href={b.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-red-50 hover:text-p3-red dark:hover:bg-red-900/10"
+                      >
                         {b.name}
                       </a>
                     ))}
@@ -208,8 +212,15 @@ const Header = () => {
               </a>
               <div className="border-t dark:border-gray-700 my-2"></div> */}
               <p className="px-4 py-1 text-xs text-gray-500 uppercase">Líneas</p>
-              {brandLinks.filter(b => b.name !== 'Chore-Time').map(b => (
-                <a key={b.name} href={b.href} onClick={() => setIsMobileMenuOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-p3-red hover:bg-red-50 dark:hover:bg-red-900/10">
+              {brandLinks.map(b => (
+                <a
+                  key={b.name}
+                  href={b.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-p3-red hover:bg-red-50 dark:hover:bg-red-900/10"
+                >
                   {b.name}
                 </a>
               ))}

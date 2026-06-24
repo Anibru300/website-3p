@@ -2,12 +2,6 @@ import { ArrowLeft, Construction, Phone, Mail } from 'lucide-react';
 import { SEO } from '../components/shared';
 
 const brandData = {
-  roxell: {
-    name: 'ROXELL',
-    description: 'Equipos de alimentación y bebida de alta calidad para avicultura. Líder mundial en sistemas de comedero y bebedero para granjas avícolas.',
-    keywords: 'Roxell, comedero automático, bebedero avícola, equipos avícolas Bélgica',
-    color: '#E63946'
-  },
   lubing: {
     name: 'LUBING',
     description: 'Sistemas de bebida y enfriamiento evaporativo para avicultura. Tecnología alemana para el bienestar animal.',

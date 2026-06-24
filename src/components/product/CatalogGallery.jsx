@@ -52,15 +52,6 @@ const CatalogGallery = () => {
       href: '/marcas/fancom'
     },
     {
-      id: 'roxell',
-      name: 'ROXELL',
-      origin: 'Bélgica',
-      description: language === 'es' ? 'Sistemas de alimentación y bebida' : 'Feeding and drinking systems',
-      image: '/images/brands/roxell.svg',
-      status: 'coming-soon',
-      isSvg: true
-    },
-    {
       id: 'lubing',
       name: 'LUBING',
       origin: 'Alemania',

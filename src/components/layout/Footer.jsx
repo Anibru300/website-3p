@@ -23,17 +23,15 @@ const Footer = () => {
   ];
 
   const brands = [
-    // { name: 'Chore-Time', href: '/marcas/chore-time', active: true },
-    { name: 'ROXELL', href: '/marcas/roxell' },
-    { name: 'LUBING', href: '/marcas/lubing' },
-    { name: 'FANCOM', href: '/marcas/fancom' },
-    { name: 'MS Schippers', href: '/marcas/ms-schippers' },
-    { name: 'SBM', href: '/marcas/sbm' },
-    { name: 'LB White', href: '/marcas/lbwhite' },
-    { name: 'AMT', href: '/marcas/amt' },
-    { name: 'ALKE', href: '/marcas/alke' },
-    { name: 'TIGSA', href: '/marcas/tigsa' },
-    { name: 'Georgia Poultry', href: '/marcas/georgia-poultry' },
+    { name: 'FANCOM', href: 'https://www.fancom.com' },
+    { name: 'LUBING', href: 'https://www.lubing.de' },
+    { name: 'MS Schippers', href: 'https://www.msschippers.com' },
+    { name: 'SBM', href: 'https://www.sbm.fr' },
+    { name: 'LB White', href: 'https://www.lbwhite.com' },
+    { name: 'AMT', href: 'https://www.amt-usa.com' },
+    { name: 'ALKE', href: 'https://www.alke.nl' },
+    { name: 'TIGSA', href: 'https://tigsa.com' },
+    { name: 'Georgia Poultry', href: 'https://www.gapoultry.com' },
   ];
 
   const scrollToSection = (href) => {
@@ -214,14 +212,14 @@ const Footer = () => {
             <p className="text-center text-gray-500 text-sm mb-4">{t('footer.brands')}</p>
             <div className="flex flex-wrap justify-center gap-4 md:gap-8">
               {brands.map((brand, index) => (
-                <a 
-                  key={index} 
+                <a
+                  key={index}
                   href={brand.href}
-                  onClick={(e) => { e.preventDefault(); scrollToSection(brand.href); }}
-                  className={`text-sm font-semibold hover:text-white transition-colors flex items-center gap-1 ${brand.active ? 'text-green-400' : 'text-gray-500'}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-semibold text-gray-500 hover:text-white transition-colors flex items-center gap-1"
                 >
                   {brand.name}
-                  {brand.active && <span className="text-xs">●</span>}
                 </a>
               ))}
             </div>

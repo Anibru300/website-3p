@@ -9,20 +9,6 @@ const Brands = () => {
   // Las 9 marcas principales que distribuye 3P
   const brands = [
     {
-      name: 'ROXELL',
-      origin: 'Bélgica',
-      products: 'Sistemas de Alimentación y Bebida',
-      description: 'Líder mundial en sistemas automatizados de alimentación, bebida, calefacción y ventilación para avicultura y porcicultura. Fundada en 1967, presente en más de 80 países.',
-      features: [
-        'Sistemas de alimentación automatizados',
-        'Bebederos de alta precisión',
-        'Control climático inteligente',
-        'Manejo de huevos automatizado'
-      ],
-      color: 'from-red-600 to-red-800',
-      logo: '/images/brands/roxell.svg',
-    },
-    {
       name: 'LUBING',
       origin: 'Alemania',
       products: 'Sistemas de Bebida y Transporte',
