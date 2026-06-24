@@ -89,18 +89,28 @@ const Clients = () => {
 
         {/* Clientes Internacionales */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-p3-dark dark:text-white mb-8 flex items-center gap-3">
-            <div className="w-10 h-10 bg-p3-blue/10 rounded-lg flex items-center justify-center">
-              <Globe className="text-p3-blue" size={20} />
-            </div>
-            {t('clients.internationalClients')}
-          </h3>
+          <div className="text-center mb-10">
+            <h3 className="text-2xl sm:text-3xl font-bold text-p3-dark dark:text-white mb-3 flex items-center justify-center gap-3">
+              <span className="w-10 h-10 bg-p3-blue/10 rounded-lg flex items-center justify-center">
+                <Globe className="text-p3-blue" size={20} />
+              </span>
+              {t('clients.internationalClients')}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 max-w-xl mx-auto">
+              Atendemos clientes en múltiples países de América
+            </p>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
             {internationalClients.map((client, index) => (
               <FadeInSection key={index} delay={index * 100}>
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-transparent hover:border-p3-blue/20 dark:border-gray-700 text-center">
-                  <div className="text-5xl mb-3">{client.flag}</div>
-                  <h4 className="font-bold text-p3-dark dark:text-white text-sm">{client.country}</h4>
+                <div className="group relative bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 dark:border-gray-700 text-center overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-p3-blue/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative">
+                    <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 rounded-full flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300">
+                      <span className="text-4xl">{client.flag}</span>
+                    </div>
+                    <h4 className="font-bold text-p3-dark dark:text-white text-sm">{client.country}</h4>
+                  </div>
                 </div>
               </FadeInSection>
             ))}

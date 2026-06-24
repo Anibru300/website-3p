@@ -1,7 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 
 const brands = [
-  { name: 'LUBING', origin: 'Alemania', logo: '/images/brands/lubing.png', officialUrl: 'https://www.lubing.de', color: 'from-blue-600 to-blue-800' },
+  { name: 'LUBING', origin: 'Alemania', logo: '/images/brands/lubing.png', officialUrl: 'https://lubmesam.com.mx/', color: 'from-blue-600 to-blue-800' },
   { name: 'GEORGIA POULTRY', origin: 'USA', logo: '/images/brands/georgia-poultry.png', officialUrl: 'https://www.gapoultry.com', color: 'from-orange-500 to-red-600' },
   { name: 'FANCOM', origin: 'Países Bajos', logo: '/images/brands/fancom.png', officialUrl: 'https://www.fancom.com', color: 'from-emerald-500 to-green-700' },
   { name: 'MS Schippers', origin: 'Países Bajos', logo: '/images/brands/ms-schippers.svg', officialUrl: 'https://www.msschippers.com', color: 'from-green-600 to-teal-700' },

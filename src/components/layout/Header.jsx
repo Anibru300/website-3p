@@ -46,7 +46,7 @@ const Header = () => {
   // Marcas con sitios oficiales externos
   const brandLinks = [
     { name: 'Fancom', href: 'https://www.fancom.com' },
-    { name: 'Lubing', href: 'https://www.lubing.de' },
+    { name: 'Lubing', href: 'https://lubmesam.com.mx/' },
     { name: 'MS Schippers', href: 'https://www.msschippers.com' },
     { name: 'SBM', href: 'https://www.sbm.fr' },
     { name: 'LB White', href: 'https://www.lbwhite.com' },

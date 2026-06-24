@@ -24,7 +24,7 @@ const Footer = () => {
 
   const brands = [
     { name: 'FANCOM', href: 'https://www.fancom.com' },
-    { name: 'LUBING', href: 'https://www.lubing.de' },
+    { name: 'LUBING', href: 'https://lubmesam.com.mx/' },
     { name: 'MS Schippers', href: 'https://www.msschippers.com' },
     { name: 'SBM', href: 'https://www.sbm.fr' },
     { name: 'LB White', href: 'https://www.lbwhite.com' },
