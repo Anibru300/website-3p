@@ -1,56 +1,20 @@
 import { useState } from 'react';
-import { Star, Send, MessageSquare, User, Mail } from 'lucide-react';
+import { Star, Send, MessageSquare, User, Mail, Building2 } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 import { useLanguage } from '../../context/LanguageContext';
-import { useToast } from '../ui';
-import { FadeInSection } from '../ui';
+import { useToast, FadeInSection } from '../ui';
 
 const ReviewForm = () => {
-  const { language } = useLanguage();
+  const { t, language } = useLanguage();
   const { addToast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    company: '',
     comment: '',
     rating: 0,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const texts = {
-    es: {
-      badge: 'Tu opinión nos importa',
-      title: '¿Quieres dejar una reseña?',
-      subtitle: 'Déjanos tus comentarios o sugerencias sobre la página web. Próximamente las recibiremos en nuestro correo.',
-      nameLabel: 'Nombre completo',
-      emailLabel: 'Correo electrónico',
-      commentLabel: 'Comentario o reseña',
-      ratingLabel: 'Calificación',
-      placeholderName: 'Tu nombre',
-      placeholderEmail: 'tu@email.com',
-      placeholderComment: 'Escribe aquí tu comentario o sugerencia...',
-      submit: 'Enviar comentario',
-      submitting: 'Enviando...',
-      thanks: '¡Gracias por tu comentario!',
-      thanksText: 'Próximamente estará activo el envío por correo.',
-    },
-    en: {
-      badge: 'Your opinion matters',
-      title: 'Want to leave a review?',
-      subtitle: 'Leave us your comments or suggestions about the website. Soon we will receive them in our email.',
-      nameLabel: 'Full name',
-      emailLabel: 'Email address',
-      commentLabel: 'Comment or review',
-      ratingLabel: 'Rating',
-      placeholderName: 'Your name',
-      placeholderEmail: 'your@email.com',
-      placeholderComment: 'Write your comment or suggestion here...',
-      submit: 'Send comment',
-      submitting: 'Sending...',
-      thanks: 'Thank you for your comment!',
-      thanksText: 'Email delivery will be active soon.',
-    },
-  };
-
-  const t = texts[language] || texts.es;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -61,27 +25,70 @@ const ReviewForm = () => {
     setFormData((prev) => ({ ...prev, rating }));
   };
 
+  const validate = () => {
+    if (!formData.name.trim()) {
+      addToast(t('reviews.errorName'), 'error');
+      return false;
+    }
+    if (formData.rating === 0) {
+      addToast(t('reviews.errorRating'), 'error');
+      return false;
+    }
+    if (!formData.comment.trim()) {
+      addToast(t('reviews.errorComment'), 'error');
+      return false;
+    }
+    if (formData.email.trim() && !formData.email.includes('@')) {
+      addToast(t('reviews.errorEmail'), 'error');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.email.trim() || !formData.comment.trim()) {
-      addToast(language === 'es' ? 'Por favor completa todos los campos' : 'Please complete all fields', 'error');
-      return;
-    }
+    if (!validate()) return;
 
-    if (!formData.email.includes('@')) {
-      addToast(language === 'es' ? 'Por favor ingresa un correo válido' : 'Please enter a valid email', 'error');
+    const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+    const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+    const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+    if (!serviceId || !templateId || !publicKey) {
+      addToast(
+        language === 'es'
+          ? 'El servicio de correo no está configurado. Contacta al administrador.'
+          : 'Email service is not configured. Please contact the administrator.',
+        'error'
+      );
       return;
     }
 
     setIsSubmitting(true);
 
-    // Simulación de envío: próximamente se conectará con el servicio de correo
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      await emailjs.send(
+        serviceId,
+        templateId,
+        {
+          from_name: formData.name.trim(),
+          from_email: formData.email.trim() || 'No proporcionado',
+          reply_to: formData.email.trim() || '',
+          company: formData.company.trim() || 'No proporcionada',
+          rating: formData.rating,
+          message: formData.comment.trim(),
+        },
+        publicKey
+      );
 
-    setIsSubmitting(false);
-    setFormData({ name: '', email: '', comment: '', rating: 0 });
-    addToast(t.thanks, 'success');
+      setFormData({ name: '', email: '', company: '', comment: '', rating: 0 });
+      addToast(t('reviews.thanks'), 'success');
+    } catch (error) {
+      console.error('EmailJS error:', error);
+      addToast(t('reviews.errorSend'), 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -90,13 +97,13 @@ const ReviewForm = () => {
         <FadeInSection className="text-center mb-12">
           <span className="inline-flex items-center gap-2 px-4 py-2 bg-p3-red/10 text-p3-red rounded-full text-sm font-semibold mb-4">
             <MessageSquare size={18} />
-            {t.badge}
+            {t('reviews.badge')}
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-p3-dark dark:text-white mb-4">
-            {t.title}
+            {t('reviews.title')}
           </h2>
           <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto text-lg">
-            {t.subtitle}
+            {t('reviews.subtitle')}
           </p>
         </FadeInSection>
 
@@ -106,7 +113,7 @@ const ReviewForm = () => {
               {/* Nombre */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  {t.nameLabel}
+                  {t('reviews.nameLabel')}
                 </label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -115,7 +122,7 @@ const ReviewForm = () => {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    placeholder={t.placeholderName}
+                    placeholder={t('reviews.placeholderName')}
                     className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-p3-red focus:border-transparent transition-all"
                     required
                   />
@@ -125,7 +132,7 @@ const ReviewForm = () => {
               {/* Correo */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  {t.emailLabel}
+                  {t('reviews.emailLabel')}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -134,9 +141,26 @@ const ReviewForm = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder={t.placeholderEmail}
+                    placeholder={t('reviews.placeholderEmail')}
                     className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-p3-red focus:border-transparent transition-all"
-                    required
+                  />
+                </div>
+              </div>
+
+              {/* Empresa */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  {t('reviews.companyLabel')}
+                </label>
+                <div className="relative">
+                  <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    name="company"
+                    value={formData.company}
+                    onChange={handleChange}
+                    placeholder={t('reviews.placeholderCompany')}
+                    className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-p3-red focus:border-transparent transition-all"
                   />
                 </div>
               </div>
@@ -144,7 +168,7 @@ const ReviewForm = () => {
               {/* Calificación */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  {t.ratingLabel}
+                  {t('reviews.ratingLabel')}
                 </label>
                 <div className="flex items-center gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -171,13 +195,13 @@ const ReviewForm = () => {
               {/* Comentario */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  {t.commentLabel}
+                  {t('reviews.commentLabel')}
                 </label>
                 <textarea
                   name="comment"
                   value={formData.comment}
                   onChange={handleChange}
-                  placeholder={t.placeholderComment}
+                  placeholder={t('reviews.placeholderComment')}
                   rows={5}
                   className="w-full px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-p3-red focus:border-transparent transition-all resize-none"
                   required
@@ -195,7 +219,7 @@ const ReviewForm = () => {
                 ) : (
                   <>
                     <Send size={20} />
-                    {t.submit}
+                    {t('reviews.submit')}
                   </>
                 )}
               </button>
