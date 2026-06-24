@@ -1,12 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Star, Send, MessageSquare, User, Mail, Building2 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast, FadeInSection } from '../ui';
 
+// Configuración de EmailJS (misma cuenta que el formulario de cotización)
+const EMAILJS_SERVICE_ID = 'service_3prclaq';
+const EMAILJS_TEMPLATE_ID = 'template_y153mic';
+const EMAILJS_PUBLIC_KEY = 'bZ5Pz4T6UhA3cDcU1';
+
 const ReviewForm = () => {
   const { t, language } = useLanguage();
   const { addToast } = useToast();
+
+  useEffect(() => {
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+  }, []);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -50,41 +60,24 @@ const ReviewForm = () => {
 
     if (!validate()) return;
 
-    const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-    const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-    const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-
-    if (!serviceId || !templateId || !publicKey) {
-      addToast(
-        language === 'es'
-          ? 'El servicio de correo no está configurado. Contacta al administrador.'
-          : 'Email service is not configured. Please contact the administrator.',
-        'error'
-      );
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      await emailjs.send(
-        serviceId,
-        templateId,
-        {
-          from_name: formData.name.trim(),
-          from_email: formData.email.trim() || 'No proporcionado',
-          reply_to: formData.email.trim() || '',
-          company: formData.company.trim() || 'No proporcionada',
-          rating: formData.rating,
-          message: formData.comment.trim(),
-        },
-        publicKey
-      );
+      const templateParams = {
+        from_name: formData.name.trim(),
+        from_email: formData.email.trim() || 'No proporcionado',
+        reply_to: formData.email.trim() || '',
+        company: formData.company.trim() || 'No proporcionada',
+        rating: formData.rating,
+        message: formData.comment.trim(),
+      };
+
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
 
       setFormData({ name: '', email: '', company: '', comment: '', rating: 0 });
       addToast(t('reviews.thanks'), 'success');
     } catch (error) {
-      console.error('EmailJS error:', error);
+      console.error('Error al enviar reseña:', error);
       addToast(t('reviews.errorSend'), 'error');
     } finally {
       setIsSubmitting(false);
