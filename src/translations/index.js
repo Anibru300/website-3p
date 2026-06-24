@@ -223,6 +223,14 @@ export const translations = {
       errorEmail: 'Por favor ingresa un correo válido',
       errorSend: 'No se pudo enviar la reseña. Intenta de nuevo.',
     },
+    brandPage: {
+      backToHome: 'Volver al inicio',
+      catalogInDevelopment: 'Catálogo en desarrollo',
+      contactText: 'Estamos trabajando en el catálogo dedicado de {brand}. Por ahora, contáctanos directamente para cotizar cualquier producto de esta marca.',
+      whatsappLabel: 'Cotizar por WhatsApp',
+      emailLabel: 'Enviar email',
+      backToCatalog: 'Volver al catálogo principal',
+    },
     contact: {
       badge: 'Cotización',
       title: '¿Listo para cotizar?',
@@ -493,6 +501,14 @@ export const translations = {
       errorRating: 'Please select a rating',
       errorEmail: 'Please enter a valid email',
       errorSend: 'Could not send the review. Please try again.',
+    },
+    brandPage: {
+      backToHome: 'Back to home',
+      catalogInDevelopment: 'Catalog in development',
+      contactText: 'We are working on the dedicated catalog for {brand}. For now, please contact us directly to quote any product from this brand.',
+      whatsappLabel: 'Quote via WhatsApp',
+      emailLabel: 'Send email',
+      backToCatalog: 'Back to main catalog',
     },
     contact: {
       badge: 'Quote',
