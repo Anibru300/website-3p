@@ -16,12 +16,12 @@ const Clients = () => {
   ];
 
   const internationalClients = [
-    { country: 'Argentina', flag: '🇦🇷' },
-    { country: 'Colombia', flag: '🇨🇴' },
-    { country: 'Perú', flag: '🇵🇪' },
-    { country: 'El Salvador', flag: '🇸🇻' },
-    { country: 'Guatemala', flag: '🇬🇹' },
-    { country: 'Estados Unidos', flag: '🇺🇸' },
+    { country: 'Argentina', code: 'ar' },
+    { country: 'Colombia', code: 'co' },
+    { country: 'Perú', code: 'pe' },
+    { country: 'El Salvador', code: 'sv' },
+    { country: 'Guatemala', code: 'gt' },
+    { country: 'Estados Unidos', code: 'us' },
   ];
 
   const stats = [
@@ -106,8 +106,13 @@ const Clients = () => {
                 <div className="group relative bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 dark:border-gray-700 text-center overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-p3-blue/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="relative">
-                    <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 rounded-full flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300">
-                      <span className="text-4xl">{client.flag}</span>
+                    <div className="w-20 h-14 mx-auto mb-4 rounded-lg overflow-hidden shadow-md border border-gray-200 dark:border-gray-600 group-hover:scale-110 transition-transform duration-300">
+                      <img
+                        src={`https://flagcdn.com/w160/${client.code}.png`}
+                        alt={`Bandera de ${client.country}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
                     </div>
                     <h4 className="font-bold text-p3-dark dark:text-white text-sm">{client.country}</h4>
                   </div>
