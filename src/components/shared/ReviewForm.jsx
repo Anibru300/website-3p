@@ -23,6 +23,7 @@ const ReviewForm = () => {
     company: '',
     comment: '',
     rating: 0,
+    website: '', // honeypot field
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -58,6 +59,9 @@ const ReviewForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Honeypot: si este campo oculto tiene valor, es un bot
+    if (formData.website) return;
+
     if (!validate()) return;
 
     setIsSubmitting(true);
@@ -74,7 +78,7 @@ const ReviewForm = () => {
 
       await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
 
-      setFormData({ name: '', email: '', company: '', comment: '', rating: 0 });
+      setFormData({ name: '', email: '', company: '', comment: '', rating: 0, website: '' });
       addToast(t('reviews.thanks'), 'success');
     } catch (error) {
       console.error('Error al enviar reseña:', error);
@@ -103,6 +107,17 @@ const ReviewForm = () => {
         <FadeInSection delay={100}>
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-8 md:p-12 border border-gray-100 dark:border-gray-700">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Honeypot: campo oculto para detectar bots */}
+              <input
+                type="text"
+                name="website"
+                value={formData.website}
+                onChange={handleChange}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                className="absolute opacity-0 top-0 left-0 h-0 w-0"
+              />
               {/* Nombre */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">

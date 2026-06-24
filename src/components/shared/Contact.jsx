@@ -24,6 +24,7 @@ const Contact = () => {
     phone: '',
     service: '',
     message: '',
+    website: '', // honeypot field
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,6 +37,10 @@ const Contact = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Honeypot: si este campo oculto tiene valor, es un bot
+    if (formData.website) return;
+
     setIsSubmitting(true);
 
     // Toast de "Enviando..."
@@ -79,6 +84,7 @@ const Contact = () => {
         phone: '',
         service: '',
         message: '',
+        website: '',
       });
 
       // Resetear estado después de 5 segundos
@@ -240,6 +246,17 @@ const Contact = () => {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Honeypot: campo oculto para detectar bots */}
+                  <input
+                    type="text"
+                    name="website"
+                    value={formData.website}
+                    onChange={handleChange}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    className="absolute opacity-0 top-0 left-0 h-0 w-0"
+                  />
                   <div className="grid sm:grid-cols-2 gap-6">
                     <div className="relative">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
