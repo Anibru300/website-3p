@@ -259,17 +259,32 @@ const MsSchippersPage = () => {
                     <div
                       className={`bg-gradient-to-r ${line.color} p-6 text-white relative overflow-hidden`}
                     >
-                      <div className="relative z-10">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 bg-white/20 rounded-lg">
-                            <Icon size={24} />
+                      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-white/20 rounded-lg">
+                              <Icon size={24} />
+                            </div>
+                            <span className="text-xs font-semibold uppercase tracking-wider bg-white/20 px-2 py-1 rounded">
+                              {line.category}
+                            </span>
                           </div>
-                          <span className="text-xs font-semibold uppercase tracking-wider bg-white/20 px-2 py-1 rounded">
-                            {line.category}
-                          </span>
+                          <h2 className="text-2xl font-bold">{line.name}</h2>
+                          <p className="text-white/90 text-sm mt-1">{line.tagline}</p>
                         </div>
-                        <h2 className="text-2xl font-bold">{line.name}</h2>
-                        <p className="text-white/90 text-sm mt-1">{line.tagline}</p>
+                        {line.image && (
+                          <div className="flex-shrink-0 bg-white/95 rounded-xl p-2 shadow-lg">
+                            <img
+                              src={line.image}
+                              alt={line.name}
+                              className="h-24 w-auto object-contain"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                       <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full" />
                     </div>
@@ -370,8 +385,24 @@ const MsSchippersPage = () => {
                     className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer flex flex-col"
                     onClick={() => setSelectedProduct(prod)}
                   >
-                    <div className="h-44 bg-gray-50 flex items-center justify-center p-4 relative">
-                      <div className="w-20 h-20 rounded-2xl bg-[#0F766E]/10 flex items-center justify-center">
+                    <div className="h-48 bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
+                      {prod.image ? (
+                        <img
+                          src={prod.image}
+                          alt={prod.nombre}
+                          className="h-full w-full object-contain"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className={`w-20 h-20 rounded-2xl bg-[#0F766E]/10 flex items-center justify-center ${
+                          prod.image ? 'hidden' : ''
+                        }`}
+                      >
                         <Icon size={40} className="text-[#0F766E]" />
                       </div>
                     </div>
@@ -436,7 +467,25 @@ const MsSchippersPage = () => {
 
             <div className="p-6 md:p-8">
               <div className="flex items-start gap-4 mb-6">
-                <div className="w-20 h-20 rounded-2xl bg-[#0F766E]/10 flex items-center justify-center flex-shrink-0">
+                {selectedProduct.image ? (
+                  <div className="w-24 h-24 rounded-2xl bg-white border border-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden p-2">
+                    <img
+                      src={selectedProduct.image}
+                      alt={selectedProduct.nombre}
+                      className="h-full w-full object-contain"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  </div>
+                ) : null}
+                <div
+                  className={`w-20 h-20 rounded-2xl bg-[#0F766E]/10 flex items-center justify-center flex-shrink-0 ${
+                    selectedProduct.image ? 'hidden' : ''
+                  }`}
+                >
                   {(() => {
                     const Icon = productIcon[selectedProduct.categoria] || Package;
                     return <Icon size={36} className="text-[#0F766E]" />;
