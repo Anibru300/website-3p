@@ -6,37 +6,26 @@ import {
   Mail,
   MapPin,
   Download,
-  Droplets,
   Sparkles,
-  ShieldCheck,
   ClipboardList,
-  ChevronRight,
-  ExternalLink,
-  Wrench,
   Search,
   Boxes,
   Beaker,
   Settings,
-  Tag,
+  Wrench,
+  X,
+  FileText,
+  Check,
 } from 'lucide-react';
 import {
   msSchippersBrand,
   msSchippersLines,
-  msSchippersCategories,
   msSchippersProducts,
   msSchippersProductCategories,
   msSchippersCategoryMeta,
-  whatsappLineUrl,
   whatsappProductUrl,
 } from '../data/msSchippersData';
 import { SEO } from '../components/shared';
-
-const lineIcon = {
-  'Tratamiento de agua': Droplets,
-  'Manejo de lecho': ShieldCheck,
-  'Limpieza de granjas': Sparkles,
-  'Sistema de dosificación': ClipboardList,
-};
 
 const productIcon = {
   higiene: Beaker,
@@ -45,40 +34,28 @@ const productIcon = {
   otro: Boxes,
 };
 
+const lineMetaById = msSchippersLines.reduce((acc, line) => {
+  acc[line.id] = line;
+  return acc;
+}, {});
+
 const MsSchippersPage = () => {
-  const [activeTab, setActiveTab] = useState('lineas');
-  const [categoriaActiva, setCategoriaActiva] = useState('todas');
+  const [categoriaActiva, setCategoriaActiva] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Filtros para líneas
-  const lineasFiltradas = useMemo(() => {
-    return msSchippersLines.filter((line) => {
-      const matchCategory =
-        categoriaActiva === 'todas' || line.id === categoriaActiva;
-      const term = searchTerm.toLowerCase();
-      const matchSearch =
-        term === '' ||
-        line.name.toLowerCase().includes(term) ||
-        line.tagline.toLowerCase().includes(term) ||
-        line.description.toLowerCase().includes(term) ||
-        line.benefits.some((b) => b.toLowerCase().includes(term));
-      return matchCategory && matchSearch;
-    });
-  }, [categoriaActiva, searchTerm]);
-
-  // Filtros para catálogo individual
   const productosFiltrados = useMemo(() => {
     return msSchippersProducts.filter((prod) => {
       const matchCategory =
         categoriaActiva === 'todos' || prod.categoria === categoriaActiva;
       const term = searchTerm.toLowerCase();
-      const matchSearch =
+      const termSearch =
         term === '' ||
         prod.nombre.toLowerCase().includes(term) ||
         prod.codigo.toLowerCase().includes(term) ||
-        (prod.specs && prod.specs.toLowerCase().includes(term));
-      return matchCategory && matchSearch;
+        (prod.specs && prod.specs.toLowerCase().includes(term)) ||
+        (prod.lineId && lineMetaById[prod.lineId]?.name.toLowerCase().includes(term));
+      return matchCategory && termSearch;
     });
   }, [categoriaActiva, searchTerm]);
 
@@ -91,15 +68,9 @@ const MsSchippersPage = () => {
     { label: 'Piezas disponibles', value: totalStock.toLocaleString('es-MX') },
   ];
 
-  const activeCategories =
-    activeTab === 'lineas' ? msSchippersCategories : msSchippersProductCategories;
-
-  const resetFilters = (tab) => {
-    setActiveTab(tab);
-    setCategoriaActiva(tab === 'lineas' ? 'todas' : 'todos');
-    setSearchTerm('');
-    setSelectedProduct(null);
-  };
+  const selectedLine = selectedProduct?.lineId
+    ? lineMetaById[selectedProduct.lineId]
+    : null;
 
   return (
     <div className="min-h-screen bg-white">
@@ -182,35 +153,12 @@ const MsSchippersPage = () => {
         </div>
       </section>
 
-      {/* Tabs */}
+      {/* Filtros */}
       <section className="sticky top-20 z-30 bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <div className="flex gap-2 bg-gray-100 p-1 rounded-lg w-fit">
-              <button
-                onClick={() => resetFilters('lineas')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === 'lineas'
-                    ? 'bg-[#0F766E] text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Líneas de producto
-              </button>
-              <button
-                onClick={() => resetFilters('catalogo')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === 'catalogo'
-                    ? 'bg-[#0F766E] text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Catálogo por producto
-              </button>
-            </div>
-
             <div className="flex flex-wrap gap-2 flex-1">
-              {activeCategories.map((cat) => (
+              {msSchippersProductCategories.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setCategoriaActiva(cat.id)}
@@ -232,9 +180,7 @@ const MsSchippersPage = () => {
               />
               <input
                 type="text"
-                placeholder={
-                  activeTab === 'lineas' ? 'Buscar línea...' : 'Buscar producto...'
-                }
+                placeholder="Buscar producto..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:border-transparent text-sm"
@@ -244,217 +190,94 @@ const MsSchippersPage = () => {
         </div>
       </section>
 
-      {/* Contenido según tab */}
-      {activeTab === 'lineas' ? (
-        <section className="py-12 md:py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid md:grid-cols-2 gap-8">
-              {lineasFiltradas.map((line) => {
-                const Icon = lineIcon[line.category] || Package;
-                return (
-                  <div
-                    key={line.id}
-                    className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col"
-                  >
+      {/* Catálogo */}
+      <section className="py-12 md:py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {productosFiltrados.map((prod) => {
+              const Icon = productIcon[prod.categoria] || Package;
+              const meta = msSchippersCategoryMeta[prod.categoria] || msSchippersCategoryMeta.otro;
+              const line = prod.lineId ? lineMetaById[prod.lineId] : null;
+              return (
+                <div
+                  key={prod.codigo}
+                  className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer flex flex-col"
+                  onClick={() => setSelectedProduct(prod)}
+                >
+                  <div className="h-48 bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
+                    {prod.image ? (
+                      <img
+                        src={prod.image}
+                        alt={prod.nombre}
+                        className="h-full w-full object-contain"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
                     <div
-                      className={`bg-gradient-to-r ${line.color} p-6 text-white relative overflow-hidden`}
+                      className={`w-20 h-20 rounded-2xl bg-[#0F766E]/10 flex items-center justify-center ${
+                        prod.image ? 'hidden' : ''
+                      }`}
                     >
-                      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-white/20 rounded-lg">
-                              <Icon size={24} />
-                            </div>
-                            <span className="text-xs font-semibold uppercase tracking-wider bg-white/20 px-2 py-1 rounded">
-                              {line.category}
-                            </span>
-                          </div>
-                          <h2 className="text-2xl font-bold">{line.name}</h2>
-                          <p className="text-white/90 text-sm mt-1">{line.tagline}</p>
-                        </div>
-                        {line.image && (
-                          <div className="flex-shrink-0 bg-white/95 rounded-xl p-2 shadow-lg">
-                            <img
-                              src={line.image}
-                              alt={line.name}
-                              className="h-24 w-auto object-contain"
-                              loading="lazy"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                      <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full" />
-                    </div>
-
-                    <div className="p-6 flex-1 flex flex-col">
-                      <p className="text-gray-600 mb-4 leading-relaxed">
-                        {line.description}
-                      </p>
-
-                      <div className="mb-4">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                          <Sparkles size={16} className="text-[#0F766E]" />
-                          Beneficios clave
-                        </h3>
-                        <ul className="space-y-1.5">
-                          {line.benefits.slice(0, 4).map((benefit, idx) => (
-                            <li
-                              key={idx}
-                              className="text-sm text-gray-600 flex items-start gap-2"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#0F766E] mt-1.5 flex-shrink-0" />
-                              <span>{benefit}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div className="mb-6">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                          <ClipboardList size={16} className="text-[#0F766E]" />
-                          Aplicaciones
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                          {line.applications.map((app) => (
-                            <span
-                              key={app}
-                              className="px-2.5 py-1 bg-teal-50 text-teal-700 text-xs font-medium rounded-full"
-                            >
-                              {app}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="mt-auto space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <a
-                            href={line.pdfs.a.url}
-                            download
-                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors"
-                          >
-                            <Download size={16} />
-                            Folleto A
-                          </a>
-                          <a
-                            href={line.pdfs.b.url}
-                            download
-                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors"
-                          >
-                            <Download size={16} />
-                            Folleto B
-                          </a>
-                        </div>
-                        <a
-                          href={whatsappLineUrl(line)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#25D366] text-white font-semibold rounded-lg hover:bg-[#128C7E] transition-colors"
-                        >
-                          <Phone size={18} />
-                          Cotizar esta línea
-                          <ChevronRight size={16} />
-                        </a>
-                      </div>
+                      <Icon size={40} className="text-[#0F766E]" />
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {lineasFiltradas.length === 0 && (
-              <div className="text-center py-20">
-                <p className="text-gray-500">No se encontraron líneas con ese criterio.</p>
-              </div>
-            )}
-          </div>
-        </section>
-      ) : (
-        <section className="py-12 md:py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {productosFiltrados.map((prod) => {
-                const Icon = productIcon[prod.categoria] || Package;
-                const meta = msSchippersCategoryMeta[prod.categoria] || msSchippersCategoryMeta.otro;
-                return (
-                  <div
-                    key={prod.codigo}
-                    className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer flex flex-col"
-                    onClick={() => setSelectedProduct(prod)}
-                  >
-                    <div className="h-48 bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
-                      {prod.image ? (
-                        <img
-                          src={prod.image}
-                          alt={prod.nombre}
-                          className="h-full w-full object-contain"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextElementSibling?.classList.remove('hidden');
-                          }}
-                        />
-                      ) : null}
-                      <div
-                        className={`w-20 h-20 rounded-2xl bg-[#0F766E]/10 flex items-center justify-center ${
-                          prod.image ? 'hidden' : ''
+                  <div className="p-4 flex-1 flex flex-col">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="text-xs font-semibold text-[#0F766E]">
+                        SKU: {prod.codigo}
+                      </span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${meta.color}`}>
+                        {meta.label}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">
+                      {prod.nombre}
+                    </h3>
+                    {line && (
+                      <p className="text-xs text-teal-600 font-medium mb-2">
+                        Línea: {line.name}
+                      </p>
+                    )}
+                    {prod.specs && (
+                      <p className="text-sm text-gray-600 line-clamp-2 mb-3">{prod.specs}</p>
+                    )}
+                    <div className="mt-auto flex items-center justify-between">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          prod.stock > 0
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-amber-100 text-amber-700'
                         }`}
                       >
-                        <Icon size={40} className="text-[#0F766E]" />
-                      </div>
-                    </div>
-                    <div className="p-4 flex-1 flex flex-col">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <span className="text-xs font-semibold text-[#0F766E]">
-                          SKU: {prod.codigo}
-                        </span>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${meta.color}`}>
-                          {meta.label}
-                        </span>
-                      </div>
-                      <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">
-                        {prod.nombre}
-                      </h3>
-                      {prod.specs && (
-                        <p className="text-sm text-gray-600 line-clamp-2 mb-3">{prod.specs}</p>
-                      )}
-                      <div className="mt-auto flex items-center justify-between">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            prod.stock > 0
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-amber-100 text-amber-700'
-                          }`}
-                        >
-                          Stock: {prod.stock} pzas
-                        </span>
-                      </div>
+                        Stock: {prod.stock} pzas
+                      </span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {productosFiltrados.length === 0 && (
-              <div className="text-center py-20">
-                <p className="text-gray-500">No se encontraron productos con ese criterio.</p>
-              </div>
-            )}
+                </div>
+              );
+            })}
           </div>
-        </section>
-      )}
 
-      {/* Modal de producto individual */}
+          {productosFiltrados.length === 0 && (
+            <div className="text-center py-20">
+              <p className="text-gray-500">No se encontraron productos con ese criterio.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Modal de producto */}
       {selectedProduct && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
           onClick={() => setSelectedProduct(null)}
         >
           <div
-            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -462,42 +285,43 @@ const MsSchippersPage = () => {
               className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors z-10"
               aria-label="Cerrar"
             >
-              <span className="text-gray-700 text-xl leading-none">&times;</span>
+              <X size={20} className="text-gray-700" />
             </button>
 
             <div className="p-6 md:p-8">
-              <div className="flex items-start gap-4 mb-6">
+              {/* Header */}
+              <div className="flex flex-col md:flex-row gap-6 mb-6">
                 {selectedProduct.image ? (
-                  <div className="w-24 h-24 rounded-2xl bg-white border border-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden p-2">
+                  <div className="w-full md:w-48 h-48 rounded-2xl bg-white border border-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden p-4">
                     <img
                       src={selectedProduct.image}
                       alt={selectedProduct.nombre}
                       className="h-full w-full object-contain"
                       loading="lazy"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.parentElement.nextElementSibling?.classList.remove('hidden');
-                      }}
                     />
                   </div>
-                ) : null}
-                <div
-                  className={`w-20 h-20 rounded-2xl bg-[#0F766E]/10 flex items-center justify-center flex-shrink-0 ${
-                    selectedProduct.image ? 'hidden' : ''
-                  }`}
-                >
-                  {(() => {
-                    const Icon = productIcon[selectedProduct.categoria] || Package;
-                    return <Icon size={36} className="text-[#0F766E]" />;
-                  })()}
-                </div>
-                <div>
+                ) : (
+                  <div className="w-full md:w-48 h-48 rounded-2xl bg-[#0F766E]/10 flex items-center justify-center flex-shrink-0">
+                    {(() => {
+                      const Icon = productIcon[selectedProduct.categoria] || Package;
+                      return <Icon size={64} className="text-[#0F766E]" />;
+                    })()}
+                  </div>
+                )}
+                <div className="flex-1">
                   <div className="text-sm font-semibold text-[#0F766E] mb-1">
                     SKU: {selectedProduct.codigo}
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-900">{selectedProduct.nombre}</h2>
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                    {selectedProduct.nombre}
+                  </h2>
+                  {selectedLine && (
+                    <p className="text-sm font-medium text-teal-700 mb-3">
+                      Línea {selectedLine.name} — {selectedLine.tagline}
+                    </p>
+                  )}
                   <span
-                    className={`inline-flex items-center mt-2 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
                       msSchippersCategoryMeta[selectedProduct.categoria]?.color ||
                       msSchippersCategoryMeta.otro.color
                     }`}
@@ -508,12 +332,97 @@ const MsSchippersPage = () => {
                 </div>
               </div>
 
-              {selectedProduct.specs && (
-                <p className="text-gray-600 mb-6 leading-relaxed">{selectedProduct.specs}</p>
+              {/* Descripción de línea */}
+              {selectedLine && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                    <FileText size={20} className="text-[#0F766E]" />
+                    Descripción
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">{selectedLine.description}</p>
+                </div>
               )}
 
-              <div className="space-y-3 mb-8">
-                <div className="flex items-center gap-3 text-sm text-gray-700">
+              {/* Specs del producto */}
+              {selectedProduct.specs && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                    <ClipboardList size={20} className="text-[#0F766E]" />
+                    Especificaciones / Información técnica
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">{selectedProduct.specs}</p>
+                </div>
+              )}
+
+              {/* Beneficios */}
+              {selectedLine && selectedLine.benefits && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <Sparkles size={20} className="text-[#0F766E]" />
+                    Beneficios clave
+                  </h3>
+                  <ul className="space-y-2">
+                    {selectedLine.benefits.map((benefit, idx) => (
+                      <li key={idx} className="text-gray-600 flex items-start gap-2">
+                        <Check size={18} className="text-[#0F766E] mt-0.5 flex-shrink-0" />
+                        <span>{benefit}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Aplicaciones */}
+              {selectedLine && selectedLine.applications && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <ClipboardList size={20} className="text-[#0F766E]" />
+                    Aplicaciones
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedLine.applications.map((app) => (
+                      <span
+                        key={app}
+                        className="px-3 py-1 bg-teal-50 text-teal-700 text-sm font-medium rounded-full"
+                      >
+                        {app}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* PDFs */}
+              {selectedLine && selectedLine.pdfs && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <Download size={20} className="text-[#0F766E]" />
+                    Fichas técnicas y folletos
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <a
+                      href={selectedLine.pdfs.a.url}
+                      download
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      <Download size={16} />
+                      Folleto {selectedLine.pdfs.a.label.includes('frente') ? 'A' : 'PDF A'}
+                    </a>
+                    <a
+                      href={selectedLine.pdfs.b.url}
+                      download
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      <Download size={16} />
+                      Folleto {selectedLine.pdfs.b.label.includes('reverso') ? 'B' : 'PDF B'}
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Info de stock y disponibilidad */}
+              <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-3 text-sm text-gray-700 mb-2">
                   <MapPin size={18} className="text-gray-400" />
                   <span>Disponible desde León, Guanajuato</span>
                 </div>
@@ -531,6 +440,7 @@ const MsSchippersPage = () => {
                 </div>
               </div>
 
+              {/* CTAs */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <a
                   href={whatsappProductUrl(selectedProduct)}
@@ -561,7 +471,7 @@ const MsSchippersPage = () => {
           </h2>
           <p className="text-gray-600 mb-8">
             Contamos con inventario de productos MS Schippers en León, Guanajuato. Escríbenos
-            por WhatsApp con el código o línea que necesitas.
+            por WhatsApp con el código del producto que necesitas.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
