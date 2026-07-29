@@ -40,7 +40,7 @@ export const msSchippersLines = [
       'No bloquea los niples de bebida',
     ],
     applications: ['Agua de bebida', 'Limpieza de tuberías', 'Control de biofilm'],
-    image: '/images/catalogo/schippers/dioclean.jpg',
+    image: '/images/catalogo/schippers/dioclean-linea.jpg',
     pdfs: {
       a: { url: '/catalogs/DIOcleanA2025.pdf', label: 'Folleto DIOclean (frente)', size: '2.6 MB' },
       b: { url: '/catalogs/DIOCleanB2025.pdf', label: 'Folleto DIOclean (reverso)', size: '2.6 MB' },
