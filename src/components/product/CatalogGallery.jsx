@@ -73,9 +73,9 @@ const CatalogGallery = () => {
       id: 'ms-schippers',
       name: 'MS Schippers',
       origin: 'Países Bajos',
-      description: language === 'es' ? 'Productos de higiene y bioseguridad' : 'Hygiene and biosecurity products',
+      description: language === 'es' ? 'Detergentes, espumas, polvos secantes y equipos de dosificación' : 'Detergents, foams, drying powders and dosing equipment',
       image: '/images/brands/ms-schippers.svg',
-      status: 'coming-soon',
+      status: 'available',
       isSvg: true,
       href: '/marcas/ms-schippers'
     },
@@ -366,9 +366,14 @@ const CatalogGallery = () => {
                         <span className="text-xs text-gray-400">{catalog.origin}</span>
                       </div>
                       <p className="text-gray-500 text-sm mb-3">{catalog.description}</p>
-                      {catalog.href ? (
+                      {catalog.status === 'available' ? (
                         <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full w-fit">
-                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                          {language === 'es' ? 'Catálogo activo' : 'Catalog active'}
+                        </div>
+                      ) : catalog.href ? (
+                        <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full w-fit">
+                          <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                           {language === 'es' ? 'Ver catálogo' : 'View catalog'}
                         </div>
                       ) : (

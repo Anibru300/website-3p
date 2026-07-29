@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Header } from './components/layout';
 import HomePage from './pages/HomePage';
 import ChoreTimePage from './pages/ChoreTimePage';
+import MsSchippersPage from './pages/MsSchippersPage';
 import GenericBrandPage from './pages/GenericBrandPage';
 import { ToastProvider } from './components/ui/Toast';
 
@@ -54,6 +55,8 @@ function App() {
     if (brandId === 'chore-time') {
       // Chore-Time oculto temporalmente - redirigir a home
       content = <HomePage />;
+    } else if (brandId === 'ms-schippers') {
+      content = <MsSchippersPage />;
     } else if (brandId) {
       content = <GenericBrandPage brandId={brandId} />;
     }
