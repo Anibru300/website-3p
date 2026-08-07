@@ -22,7 +22,7 @@ El portal usa JWT. Todas las rutas bajo `/api/*` requieren el header:
 Authorization: Bearer <access_token>
 ```
 
-### `POST /auth/login`
+### `POST /api/auth/login`
 
 Autentica un usuario del portal.
 

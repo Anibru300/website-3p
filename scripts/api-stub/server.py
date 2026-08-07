@@ -236,7 +236,7 @@ class StubHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
-        if path == "/auth/login":
+        if path == "/api/auth/login":
             body = parse_body(self)
             username = body.get("username", "")
             password = body.get("password", "")

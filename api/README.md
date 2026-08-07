@@ -72,7 +72,7 @@ El backend estará disponible en `http://localhost:8000`.
 ## Probar
 
 ```bash
-curl -X POST http://localhost:8000/auth/login \
+curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=trespsadecv@hotmail.com&password=Lumina38"
 ```

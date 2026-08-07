@@ -54,7 +54,7 @@ export async function loginUser(username, password) {
   params.append('username', username);
   params.append('password', password);
 
-  const data = await apiFetch('/auth/login', {
+  const data = await apiFetch('/api/auth/login', {
     method: 'POST',
     body: params.toString(),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

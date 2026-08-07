@@ -8,10 +8,10 @@ from app.auth.utils import create_access_token, verify_password
 from app.config import get_settings
 from app.database import users_connection
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api", tags=["auth"])
 
 
-@router.post("/login")
+@router.post("/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     with users_connection() as conn:
         cur = conn.cursor()

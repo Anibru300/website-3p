@@ -37,14 +37,18 @@ def dashboard_resumen(user: dict = Depends(get_current_user)):
         """,
     }
 
-    with postgres_cursor() as cur:
-        for key, sql in queries.items():
-            try:
-                cur.execute(sql)
-                row = cur.fetchone()
-                resumen[key] = row["count"] if row else 0
-            except Exception:
-                # Si la vista o tabla no existe, dejar en 0
-                pass
+    try:
+        with postgres_cursor() as cur:
+            for key, sql in queries.items():
+                try:
+                    cur.execute(sql)
+                    row = cur.fetchone()
+                    resumen[key] = row["count"] if row else 0
+                except Exception:
+                    # Si la vista o tabla no existe, dejar en 0
+                    pass
+    except Exception:
+        # Si no hay conexión a PostgreSQL, devolver estructura vacía
+        pass
 
     return {"resumen": resumen}
