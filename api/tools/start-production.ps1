@@ -7,10 +7,19 @@ $cloudflared = "$PSScriptRoot\cloudflared.exe"
 $configDir = "$PSScriptRoot\.cloudflared"
 $configPath = "$configDir\config.yml"
 
-if (-not (Test-Path $cloudflared)) {
-    Write-Host "ERROR: No se encontró cloudflared.exe" -ForegroundColor Red
-    exit 1
+function Ensure-Cloudflared {
+    if (Test-Path $cloudflared) { return }
+    Write-Host "Descargando cloudflared.exe..." -ForegroundColor Cyan
+    $url = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+    Invoke-WebRequest -Uri $url -OutFile $cloudflared -UseBasicParsing
+    if (-not (Test-Path $cloudflared)) {
+        Write-Host "ERROR: No se pudo descargar cloudflared.exe" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "cloudflared.exe descargado correctamente." -ForegroundColor Green
 }
+
+Ensure-Cloudflared
 
 if (-not (Test-Path $configPath)) {
     Write-Host "ERROR: No se encontró $configPath" -ForegroundColor Red

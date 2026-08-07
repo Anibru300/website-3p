@@ -125,7 +125,7 @@ cd api/tools
 .\setup-cloudflare-tunnel.ps1
 ```
 
-Esto abrirá el navegador para autenticar con Cloudflare y creará el túnel apuntando a `api.3psadecv.com`.
+El script descargará `cloudflared.exe` automáticamente, abrirá el navegador para autenticar con Cloudflare y creará el túnel apuntando a `api.3psadecv.com`.
 
 4. Inicia el backend y el túnel:
 

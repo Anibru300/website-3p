@@ -9,11 +9,19 @@ $hostname = "api.3psadecv.com"
 $serviceUrl = "http://localhost:8000"
 $configDir = "$PSScriptRoot\.cloudflared"
 
-if (-not (Test-Path $cloudflared)) {
-    Write-Host "ERROR: No se encontró cloudflared.exe en $PSScriptRoot" -ForegroundColor Red
-    Write-Host "Descárgalo de: https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
-    exit 1
+function Ensure-Cloudflared {
+    if (Test-Path $cloudflared) { return }
+    Write-Host "Descargando cloudflared.exe..." -ForegroundColor Cyan
+    $url = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+    Invoke-WebRequest -Uri $url -OutFile $cloudflared -UseBasicParsing
+    if (-not (Test-Path $cloudflared)) {
+        Write-Host "ERROR: No se pudo descargar cloudflared.exe" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "cloudflared.exe descargado correctamente." -ForegroundColor Green
 }
+
+Ensure-Cloudflared
 
 Write-Host "Paso 1: Autenticación con Cloudflare (se abrirá el navegador)..." -ForegroundColor Cyan
 & $cloudflared tunnel login
