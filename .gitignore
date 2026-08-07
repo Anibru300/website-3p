@@ -49,4 +49,6 @@ gh-pages-assets/
 api/.venv/
 api/data/
 api/.env
+api/tools/.cloudflared/
+
 

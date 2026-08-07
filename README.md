@@ -93,17 +93,30 @@ El backend estará disponible en `http://localhost:8000`
 
 ### Despliegue a producción con backend real
 
-1. Decide dónde correrá el backend:
-   - **Opción A (recomendada):** computadora/servidor local de 3P + Cloudflare Tunnel.
-   - **Opción B:** VPS con dominio propio, por ejemplo `https://api.3psadecv.com`.
+Opción recomendada: **Cloudflare Tunnel** desde la computadora local de 3P.
 
-2. Configura la URL del backend en GitHub:
-   - Ve a **Settings > Secrets and variables > Actions > Variables** del repositorio.
-   - Crea la variable `VITE_API_BASE_URL` con la URL pública del backend.
+1. Configura `api/.env` con las credenciales reales de PostgreSQL.
+2. Crea el usuario admin:
+   ```powershell
+   cd api
+   $env:AUTH_EMAIL="trespsadecv@hotmail.com"
+   $env:AUTH_PASSWORD="Lumina38"
+   .venv/Scripts/python scripts/create_admin.py
+   ```
+3. Configura el túnel (una sola vez):
+   ```powershell
+   cd api/tools
+   .\setup-cloudflare-tunnel.ps1
+   ```
+4. Inicia backend + túnel:
+   ```powershell
+   cd api/tools
+   .\start-production.ps1
+   ```
+5. Configura la variable `VITE_API_BASE_URL=https://api.3psadecv.com` en GitHub (**Settings > Secrets and variables > Actions > Variables**).
+6. Haz push a `master` para recompilar el frontend con la URL del backend.
 
-3. Haz push a `master`; el workflow usará esa URL al compilar.
-
-4. En el servidor donde corre el backend, configura `api/.env` con las credenciales reales de PostgreSQL y crea el usuario admin.
+Ver detalles completos en `api/README.md`.
 
 ### Compilar para producción
 
