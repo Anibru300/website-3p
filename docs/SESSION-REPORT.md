@@ -132,11 +132,11 @@ Se agregó el namespace `reviews` en `src/translations/index.js` para mantener t
 
 ## 4. Próximos pasos sugeridos
 
-1. **Confirmar ubicación del backend CJ_OS Core API** o crearlo si no existe.
-2. Implementar los endpoints documentados en `docs/guias/API-CJ-OS-CORE.md`.
-3. Probar autenticación y cada tab del dashboard contra el backend real.
-4. Limpiar errores de lint preexistentes en componentes no relacionados con el portal.
-5. Desplegar a producción cuando el portal esté funcional.
+1. Configurar `api/.env` con las credenciales reales de PostgreSQL.
+2. Configurar la variable `VITE_API_BASE_URL` en GitHub Actions para apuntar al backend real.
+3. Poner en marcha el backend en el servidor local de 3P y exponerlo (Cloudflare Tunnel recomendado).
+4. Probar autenticación y cada tab del dashboard contra el backend real.
+5. Limpiar errores de lint preexistentes en componentes no relacionados con el portal.
 
 ---
 

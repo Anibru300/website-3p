@@ -91,6 +91,20 @@ cp .env.example .env
 
 El backend estará disponible en `http://localhost:8000`
 
+### Despliegue a producción con backend real
+
+1. Decide dónde correrá el backend:
+   - **Opción A (recomendada):** computadora/servidor local de 3P + Cloudflare Tunnel.
+   - **Opción B:** VPS con dominio propio, por ejemplo `https://api.3psadecv.com`.
+
+2. Configura la URL del backend en GitHub:
+   - Ve a **Settings > Secrets and variables > Actions > Variables** del repositorio.
+   - Crea la variable `VITE_API_BASE_URL` con la URL pública del backend.
+
+3. Haz push a `master`; el workflow usará esa URL al compilar.
+
+4. En el servidor donde corre el backend, configura `api/.env` con las credenciales reales de PostgreSQL y crea el usuario admin.
+
 ### Compilar para producción
 
 ```bash
