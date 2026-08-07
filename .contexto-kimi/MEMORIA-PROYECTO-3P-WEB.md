@@ -1,5 +1,5 @@
 # 🌐 MEMORIA - PROYECTO WEB, CATÁLOGOS Y MARKETING 3P
-> Última actualización: 2026-06-10
+> Última actualización: 2026-08-07
 > Propósito: Preservar contexto del proyecto comercial/marketing de 3P
 
 ---
@@ -22,11 +22,11 @@
 - Desplegado en GitHub Pages: https://Anibru300.github.io/website-3p/
 - Repo: https://github.com/Anibru300/website-3p
 
-### Arquitectura Actual: MULTIPÁGINA (hash router casero)
-- **Router:** Hash-based casero (sin react-router-dom) para compatibilidad 100% con GitHub Pages
-- **Landing (`/`):** Hero video, About, Servicios, Stats, BrandShowcase (grid clickeable), Galería PDF, Clientes, Contacto
-- **Chore-Time (`/#/marcas/chore-time`):** Página dedicada con 25 productos en existencia + fotos reales + filtros por categoría
-- **Otras marcas (`/#/marcas/:id`):** Página placeholder "Próximamente"
+### Arquitectura Actual: SPA con React Router
+- **Router:** React Router con fallback `404.html` para GitHub Pages
+- **Landing (`/`):** Hero, About, Servicios, Stats, BrandShowcase, CatalogGallery, VentilationCalculator, Clientes, ReviewForm, Contacto
+- **Marcas (`/marcas/:id`):** Página genérica "Próximamente" para marcas sin catálogo activo
+- **Ruta `/marcas/chore-time`:** Redirige a HomePage (marca oculta temporalmente)
 
 ### Cambios de diseño corporativo realizados
 - ✅ **Quitados efectos infantiles:** Eliminados `ClickParticles` (estrellitas/pollitos al clic) y `PoultryBackground` (animalitos corriendo)
@@ -44,16 +44,20 @@
 - Azul 3P: `#1E3A8A`
 - Azul claro: `#3B82F6`
 
-### Marcas Distribuidas (9 principales)
-1. ROXELL (Bélgica)
-2. LUBING (Alemania)
-3. LANDMECO (Dinamarca)
-4. GEORGIA POULTRY (USA)
-5. ~~CHORE-TIME (USA)~~ — *Oculta temporalmente de la web (2026-06-10)*
-6. MS Schippers (Países Bajos)
-7. AMT (USA)
-8. ALKE (Holanda)
-9. TIGSA (España)
+### Marcas Distribuidas (activas en el sitio)
+1. LUBING (Alemania) → enlace oficial: https://lubmesam.com.mx/
+2. FANCOM (Países Bajos) → catálogo desactivado, aparece como "Próximamente"
+3. MS Schippers (Países Bajos)
+4. SBM (Francia)
+5. LB White (USA)
+6. AMT (USA)
+7. ALKE (Países Bajos)
+8. TIGSA (España)
+9. Georgia Poultry (USA)
+
+### Marcas eliminadas/ocultas
+- ~~ROXELL~~ — eliminada completamente del sitio (2026-06-24)
+- ~~CHORE-TIME~~ — oculta temporalmente (2026-06-10)
 
 ---
 
@@ -116,10 +120,56 @@ G:\Mi unidad\pagina web\CATALOGO\[MARCA]\
 - [x] Arquitectura multipágina funcional
 - [x] Quitar efectos decorativos infantiles
 - [x] **Ocultar marca Chore-Time temporalmente** (junio 2026) — ver detalles en "Cambios Recientes"
-- [x] **Configurar EmailJS** (junio 2026) — formulario de contacto funcional con Outlook
+- [x] **Configurar EmailJS** (junio 2026) — formulario de contacto y reseñas funcionales
 - [x] **GitHub Actions CI/CD** — deploy automático en push a master
-- [ ] Crear páginas dedicadas para Fancom, Roxell, Lubing, etc.
+- [x] **Anti-spam honeypot** en formularios de cotización y reseñas
+- [ ] Crear páginas dedicadas para marcas con catálogo activo
 - [ ] Mejorar SEO de cada página de marca
+- [ ] Mostrar reseñas aprobadas públicamente en el sitio
+
+---
+
+## 🔐 Portal Operativo CJ_OS / Dashboard 3P
+
+> En desarrollo activo a partir de agosto 2026.
+
+### Objetivo
+Dar a usuarios autorizados de 3P acceso a información operativa en tiempo real:
+existencias, pedidos vivos, material en vales, facturas pendientes de cobranza y órdenes de compra San Antonio.
+
+### Arquitectura
+```
+website-3p (React/Vite)  ──▶  CJ_OS Core API (FastAPI)  ──▶  PostgreSQL cj_assistant
+                                                       └──▶  SAN_ANTONIO_SEGUIMIENTO.xlsx (solo lectura)
+```
+
+### Archivos del portal en este repositorio
+- `src/context/AuthContext.jsx` — sesión JWT.
+- `src/pages/LoginPage.jsx` — pantalla de acceso.
+- `src/pages/DashboardPage.jsx` — dashboard con tabs.
+- `src/components/auth/ProtectedRoute.jsx` — protección de rutas.
+- `src/utils/api.js` — cliente HTTP hacia CJ_OS Core API.
+- `.env.example` — variables de entorno del frontend y referencias del backend.
+- `docs/guias/API-CJ-OS-CORE.md` — contrato completo de endpoints esperados.
+
+### Endpoints consumidos
+- `POST /auth/login`
+- `GET /api/me`
+- `GET /api/dashboard/resumen`
+- `GET /api/almacen/existencias`
+- `GET /api/almacen/vales`
+- `GET /api/ventas/pedidos-vivos`
+- `GET /api/ventas/facturas-cobranza`
+- `GET /api/inventario/movimientos`
+- `GET /api/san-antonio/ordenes`
+
+### Estado
+- ✅ Frontend: login, ruta protegida, dashboard con tabs.
+- ✅ Backend FastAPI local: autenticación JWT, endpoints operativos, lectura de Excel San Antonio.
+- ✅ Build de producción sin errores.
+- ✅ Usuario admin creado: `trespsadecv@hotmail.com` / contraseña hasheada con bcrypt.
+- ⏳ Conexión real con PostgreSQL: pendiente a completar credenciales en `api/.env`.
+- ⏳ Despliegue del backend: requiere servidor local o túnel (Cloudflare Tunnel recomendado).
 
 ---
 
@@ -142,6 +192,60 @@ G:\Mi unidad\pagina web\CATALOGO\[MARCA]\
 - `.contexto-kimi/MEMORIA-PROYECTO-3P-WEB.md` — Actualizado este archivo.
 
 **Cómo revertir:** Descomentar las líneas marcadas con `//` en los archivos listados, quitar el `{false && (...)}` en `CatalogGallery.jsx`, y restaurar la ruta en `App.jsx`.
+
+---
+
+### 2026-06-24 — Mejoras de contenido, reseñas y limpieza
+> **Resumen:** Se actualizó la sección de clientes internacionales con banderas reales, se eliminó ROXELL del sitio, se activó el envío real de reseñas por EmailJS, se agregó protección anti-spam y se realizó limpieza de archivos obsoletos.
+
+**Archivos modificados:**
+- `src/components/shared/Clients.jsx` — banderas reales con flagcdn.com.
+- `src/components/shared/ReviewForm.jsx` — formulario funcional con EmailJS, correo y empresa opcionales, calificación obligatoria, honeypot anti-spam.
+- `src/components/shared/Contact.jsx` — agregado honeypot anti-spam.
+- `src/translations/index.js` — agregado namespace `reviews` en es/en.
+- `src/components/layout/Header.jsx` / `Footer.jsx` — enlaces oficiales de marcas, ROXELL eliminado.
+- `src/components/shared/BrandShowcase.jsx` — tarjetas de marca con enlaces oficiales, ROXELL eliminado.
+- `src/components/product/CatalogGallery.jsx` — Fancom como "Próximamente".
+- `src/pages/HomePage.jsx` — secciones actualizadas (sin newsletter ni testimonios).
+- `index.html` / `public/sitemap.xml` — SEO actualizado sin ROXELL.
+- `.gitignore` — ignoradas carpetas de materiales y assets generados.
+- `docs/SESSION-REPORT.md` — documentación de la sesión.
+
+**Archivos archivados (moved to `src/_archive/`):**
+- `src/pages/FancomPage.jsx`
+- `src/data/fancomProducts.js`
+
+**Configuración EmailJS activa:**
+- Service ID: `service_3prclaq`
+- Template ID de reseñas: `template_y153mic`
+- Public Key: `bZ5Pz4T6UhA3cDcU1`
+- Destinatario de reseñas: `carlos.urbina@3psadecv.com`
+
+### 2026-08-07 — Portal Operativo CJ_OS / Dashboard 3P
+> Se retoma el desarrollo del portal privado. Se ajusta el frontend según la arquitectura CJ_OS (PostgreSQL como fuente de verdad, lectura segura del Excel de San Antonio, nunca tocar archivos originales de SAE).
+
+**Archivos modificados/creados:**
+- `src/App.jsx` — rutas `/login` y `/dashboard`.
+- `src/main.jsx` — envuelve la app en `AuthProvider`.
+- `src/components/layout/Header.jsx` — acceso al portal.
+- `src/context/AuthContext.jsx` — autenticación JWT.
+- `src/pages/LoginPage.jsx` — pantalla de login.
+- `src/pages/DashboardPage.jsx` — dashboard con tabs.
+- `src/components/auth/ProtectedRoute.jsx` — ruta protegida.
+- `src/utils/api.js` — cliente HTTP.
+- `.env.example` — variables de entorno frontend/backend.
+- `eslint.config.js` — ajustes para archivos de contexto/hook.
+- `docs/guias/API-CJ-OS-CORE.md` — contrato de API completo.
+- `.contexto-kimi/MEMORIA-PROYECTO-3P-WEB.md` — esta memoria.
+
+**Correcciones de lint frontend:**
+- `DashboardPage.jsx` — variables sin usar, dependencias de hooks.
+- `AuthContext.jsx` — evitar setState síncrono en effect.
+- `Hero.jsx`, `ReviewForm.jsx`, `ThemeContext.jsx`, `PoultryBackground.jsx`, `ChoreTimePage.jsx` — errores menores de lint.
+
+**Notas:**
+- `npm run build` ✅ sin errores.
+- `npm run lint` aún reporta errores preexistentes en componentes no relacionados con el portal (MsSchippersPage, ProductSearch, ProductVideoViewer, etc.). Se decidió no profundizar en ellos en esta sesión para mantener el foco en el portal.
 
 ---
 

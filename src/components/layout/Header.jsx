@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, X, Phone, Mail, ChevronRight, Globe, Search } from 'lucide-react';
+import { Menu, X, Phone, Mail, ChevronRight, Globe, Search, LogIn } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useLocation } from '../../hooks/useBrowserLocation';
@@ -155,6 +155,13 @@ const Header = () => {
                 {language.toUpperCase()}
               </button>
               <a
+                href="/login"
+                className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-p3-red hover:text-white transition-all"
+                title="Acceso 3P"
+              >
+                <LogIn size={18} />
+              </a>
+              <a
                 href={isHome ? '#contacto' : '/#contacto'}
                 onClick={(e) => navigateToSection(e, 'contacto', '#contacto')}
                 className="group px-6 py-2.5 bg-p3-red text-white font-medium rounded-lg hover:bg-p3-red-dark transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-p3-red/30 hover:-translate-y-0.5 flex items-center gap-2"
@@ -222,7 +229,14 @@ const Header = () => {
                 </a>
               ))}
             </div>
-            <div className="flex gap-3 mt-4 pt-4 border-t dark:border-gray-700">
+            <a
+              href="/login"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="mt-4 flex items-center gap-2 px-4 py-3 rounded-lg bg-p3-red text-white font-medium"
+            >
+              <LogIn size={18} /> Acceso 3P
+            </a>
+            <div className="flex gap-3 mt-3 pt-4 border-t dark:border-gray-700">
               <button onClick={() => { toggleLanguage(); setIsMobileMenuOpen(false); }} className="flex-1 py-3 px-4 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center gap-2 text-gray-700 dark:text-gray-300">
                 <Globe size={18} /> {language === 'es' ? 'English' : 'Español'}
               </button>

@@ -1,9 +1,41 @@
-# Reporte de Sesión - 24 de junio de 2026
+# Reporte de Sesión - 7 de agosto de 2026
 ## Proyecto: 3P S.A. de C.V. Website (https://3psadecv.com)
 
 ---
 
-## 1. Resumen de lo realizado hoy
+## 0. Resumen de lo realizado hoy
+
+### a) Retomo del portal operativo CJ_OS / Dashboard 3P
+Se retomó el desarrollo del área privada `/dashboard` para usuarios autorizados de 3P. El frontend ya cuenta con login, autenticación JWT y un dashboard con pestañas operativas.
+
+**Archivos clave:**
+- `src/context/AuthContext.jsx`
+- `src/pages/LoginPage.jsx`
+- `src/pages/DashboardPage.jsx`
+- `src/components/auth/ProtectedRoute.jsx`
+- `src/utils/api.js`
+- `src/App.jsx`
+- `src/main.jsx`
+- `src/components/layout/Header.jsx`
+
+### b) Arquitectura segura definida
+Según el documento de arquitectura CJ_OS aprobado para esta sesión:
+- La web **nunca** toca archivos originales de SAE ni Excel originales.
+- La web lee exclusivamente a través de **CJ_OS Core API**.
+- La API lee **PostgreSQL (`cj_assistant`)** y el Excel maestro de San Antonio en **solo lectura**.
+
+### c) Contrato de API documentado
+Se creó `docs/guias/API-CJ-OS-CORE.md` con todos los endpoints, formatos de respuesta y queries de referencia que debe implementar el backend.
+
+### d) Configuración de entorno
+Se actualizó `.env.example` con las variables necesarias para el frontend (Vite) y referencias del backend.
+
+### e) Correcciones de lint enfocadas
+Se corrigieron errores de lint en los archivos nuevos del portal y en algunos componentes afectados directamente. El build de producción pasa limpio.
+
+---
+
+## 1. Resumen de lo realizado hoy (sesión anterior - 24 jun 2026)
 
 ### a) Mejoras en la sección de clientes internacionales
 Se reemplazaron los emojis de banderas por imágenes reales desde `flagcdn.com`, para que se vean consistentes en todos los navegadores y dispositivos.
@@ -80,11 +112,35 @@ Se agregó el namespace `reviews` en `src/translations/index.js` para mantener t
 | Fancom como próximamente | ✅ Completado |
 | Anti-spam honeypot en formularios | ✅ Completado |
 | `npm run build` | ✅ Sin errores |
-| `npm run lint` | ✅ Sin errores |
+| `npm run lint` | ⚠️ Errores preexistentes fuera del portal (MsSchippersPage, ProductSearch, ProductVideoViewer, etc.) |
 
 ---
 
-## 3. Archivos archivados / limpieza realizada
+## 3. Portal CJ_OS / Dashboard 3P
+
+| Componente | Estado |
+|------------|--------|
+| Login JWT | ✅ Frontend listo |
+| Ruta protegida `/dashboard` | ✅ Frontend listo |
+| Dashboard con tabs | ✅ Frontend listo |
+| Cliente HTTP (`src/utils/api.js`) | ✅ Configurado |
+| Contrato de API documentado | ✅ En `docs/guias/API-CJ-OS-CORE.md` |
+| Backend CJ_OS Core API | ✅ Creado en carpeta `api/` (FastAPI local) |
+| Integración real con datos | ⏳ Pendiente a configurar credenciales PostgreSQL en `api/.env` |
+
+---
+
+## 4. Próximos pasos sugeridos
+
+1. **Confirmar ubicación del backend CJ_OS Core API** o crearlo si no existe.
+2. Implementar los endpoints documentados en `docs/guias/API-CJ-OS-CORE.md`.
+3. Probar autenticación y cada tab del dashboard contra el backend real.
+4. Limpiar errores de lint preexistentes en componentes no relacionados con el portal.
+5. Desplegar a producción cuando el portal esté funcional.
+
+---
+
+## 5. Archivos archivados / limpieza realizada
 
 Para mantener el repositorio ordenado, se movieron a `src/_archive/` los archivos de Fancom que ya no se usan en la interfaz activa:
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { ArrowLeft, Package, Phone, Mail, MapPin, X, ChevronLeft, ChevronRight, Image as ImageIcon, Film } from 'lucide-react';
 import { choreTimeProducts, choreTimeCategories } from '../data/choreTimeProducts';
 import { SEO } from '../components/shared';
@@ -7,10 +7,27 @@ import { ShareButton } from '../components/product';
 // Lazy load del visor de video
 const ProductVideoViewer = lazy(() => import('../components/product/ProductVideoViewer'));
 
+function getInitialSelectedProduct() {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('producto');
+  if (!code) return null;
+  return choreTimeProducts.find(p => p.codigo === code) || null;
+}
+
+function getInitialSelectedIndex() {
+  if (typeof window === 'undefined') return 0;
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('producto');
+  if (!code) return 0;
+  const index = choreTimeProducts.findIndex(p => p.codigo === code);
+  return index >= 0 ? index : 0;
+}
+
 const ChoreTimePage = () => {
   const [categoriaActiva, setCategoriaActiva] = useState('todas');
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedProduct, setSelectedProduct] = useState(getInitialSelectedProduct);
+  const [selectedIndex, setSelectedIndex] = useState(getInitialSelectedIndex);
   const [viewMode, setViewMode] = useState('2d'); // '2d', '3d', o 'video'
 
   // Calcular productos filtrados primero
@@ -20,20 +37,6 @@ const ChoreTimePage = () => {
         const cat = choreTimeCategories.find(c => c.id === categoriaActiva);
         return cat ? cat.productos.includes(p.codigo) : true;
       });
-
-  // Handle URL parameters for direct product linking
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const productCode = params.get('producto');
-    if (productCode) {
-      const product = choreTimeProducts.find(p => p.codigo === productCode);
-      if (product) {
-        setSelectedProduct(product);
-        const index = choreTimeProducts.findIndex(p => p.codigo === productCode);
-        setSelectedIndex(index >= 0 ? index : 0);
-      }
-    }
-  }, []);
 
   const whatsappUrl = (prod) => {
     const text = encodeURIComponent(

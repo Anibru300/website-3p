@@ -6,16 +6,14 @@ import { TypewriterText } from '../ui';
 import { MagicButton } from '../ui';
 
 const Hero = () => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [scrollY, setScrollY] = useState(0);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [videoError, setVideoError] = useState(false);
   const videoRef = useRef(null);
 
   useEffect(() => {
-    setIsLoaded(true);
-    
     const handleScroll = () => {
       setScrollY(window.scrollY);
     };

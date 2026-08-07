@@ -39,3 +39,10 @@ gh-pages-assets/
 
 # Local project memory
 .contexto-kimi/
+.agents/
+
+# Backend local
+api/.venv/
+api/data/
+api/.env
+

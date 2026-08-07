@@ -4,29 +4,31 @@ Sitio web profesional para 3P S.A. DE C.V., empresa líder en distribución de e
 
 ## 🚀 Tecnologías Utilizadas
 
-- **React 18** - Framework de JavaScript
+- **React 19** - Framework de JavaScript
 - **Vite** - Build tool rápido
 - **Tailwind CSS** - Framework de CSS utility-first
 - **Lucide React** - Iconos modernos
+- **EmailJS** - Envío de formularios de contacto y reseñas
+- **FastAPI** (backend local) - Portal operativo CJ_OS
 
 ## 📁 Estructura del Proyecto
 
 ```
 3p-website/
+├── api/                    # Backend FastAPI (portal operativo)
+│   ├── app/               # Módulos de la API
+│   ├── scripts/           # Utilidades (crear usuario admin)
+│   ├── requirements.txt   # Dependencias Python
+│   └── README.md          # Guía del backend
 ├── public/                 # Archivos estáticos
 │   ├── images/            # Imágenes del sitio
 │   ├── favicon-*.png      # Favicons
 │   └── logo.png           # Logo principal
 ├── src/
 │   ├── components/        # Componentes React
-│   │   ├── Header.jsx     # Navegación y menú
-│   │   ├── Hero.jsx       # Sección principal
-│   │   ├── About.jsx      # Nosotros, historia, misión
-│   │   ├── Services.jsx   # Servicios que ofrecen
-│   │   ├── Brands.jsx     # Marcas que distribuyen
-│   │   ├── Clients.jsx    # Clientes y testimonios
-│   │   ├── Contact.jsx    # Formulario de contacto
-│   │   └── Footer.jsx     # Pie de página
+│   ├── pages/             # Páginas (Home, Login, Dashboard, marcas)
+│   ├── context/           # Contextos (auth, tema, idioma)
+│   ├── utils/             # Utilidades (cliente API)
 │   ├── App.jsx            # Componente principal
 │   ├── index.css          # Estilos globales
 │   └── main.jsx           # Punto de entrada
@@ -35,42 +37,67 @@ Sitio web profesional para 3P S.A. DE C.V., empresa líder en distribución de e
 └── package.json           # Dependencias
 ```
 
-## 🎨 Secciones del Sitio
+## 🌐 Sitio público
+
+El sitio público incluye:
 
 1. **Inicio (Hero)** - Presentación de la empresa con estadísticas
 2. **Nosotros** - Historia desde 1997, misión, visión y valores
 3. **Servicios** - Venta, importación, exportación, instalación, capacitación
-4. **Marcas** - FANCOM, LANDMECO, DACS, LUBING, SBM, HOG SLAT
+4. **Marcas** - LUBING, FANCOM, MS Schippers, SBM, LB White, AMT, ALKE, TIGSA, Georgia Poultry
 5. **Clientes** - Principales clientes nacionales e internacionales
 6. **Contacto** - Formulario y datos de contacto
+7. **Reseñas** - Formulario de reseñas con envío por EmailJS
 
-## 🛠️ Instalación y Uso
+## 🔐 Portal Operativo / Dashboard
 
-### Desarrollo local:
+El sitio cuenta con un área privada (`/login` → `/dashboard`) que muestra información operativa de 3P:
+
+- Existencias por almacén
+- Material en vales abiertos
+- Pedidos vivos
+- Facturas pendientes de cobranza
+- Órdenes de compra San Antonio
+
+La información se lee desde **PostgreSQL (`cj_assistant`)** y el Excel maestro de San Antonio en **solo lectura**. Nunca se tocan archivos originales de SAE ni Excel originales.
+
+### Iniciar frontend
 
 ```bash
 # Instalar dependencias
 npm install
 
-# Iniciar servidor de desarrollo
+# Desarrollo local
 npm run dev
 ```
 
 El sitio estará disponible en `http://localhost:5173`
 
-### Compilar para producción:
+### Iniciar backend local
+
+```bash
+cd api
+python -m venv .venv
+.venv/Scripts/pip install -r requirements.txt
+cp .env.example .env
+# Edita .env con las credenciales reales de PostgreSQL
+
+# Crear usuario admin
+.venv/Scripts/python scripts/create_admin.py
+
+# Iniciar servidor
+.venv/Scripts/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+El backend estará disponible en `http://localhost:8000`
+
+### Compilar para producción
 
 ```bash
 # Crear build de producción
 npm run build
 
 # Los archivos estarán en la carpeta /dist
-```
-
-### Previsualizar build:
-
-```bash
-npm run preview
 ```
 
 ## 📞 Información de Contacto
@@ -83,9 +110,9 @@ npm run preview
 
 - El sitio es completamente responsive (se adapta a móviles, tablets y desktop)
 - Incluye animaciones suaves para mejor experiencia de usuario
-- Formulario de contacto con validación
+- Formulario de contacto con validación y anti-spam (honeypot)
 - SEO optimizado con meta tags apropiados
 - Colores corporativos: Rojo (#C41E3A) y Azul (#1E3A8A)
 
 ---
-© 2025 3P S.A. DE C.V. - Todos los derechos reservados
+© 2026 3P S.A. DE C.V. - Todos los derechos reservados

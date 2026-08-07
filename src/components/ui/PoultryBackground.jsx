@@ -243,16 +243,20 @@ const PoultryBackground = () => {
         }}
       >
         <svg width="100%" height="100" viewBox="0 0 1440 100" preserveAspectRatio="none">
-          {[...Array(30)].map((_, i) => (
-            <path
-              key={i}
-              d={`M${i * 50} 100 Q${i * 50 + 10} ${60 + Math.random() * 20} ${i * 50 + 5} ${30 + Math.random() * 20}`}
-              stroke="#16A34A"
-              strokeWidth="3"
-              fill="none"
-              opacity="0.5"
-            />
-          ))}
+          {[...Array(30)].map((_, i) => {
+            const offset1 = (i * 7) % 20;
+            const offset2 = (i * 13) % 20;
+            return (
+              <path
+                key={i}
+                d={`M${i * 50} 100 Q${i * 50 + 10} ${60 + offset1} ${i * 50 + 5} ${30 + offset2}`}
+                stroke="#16A34A"
+                strokeWidth="3"
+                fill="none"
+                opacity="0.5"
+              />
+            );
+          })}
         </svg>
       </div>
 

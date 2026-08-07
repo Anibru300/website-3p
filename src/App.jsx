@@ -4,6 +4,9 @@ import HomePage from './pages/HomePage';
 import ChoreTimePage from './pages/ChoreTimePage';
 import MsSchippersPage from './pages/MsSchippersPage';
 import GenericBrandPage from './pages/GenericBrandPage';
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import { ToastProvider } from './components/ui/Toast';
 
 function App() {
@@ -50,7 +53,22 @@ function App() {
   }, [segments]);
 
   let content = <HomePage />;
-  if (segments[0] === 'marcas') {
+  let showHeader = true;
+  let mainClass = 'pt-[136px]';
+
+  if (segments[0] === 'login') {
+    content = <LoginPage />;
+    showHeader = false;
+    mainClass = '';
+  } else if (segments[0] === 'dashboard') {
+    content = (
+      <ProtectedRoute>
+        <DashboardPage />
+      </ProtectedRoute>
+    );
+    showHeader = false;
+    mainClass = '';
+  } else if (segments[0] === 'marcas') {
     const brandId = segments[1];
     if (brandId === 'chore-time') {
       // Chore-Time oculto temporalmente - redirigir a home
@@ -65,8 +83,8 @@ function App() {
   return (
     <ToastProvider>
       <div className="min-h-screen bg-white">
-        <Header />
-        <main className="pt-[136px]">{content}</main>
+        {showHeader && <Header />}
+        <main className={mainClass}>{content}</main>
       </div>
     </ToastProvider>
   );

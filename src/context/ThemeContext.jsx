@@ -4,7 +4,7 @@ const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   // Forzamos modo claro corporativo
-  const [theme, setTheme] = useState('light');
+  const [theme] = useState('light');
 
   useEffect(() => {
     const root = window.document.documentElement;

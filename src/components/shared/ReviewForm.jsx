@@ -10,7 +10,7 @@ const EMAILJS_TEMPLATE_ID = 'template_y153mic';
 const EMAILJS_PUBLIC_KEY = 'bZ5Pz4T6UhA3cDcU1';
 
 const ReviewForm = () => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { addToast } = useToast();
 
   useEffect(() => {
