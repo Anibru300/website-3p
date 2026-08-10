@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # Vales Excel (solo lectura)
     vales_excel_path: str = "Y:/ALMACEN/Mejora Continua ALMACEN/Nuevo Control de Almacen/BASE DE DATOS/BD_ALMACEN_3P.xlsx"
 
+    # Pedidos pendientes por facturar Excel (solo lectura)
+    pedidos_pendientes_facturar_excel_path: str = "Y:/1 - CONTROL DE ALMACEN/BASES DE DATOS/BD pedidos pendientes por facturar.xlsx"
+
     @property
     def database_url(self) -> str:
         return (
