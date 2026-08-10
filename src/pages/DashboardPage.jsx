@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchDashboardResumen,
@@ -127,14 +127,24 @@ export default function DashboardPage() {
   const [sanAntonio, setSanAntonio] = useState(null);
 
   // Filters
-  const [existenciasQuery, setExistenciasQuery] = useState('limit=50');
-  const [valesQuery, setValesQuery] = useState('limit=50');
+  const [existenciasQuery] = useState('limit=500');
+  const [valesQuery, setValesQuery] = useState('limit=500');
   const [valesResponsable, setValesResponsable] = useState('');
-  const [pedidosQuery] = useState('limit=50');
-  const [sanAntonioQuery] = useState('limit=50');
+  const [pedidosQuery] = useState('limit=500');
+  const [sanAntonioQuery] = useState('limit=500');
+  const [existenciasSearch, setExistenciasSearch] = useState('');
+
+  const existenciasFiltradas = useMemo(() => {
+    const term = existenciasSearch.trim().toLowerCase();
+    if (!term) return existencias;
+    return existencias.filter((item) =>
+      (item.codigo?.toLowerCase() || '').includes(term) ||
+      (item.descripcion?.toLowerCase() || '').includes(term)
+    );
+  }, [existencias, existenciasSearch]);
 
   useEffect(() => {
-    const params = new URLSearchParams({ limit: '50' });
+    const params = new URLSearchParams({ limit: '500' });
     if (valesResponsable) params.set('responsable', valesResponsable);
     setValesQuery(params.toString());
   }, [valesResponsable]);
@@ -199,12 +209,11 @@ export default function DashboardPage() {
 
   const renderResumen = () => (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <KpiCard label="Pedidos vivos" value={resumen?.pedidos_vivos} icon={ShoppingCart} color="bg-p3-blue" subtext="Pendientes o parcialmente facturados" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard label="Pedidos abiertos" value={resumen?.pedidos_vivos} icon={ShoppingCart} color="bg-p3-blue" subtext="Pendientes o parcialmente facturados" />
         <KpiCard label="Vales abiertos" value={resumen?.vales_abiertos} icon={ClipboardList} color="bg-orange-500" subtext="Con material vivo" />
         <KpiCard label="Productos bajo mínimo" value={resumen?.productos_bajo_minimo} icon={AlertCircle} color="bg-red-500" />
         <KpiCard label="Movimientos 90 días" value={resumen?.movimientos_90d} icon={Package} color="bg-green-600" />
-        <KpiCard label="Facturas pendientes cobranza" value={resumen?.facturas_pendientes_cobranza} icon={FileText} color="bg-purple-600" />
       </div>
       <p className="text-sm text-gray-500">
         Selecciona una pestaña superior para ver el detalle de cada área.
@@ -214,25 +223,39 @@ export default function DashboardPage() {
 
   const renderExistencias = () => (
     <div className="space-y-4">
-      <SectionHeader title="Existencias por producto" count={existencias.length} icon={Package} />
+      <SectionHeader title="Existencias por producto" count={existenciasFiltradas.length} icon={Package} />
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
             placeholder="Buscar código o descripción..."
-            onChange={(e) => setExistenciasQuery(`limit=50&busqueda=${encodeURIComponent(e.target.value)}`)}
+            value={existenciasSearch}
+            onChange={(e) => setExistenciasSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
           />
         </div>
       </div>
       <DataTable
-        rows={existencias}
+        rows={existenciasFiltradas}
         columns={[
           { key: 'codigo', label: 'Código' },
           { key: 'descripcion', label: 'Descripción' },
-          { key: 'existencia_total', label: 'Existencia total', format: formatNumber },
-          { key: 'material_en_vales', label: 'Material en vales', format: formatNumber },
+          {
+            key: 'existencia_en_vales',
+            label: 'Existencia en vales',
+            format: (_, row) => formatNumber(row.material_en_vales),
+          },
+          {
+            key: 'existencia_en_almacen',
+            label: 'Existencia en almacén',
+            format: (_, row) => formatNumber((row.existencia_total ?? 0) - (row.material_en_vales ?? 0)),
+          },
+          {
+            key: 'existencia_total_final',
+            label: 'Existencia total',
+            format: (_, row) => formatNumber(row.existencia_total),
+          },
         ]}
         emptyMessage="No se encontraron existencias"
         emptyIcon={Package}
@@ -277,7 +300,7 @@ export default function DashboardPage() {
           { key: 'almacen_origen', label: 'Almacén' },
           { key: 'estado', label: 'Estado' },
         ]}
-        emptyMessage="No hay material vivo en vales abiertos"
+        emptyMessage="No hay vales abiertos actualmente"
         emptyIcon={ClipboardList}
       />
     </div>
