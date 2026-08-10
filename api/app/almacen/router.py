@@ -88,14 +88,15 @@ def _get_material_en_vales_by_code():
 
 @router.get("/existencias")
 def existencias(
-    limit: int = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=1000),
+    offset: int = Query(0, ge=0, description="Registros a omitir para paginación"),
     busqueda: str = Query("", description="Filtrar por código o descripción"),
     user: dict = Depends(get_current_user),
 ):
     # Material en vales desde el Excel de almacén (solo lectura)
     material_en_vales = _get_material_en_vales_by_code()
 
-    sql = """
+    base_sql = """
         WITH existencias_por_producto AS (
             SELECT cve_art, SUM(exist) AS existencia_total
             FROM sae_existencias
@@ -110,21 +111,41 @@ def existencias(
         LEFT JOIN sae_productos sp ON sp.cve_art = epp.cve_art
         WHERE 1=1
     """
+    count_sql = """
+        WITH existencias_por_producto AS (
+            SELECT cve_art, SUM(exist) AS existencia_total
+            FROM sae_existencias
+            WHERE exist > 0
+            GROUP BY cve_art
+        )
+        SELECT COUNT(*) AS total
+        FROM existencias_por_producto epp
+        LEFT JOIN sae_productos sp ON sp.cve_art = epp.cve_art
+        WHERE 1=1
+    """
     params = {}
     if busqueda:
-        sql += """
+        filtro = """
             AND (
                 LOWER(epp.cve_art) LIKE LOWER(%(busqueda)s)
                 OR LOWER(COALESCE(sp.descripcion, '')) LIKE LOWER(%(busqueda)s)
             )
         """
+        base_sql += filtro
+        count_sql += filtro
         params["busqueda"] = f"%{busqueda}%"
-    sql += " GROUP BY epp.cve_art, epp.existencia_total ORDER BY MAX(COALESCE(sp.descripcion, '')) LIMIT %(limit)s"
+
+    base_sql += " GROUP BY epp.cve_art, epp.existencia_total ORDER BY MAX(COALESCE(sp.descripcion, '')) LIMIT %(limit)s OFFSET %(offset)s"
     params["limit"] = limit
+    params["offset"] = offset
 
     with postgres_cursor() as cur:
-        cur.execute(sql, params)
+        cur.execute(base_sql, params)
         rows = cur.fetchall()
+
+        cur.execute(count_sql, {k: v for k, v in params.items() if k in ("busqueda",)})
+        total_row = cur.fetchone()
+        total = total_row["total"] if total_row else 0
 
     data = []
     for row in rows:
@@ -140,7 +161,7 @@ def existencias(
             "existencia_almacen": existencia_total - mat_vales,
         })
 
-    return {"data": data}
+    return {"data": data, "total": total}
 
 
 @router.get("/vales")

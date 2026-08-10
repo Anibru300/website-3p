@@ -791,7 +791,10 @@ export default function DashboardPage() {
   const [fotoLightboxOpen, setFotoLightboxOpen] = useState(false);
 
   // Filters
-  const [existenciasQuery, setExistenciasQuery] = useState('limit=500');
+  const EXISTENCIAS_PAGE_SIZE = 50;
+  const [existenciasQuery, setExistenciasQuery] = useState(`limit=${EXISTENCIAS_PAGE_SIZE}`);
+  const [existenciasOffset, setExistenciasOffset] = useState(0);
+  const [existenciasTotal, setExistenciasTotal] = useState(0);
   const [valesQuery, setValesQuery] = useState('limit=500');
   const [valesResponsable, setValesResponsable] = useState('');
   const [pedidosQuery] = useState('limit=500');
@@ -800,7 +803,11 @@ export default function DashboardPage() {
 
   // Búsqueda server-side en existencias con debounce
   useEffect(() => {
-    const params = new URLSearchParams({ limit: '500' });
+    setExistenciasOffset(0);
+    const params = new URLSearchParams({
+      limit: String(EXISTENCIAS_PAGE_SIZE),
+      offset: '0',
+    });
     const term = existenciasSearch.trim();
     if (term) params.set('busqueda', term);
     const t = setTimeout(() => setExistenciasQuery(params.toString()), 400);
@@ -845,6 +852,7 @@ export default function DashboardPage() {
         if (tab === 'existencias') {
           const data = await fetchExistencias(existenciasQuery);
           setExistencias(data.data || []);
+          setExistenciasTotal(data.total || 0);
         } else if (tab === 'vales') {
           const data = await fetchVales(valesQuery);
           setVales(data.data || []);
@@ -980,6 +988,23 @@ export default function DashboardPage() {
         color: PALETTE[i % PALETTE.length],
       }));
   }, [pedidos]);
+
+  const existenciasPageInfo = useMemo(() => {
+    const page = Math.floor(existenciasOffset / EXISTENCIAS_PAGE_SIZE) + 1;
+    const totalPages = Math.ceil(existenciasTotal / EXISTENCIAS_PAGE_SIZE) || 1;
+    return { page, totalPages };
+  }, [existenciasOffset, existenciasTotal]);
+
+  const handleExistenciasPageChange = useCallback(
+    (newOffset) => {
+      setExistenciasOffset(newOffset);
+      const params = new URLSearchParams(existenciasQuery);
+      params.set('offset', String(newOffset));
+      params.set('limit', String(EXISTENCIAS_PAGE_SIZE));
+      setExistenciasQuery(params.toString());
+    },
+    [existenciasQuery]
+  );
 
   const subalmacenesData = useMemo(() => {
     return [...subalmacenes]
@@ -1286,6 +1311,39 @@ export default function DashboardPage() {
           emptyMessage="No se encontraron existencias"
           emptyIcon={Package}
         />
+        {existenciasTotal > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            <p className="text-sm text-gray-500">
+              Mostrando <span className="font-semibold text-gray-700">{existencias.length}</span> de{' '}
+              <span className="font-semibold text-gray-700">{existenciasTotal}</span> registros
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  handleExistenciasPageChange(Math.max(0, existenciasOffset - EXISTENCIAS_PAGE_SIZE))
+                }
+                disabled={existenciasOffset === 0}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              <span className="text-sm text-gray-600 px-2">
+                Página {existenciasPageInfo.page} de {existenciasPageInfo.totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  handleExistenciasPageChange(existenciasOffset + EXISTENCIAS_PAGE_SIZE)
+                }
+                disabled={existenciasOffset + EXISTENCIAS_PAGE_SIZE >= existenciasTotal}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="lg:col-span-1">
