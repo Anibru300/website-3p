@@ -20,6 +20,14 @@ import {
   Filter,
   Inbox,
   TrendingUp,
+  DollarSign,
+  Boxes,
+  BarChart3,
+  PieChart as PieChartIcon,
+  Gauge,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 
 const TABS = [
@@ -30,13 +38,104 @@ const TABS = [
   { id: 'san-antonio', label: 'San Antonio', icon: FileText },
 ];
 
-const RESPONSABLES = [
-  { id: '', label: 'Todos', color: 'gray' },
-  { id: 'joan', label: 'Vales con Joan', color: 'blue' },
-  { id: 'abelardo', label: 'Vales con Abelardo', color: 'emerald' },
-  { id: 'aaron', label: 'Vales con Aaron', color: 'violet' },
-  { id: 'otros', label: 'Otros vales', color: 'amber' },
+const COLORS = {
+  red: '#C41E3A',
+  blue: '#1E3A8A',
+  blueLight: '#3B82F6',
+  amber: '#F59E0B',
+  emerald: '#10B981',
+  violet: '#8B5CF6',
+  gray: '#6B7280',
+  dark: '#1F2937',
+};
+
+const PALETTE = [
+  COLORS.red,
+  COLORS.blue,
+  COLORS.blueLight,
+  COLORS.emerald,
+  COLORS.violet,
+  COLORS.amber,
+  COLORS.gray,
+  COLORS.dark,
 ];
+
+const RESPONSABLES = [
+  {
+    id: '',
+    label: 'Todos',
+    shortLabel: 'Todos',
+    color: 'gray',
+    activeBg: 'bg-gray-800',
+    text: 'text-gray-600',
+    hover: 'hover:bg-gray-50',
+    border: 'border-gray-200',
+  },
+  {
+    id: 'joan',
+    label: 'Vales con Joan',
+    shortLabel: 'Joan',
+    color: 'blue',
+    activeBg: 'bg-p3-blue',
+    text: 'text-blue-600',
+    hover: 'hover:bg-blue-50',
+    border: 'border-blue-200',
+  },
+  {
+    id: 'abelardo',
+    label: 'Vales con Abelardo',
+    shortLabel: 'Abelardo',
+    color: 'emerald',
+    activeBg: 'bg-emerald-600',
+    text: 'text-emerald-600',
+    hover: 'hover:bg-emerald-50',
+    border: 'border-emerald-200',
+  },
+  {
+    id: 'aaron',
+    label: 'Vales con Aaron',
+    shortLabel: 'Aaron',
+    activeBg: 'bg-violet-600',
+    color: 'violet',
+    text: 'text-violet-600',
+    hover: 'hover:bg-violet-50',
+    border: 'border-violet-200',
+  },
+  {
+    id: 'otros',
+    label: 'Otros vales',
+    shortLabel: 'Otros',
+    color: 'amber',
+    activeBg: 'bg-amber-500',
+    text: 'text-amber-600',
+    hover: 'hover:bg-amber-50',
+    border: 'border-amber-200',
+  },
+];
+
+function classifyResponsable(name) {
+  const n = (name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (n.includes('joan')) return 'joan';
+  if (n.includes('abelardo')) return 'abelardo';
+  if (n.includes('aaron')) return 'aaron';
+  return 'otros';
+}
+
+function colorHexForResponsable(id) {
+  switch (id) {
+    case 'joan':
+      return COLORS.blue;
+    case 'abelardo':
+      return COLORS.emerald;
+    case 'aaron':
+      return COLORS.violet;
+    default:
+      return COLORS.amber;
+  }
+}
 
 function EmptyState({ message = 'Sin datos', icon = Inbox }) {
   const IconComponent = icon;
@@ -51,33 +150,411 @@ function EmptyState({ message = 'Sin datos', icon = Inbox }) {
   );
 }
 
+function Tooltip({ tooltip }) {
+  if (!tooltip) return null;
+  return (
+    <div
+      style={{ left: tooltip.x + 12, top: tooltip.y - 12 }}
+      className="fixed z-50 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 pointer-events-none shadow-lg max-w-xs"
+    >
+      {tooltip.content}
+    </div>
+  );
+}
+
+function PieChart({ data, valueFormatter = (v) => v, setTooltip }) {
+  const total = data.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
+  if (total <= 0) {
+    return <EmptyState message="Sin datos para gráfica" icon={PieChartIcon} />;
+  }
+
+  const radius = 42;
+  const cx = 50;
+  const cy = 50;
+  let start = -Math.PI / 2;
+
+  const slices = data.map((d) => {
+    const value = Number(d.value) || 0;
+    const frac = value / total;
+    const angle = frac * 2 * Math.PI;
+    const end = start + angle;
+    const largeArc = angle > Math.PI ? 1 : 0;
+    const x1 = cx + radius * Math.cos(start);
+    const y1 = cy + radius * Math.sin(start);
+    const x2 = cx + radius * Math.cos(end);
+    const y2 = cy + radius * Math.sin(end);
+    const path = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+    start = end;
+    return { ...d, value, frac, path };
+  });
+
+  return (
+    <svg viewBox="0 0 100 100" className="w-full h-auto max-h-56 mx-auto">
+      {slices.map((slice, idx) => (
+        <path
+          key={idx}
+          d={slice.path}
+          fill={slice.color}
+          stroke="#fff"
+          strokeWidth="1"
+          className="transition-opacity duration-200 hover:opacity-80 cursor-pointer"
+          onMouseEnter={(e) =>
+            setTooltip({
+              content: `${slice.label}: ${valueFormatter(slice.value)} (${(slice.frac * 100).toFixed(1)}%)`,
+              x: e.clientX,
+              y: e.clientY,
+            })
+          }
+          onMouseMove={(e) =>
+            setTooltip((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null))
+          }
+          onMouseLeave={() => setTooltip(null)}
+        />
+      ))}
+      <circle cx={cx} cy={cy} r={22} fill="white" />
+      <text
+        x={cx}
+        y={cy}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        className="text-[5px] fill-gray-700 font-bold"
+      >
+        {valueFormatter(total)}
+      </text>
+    </svg>
+  );
+}
+
+function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
+  if (!data || data.length === 0) {
+    return <EmptyState message="Sin datos para gráfica" icon={BarChart3} />;
+  }
+
+  const values = data.map((d) => Number(d.value) || 0);
+  const max = Math.max(...values, 1);
+  const labelW = 150;
+  const plotW = 280;
+  const barH = 22;
+  const gap = 14;
+  const height = data.length * (barH + gap) + gap;
+  const width = labelW + plotW + 60;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto max-h-80">
+      {data.map((d, i) => {
+        const y = gap + i * (barH + gap);
+        const w = ((Number(d.value) || 0) / max) * plotW;
+        return (
+          <g key={i}>
+            <text
+              x={labelW - 10}
+              y={y + barH / 2 + 4}
+              textAnchor="end"
+              className="text-[10px] fill-gray-600"
+            >
+              {d.label}
+            </text>
+            <rect
+              x={labelW}
+              y={y}
+              width={Math.max(w, 2)}
+              height={barH}
+              rx={4}
+              fill={d.color}
+              className="transition-all duration-200 hover:opacity-80 cursor-pointer"
+              onMouseEnter={(e) =>
+                setTooltip({
+                  content: `${d.label}: ${valueFormatter(d.value)}`,
+                  x: e.clientX,
+                  y: e.clientY,
+                })
+              }
+              onMouseMove={(e) =>
+                setTooltip((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null))
+              }
+              onMouseLeave={() => setTooltip(null)}
+            />
+            <text
+              x={labelW + Math.max(w, 2) + 6}
+              y={y + barH / 2 + 4}
+              className="text-[10px] fill-gray-600"
+            >
+              {valueFormatter(d.value)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function VerticalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
+  if (!data || data.length === 0) {
+    return <EmptyState message="Sin datos para gráfica" icon={BarChart3} />;
+  }
+
+  const values = data.map((d) => Number(d.value) || 0);
+  const max = Math.max(...values, 1);
+  const margin = { top: 20, right: 20, bottom: 60, left: 50 };
+  const plotW = 320;
+  const plotH = 180;
+  const width = plotW + margin.left + margin.right;
+  const height = plotH + margin.top + margin.bottom;
+  const step = plotW / data.length;
+  const barW = step * 0.55;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto max-h-72">
+      <line
+        x1={margin.left}
+        y1={margin.top + plotH}
+        x2={margin.left + plotW}
+        y2={margin.top + plotH}
+        stroke="#e5e7eb"
+        strokeWidth="1"
+      />
+      <line
+        x1={margin.left}
+        y1={margin.top}
+        x2={margin.left}
+        y2={margin.top + plotH}
+        stroke="#e5e7eb"
+        strokeWidth="1"
+      />
+      {data.map((d, i) => {
+        const h = ((Number(d.value) || 0) / max) * plotH;
+        const x = margin.left + i * step + (step - barW) / 2;
+        const y = margin.top + plotH - h;
+        const label = d.label.length > 10 ? `${d.label.slice(0, 10)}...` : d.label;
+        return (
+          <g key={i}>
+            <rect
+              x={x}
+              y={y}
+              width={barW}
+              height={h}
+              rx={4}
+              fill={d.color}
+              className="transition-all duration-200 hover:opacity-80 cursor-pointer"
+              onMouseEnter={(e) =>
+                setTooltip({
+                  content: `${d.label}: ${valueFormatter(d.value)}`,
+                  x: e.clientX,
+                  y: e.clientY,
+                })
+              }
+              onMouseMove={(e) =>
+                setTooltip((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null))
+              }
+              onMouseLeave={() => setTooltip(null)}
+            />
+            <text
+              x={x + barW / 2}
+              y={margin.top + plotH + 16}
+              textAnchor="middle"
+              className="text-[9px] fill-gray-600"
+            >
+              {label}
+            </text>
+            <text
+              x={x + barW / 2}
+              y={y - 6}
+              textAnchor="middle"
+              className="text-[9px] fill-gray-500"
+            >
+              {valueFormatter(d.value)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function GaugeChart({ percent, setTooltip }) {
+  const p = Math.min(100, Math.max(0, percent));
+  const cx = 100;
+  const cy = 100;
+  const r = 70;
+  const start = { x: cx + r * Math.cos(Math.PI), y: cy - r * Math.sin(Math.PI) };
+  const endRight = { x: cx + r * Math.cos(0), y: cy - r * Math.sin(0) };
+  const endValue = {
+    x: cx + r * Math.cos(Math.PI * (1 - p / 100)),
+    y: cy - r * Math.sin(Math.PI * (1 - p / 100)),
+  };
+
+  const bgPath = `M ${start.x} ${start.y} A ${r} ${r} 0 0 0 ${endRight.x} ${endRight.y}`;
+  const fgPath = `M ${start.x} ${start.y} A ${r} ${r} 0 0 0 ${endValue.x} ${endValue.y}`;
+
+  return (
+    <svg viewBox="0 0 200 110" className="w-full h-auto max-h-48">
+      <path d={bgPath} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round" />
+      <path
+        d={fgPath}
+        fill="none"
+        stroke={COLORS.red}
+        strokeWidth="18"
+        strokeLinecap="round"
+        className="transition-all duration-500 cursor-pointer"
+        onMouseEnter={(e) =>
+          setTooltip({
+            content: `${p.toFixed(1)}% del inventario total está en vales`,
+            x: e.clientX,
+            y: e.clientY,
+          })
+        }
+        onMouseMove={(e) =>
+          setTooltip((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null))
+        }
+        onMouseLeave={() => setTooltip(null)}
+      />
+      <text x={cx} y={cy + 8} textAnchor="middle" className="text-2xl fill-gray-800 font-bold">
+        {p.toFixed(1)}%
+      </text>
+    </svg>
+  );
+}
+
+function ChartLegend({ items, valueFormatter = (v) => v }) {
+  return (
+    <div className="flex flex-wrap gap-3 justify-center mt-4">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100"
+        >
+          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+          <span className="font-medium">{item.label}</span>
+          <span className="text-gray-900 font-semibold">{valueFormatter(item.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbox }) {
+  const [sort, setSort] = useState({ key: null, dir: 'asc' });
+
+  const defaultFormatNumber = (value) => {
+    if (value == null) return '—';
+    const num = Number(value);
+    if (Number.isNaN(num)) return value;
+    return new Intl.NumberFormat('es-MX').format(num);
+  };
+
+  const sortedRows = useMemo(() => {
+    if (!sort.key) return rows;
+    const col = columns.find((c) => c.key === sort.key);
+    if (!col || !col.sortable) return rows;
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const av = col.accessor ? col.accessor(a) : a[col.key];
+      const bv = col.accessor ? col.accessor(b) : b[col.key];
+      const an = Number(av);
+      const bn = Number(bv);
+      if (!Number.isNaN(an) && !Number.isNaN(bn) && av !== '' && bv !== '') {
+        return (an - bn) * dir;
+      }
+      return String(av ?? '').localeCompare(String(bv ?? '')) * dir;
+    });
+  }, [rows, sort, columns]);
+
+  const totals = useMemo(() => {
+    return columns.map((col) => {
+      if (!col.total) return null;
+      return sortedRows.reduce((sum, row) => {
+        const v = col.accessor ? col.accessor(row) : row[col.key];
+        const n = Number(v);
+        return sum + (Number.isNaN(n) ? 0 : n);
+      }, 0);
+    });
+  }, [sortedRows, columns]);
+
+  const hasTotals = totals.some((t) => t !== null);
+  const firstTotalIdx = totals.findIndex((t) => t !== null);
+
+  const handleHeaderClick = (col) => {
+    if (!col.sortable) return;
+    setSort((prev) => {
+      if (prev.key !== col.key) return { key: col.key, dir: 'asc' };
+      return { key: col.key, dir: prev.dir === 'asc' ? 'desc' : 'asc' };
+    });
+  };
+
   if (!rows || rows.length === 0) {
     return <EmptyState message={emptyMessage} icon={emptyIcon} />;
   }
+
   return (
-    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-md">
       <table className="min-w-full text-sm">
         <thead className="bg-gray-50 text-gray-600 font-semibold uppercase tracking-wide text-xs">
           <tr>
             {columns.map((col) => (
-              <th key={col.key} className="px-5 py-3.5 text-left whitespace-nowrap">
-                {col.label}
+              <th
+                key={col.key}
+                onClick={() => handleHeaderClick(col)}
+                className={`px-5 py-3.5 text-left whitespace-nowrap select-none ${
+                  col.sortable
+                    ? 'cursor-pointer hover:bg-gray-100 hover:text-p3-red transition-colors'
+                    : ''
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  {col.label}
+                  {col.sortable && (
+                    <span className="text-gray-400">
+                      {sort.key === col.key ? (
+                        sort.dir === 'asc' ? (
+                          <ArrowUp size={12} />
+                        ) : (
+                          <ArrowDown size={12} />
+                        )
+                      ) : (
+                        <ArrowUpDown size={12} />
+                      )}
+                    </span>
+                  )}
+                </div>
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {rows.map((row, idx) => (
+          {sortedRows.map((row, idx) => (
             <tr key={idx} className="hover:bg-gray-50/70 transition-colors">
-              {columns.map((col) => (
-                <td key={col.key} className="px-5 py-3 text-gray-700 whitespace-nowrap">
-                  {col.format ? col.format(row[col.key], row) : (row[col.key] ?? '—')}
-                </td>
-              ))}
+              {columns.map((col) => {
+                const raw = col.accessor ? col.accessor(row) : row[col.key];
+                const display = col.format ? col.format(raw, row) : (raw ?? '—');
+                return (
+                  <td key={col.key} className="px-5 py-3 text-gray-700 whitespace-nowrap">
+                    {display}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
+        {hasTotals && (
+          <tfoot className="bg-gray-50 font-semibold text-gray-800">
+            <tr>
+              {columns.map((col, idx) => {
+                const total = totals[idx];
+                if (total === null) {
+                  return <td key={col.key} className="px-5 py-3 whitespace-nowrap"></td>;
+                }
+                return (
+                  <td key={col.key} className="px-5 py-3 whitespace-nowrap">
+                    {idx === firstTotalIdx && (
+                      <span className="text-gray-500 text-xs uppercase mr-2">Total</span>
+                    )}
+                    {col.format ? col.format(total, {}) : defaultFormatNumber(total)}
+                  </td>
+                );
+              })}
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
@@ -86,13 +563,15 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
 function KpiCard({ label, value, icon, color = 'bg-p3-blue', subtext = '' }) {
   const IconComponent = icon;
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow">
-      <div className={`${color} text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-sm`}>
-        <IconComponent size={24} />
+    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 flex items-center gap-4 hover:shadow-lg transition-shadow">
+      <div
+        className={`${color} text-white w-14 h-14 rounded-xl flex items-center justify-center shadow-sm`}
+      >
+        <IconComponent size={28} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-gray-500 font-medium truncate">{label}</p>
-        <p className="text-2xl font-bold text-gray-900">{value ?? 0}</p>
+        <p className="text-3xl font-bold text-gray-900">{value ?? 0}</p>
         {subtext && <p className="text-xs text-gray-400 mt-0.5">{subtext}</p>}
       </div>
     </div>
@@ -101,7 +580,7 @@ function KpiCard({ label, value, icon, color = 'bg-p3-blue', subtext = '' }) {
 
 function SectionHeader({ title, count, icon: Icon }) {
   return (
-    <div className="flex items-center gap-3 mb-4">
+    <div className="flex items-center gap-3 mb-4 pb-2 border-b border-gray-100">
       {Icon && <Icon className="text-p3-red" size={22} />}
       <h3 className="text-lg font-bold text-gray-800">{title}</h3>
       {count !== undefined && (
@@ -118,11 +597,13 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('resumen');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [tooltip, setTooltip] = useState(null);
 
   // Data states
   const [resumen, setResumen] = useState(null);
   const [existencias, setExistencias] = useState([]);
   const [vales, setVales] = useState([]);
+  const [allVales, setAllVales] = useState([]);
   const [pedidos, setPedidos] = useState([]);
   const [sanAntonio, setSanAntonio] = useState(null);
 
@@ -137,9 +618,10 @@ export default function DashboardPage() {
   const existenciasFiltradas = useMemo(() => {
     const term = existenciasSearch.trim().toLowerCase();
     if (!term) return existencias;
-    return existencias.filter((item) =>
-      (item.codigo?.toLowerCase() || '').includes(term) ||
-      (item.descripcion?.toLowerCase() || '').includes(term)
+    return existencias.filter(
+      (item) =>
+        (item.codigo?.toLowerCase() || '').includes(term) ||
+        (item.descripcion?.toLowerCase() || '').includes(term)
     );
   }, [existencias, existenciasSearch]);
 
@@ -149,43 +631,58 @@ export default function DashboardPage() {
     setValesQuery(params.toString());
   }, [valesResponsable]);
 
-  const loadResumen = async () => {
-    try {
-      setError(null);
-      const data = await fetchDashboardResumen();
-      setResumen(data.resumen);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const loadTabData = useCallback(async (tab) => {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      if (tab === 'existencias') {
-        const data = await fetchExistencias(existenciasQuery);
-        setExistencias(data.data);
-      } else if (tab === 'vales') {
-        const data = await fetchVales(valesQuery);
-        setVales(data.data);
-      } else if (tab === 'pedidos') {
-        const data = await fetchPedidosVivos(pedidosQuery);
-        setPedidos(data.data);
-      } else if (tab === 'san-antonio') {
-        const data = await fetchSanAntonioOrdenes(sanAntonioQuery);
-        setSanAntonio(data);
-      }
+      const [r, e, v, p] = await Promise.all([
+        fetchDashboardResumen(),
+        fetchExistencias('limit=500'),
+        fetchVales('limit=500'),
+        fetchPedidosVivos('limit=500'),
+      ]);
+      setResumen(r.resumen);
+      setExistencias(e.data || []);
+      setVales(v.data || []);
+      setAllVales(v.data || []);
+      setPedidos(p.data || []);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [existenciasQuery, valesQuery, pedidosQuery, sanAntonioQuery]);
+  }, []);
+
+  const loadTabData = useCallback(
+    async (tab) => {
+      setLoading(true);
+      setError(null);
+      try {
+        if (tab === 'existencias') {
+          const data = await fetchExistencias(existenciasQuery);
+          setExistencias(data.data || []);
+        } else if (tab === 'vales') {
+          const data = await fetchVales(valesQuery);
+          setVales(data.data || []);
+        } else if (tab === 'pedidos') {
+          const data = await fetchPedidosVivos(pedidosQuery);
+          setPedidos(data.data || []);
+        } else if (tab === 'san-antonio') {
+          const data = await fetchSanAntonioOrdenes(sanAntonioQuery);
+          setSanAntonio(data);
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [existenciasQuery, valesQuery, pedidosQuery, sanAntonioQuery]
+  );
 
   useEffect(() => {
-    loadResumen();
-  }, []);
+    loadAll();
+  }, [loadAll]);
 
   useEffect(() => {
     if (activeTab !== 'resumen') {
@@ -207,23 +704,249 @@ export default function DashboardPage() {
     return new Intl.NumberFormat('es-MX').format(num);
   };
 
+  const valesResumen = useMemo(() => {
+    const totalPiezas = allVales.reduce((sum, v) => sum + (Number(v.cantidad) || 0), 0);
+    const porPersona = RESPONSABLES.filter((r) => r.id).map((r) => {
+      const value = allVales
+        .filter((v) => classifyResponsable(v.entregado_a) === r.id)
+        .reduce((sum, v) => sum + (Number(v.cantidad) || 0), 0);
+      return {
+        label: r.shortLabel,
+        value,
+        color: colorHexForResponsable(r.id),
+      };
+    });
+    return { totalPiezas, totalVales: allVales.length, porPersona };
+  }, [allVales]);
+
+  const pedidosResumen = useMemo(() => {
+    const total = pedidos.length;
+    const monto = pedidos.reduce((sum, p) => sum + (Number(p.saldo_pendiente) || 0), 0);
+    const porEstado = {};
+    pedidos.forEach((p) => {
+      const estado = p.estado || 'Sin estado';
+      porEstado[estado] = (porEstado[estado] || 0) + 1;
+    });
+    const estadosData = Object.entries(porEstado).map(([label, value], i) => ({
+      label,
+      value,
+      color: PALETTE[i % PALETTE.length],
+    }));
+    const porCliente = {};
+    pedidos.forEach((p) => {
+      const cliente = p.cliente || 'Sin cliente';
+      porCliente[cliente] = (porCliente[cliente] || 0) + (Number(p.saldo_pendiente) || 0);
+    });
+    const topClientes = Object.entries(porCliente)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([label, value], i) => ({
+        label,
+        value,
+        color: PALETTE[i % PALETTE.length],
+      }));
+    return { total, monto, porEstado: estadosData, topClientes };
+  }, [pedidos]);
+
+  const topExistencias = useMemo(() => {
+    return [...existencias]
+      .sort((a, b) => (Number(b.existencia_total) || 0) - (Number(a.existencia_total) || 0))
+      .slice(0, 8)
+      .map((item, i) => ({
+        label: `${item.codigo || ''} - ${item.descripcion || ''}`.trim().slice(0, 40),
+        value: Number(item.existencia_total) || 0,
+        color: PALETTE[i % PALETTE.length],
+      }));
+  }, [existencias]);
+
+  const totalExistencia = useMemo(
+    () => existencias.reduce((sum, item) => sum + (Number(item.existencia_total) || 0), 0),
+    [existencias]
+  );
+
   const renderResumen = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Pedidos abiertos" value={resumen?.pedidos_vivos} icon={ShoppingCart} color="bg-p3-blue" subtext="Pendientes o parcialmente facturados" />
-        <KpiCard label="Vales abiertos" value={resumen?.vales_abiertos} icon={ClipboardList} color="bg-orange-500" subtext="Con material vivo" />
-        <KpiCard label="Productos bajo mínimo" value={resumen?.productos_bajo_minimo} icon={AlertCircle} color="bg-red-500" />
-        <KpiCard label="Movimientos 90 días" value={resumen?.movimientos_90d} icon={Package} color="bg-green-600" />
+    <div className="space-y-8">
+      {/* KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <KpiCard
+          label="Pedidos abiertos"
+          value={resumen?.pedidos_vivos}
+          icon={ShoppingCart}
+          color="bg-p3-blue"
+          subtext="Pendientes o parciales"
+        />
+        <KpiCard
+          label="Monto pedidos abiertos"
+          value={formatCurrency(pedidosResumen.monto)}
+          icon={DollarSign}
+          color="bg-p3-red"
+          subtext="Saldo pendiente total"
+        />
+        <KpiCard
+          label="Vales abiertos"
+          value={resumen?.vales_abiertos}
+          icon={ClipboardList}
+          color="bg-orange-500"
+          subtext="Con material vivo"
+        />
+        <KpiCard
+          label="Piezas en vales"
+          value={formatNumber(valesResumen.totalPiezas)}
+          icon={Boxes}
+          color="bg-emerald-600"
+          subtext="Material apartado"
+        />
+        <KpiCard
+          label="Productos bajo mínimo"
+          value={resumen?.productos_bajo_minimo}
+          icon={AlertCircle}
+          color="bg-red-500"
+          subtext="Requieren atención"
+        />
+        <KpiCard
+          label="Movimientos 90 días"
+          value={resumen?.movimientos_90d}
+          icon={TrendingUp}
+          color="bg-p3-blue-light"
+          subtext="Actividad de inventario"
+        />
       </div>
-      <p className="text-sm text-gray-500">
-        Selecciona una pestaña superior para ver el detalle de cada área.
-      </p>
+
+      {/* Gráficas principales */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5">
+          <SectionHeader title="Material en vales por persona" icon={Users} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+            <PieChart
+              data={valesResumen.porPersona}
+              valueFormatter={formatNumber}
+              setTooltip={setTooltip}
+            />
+            <ChartLegend items={valesResumen.porPersona} valueFormatter={formatNumber} />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5">
+          <SectionHeader
+            title="Top productos en existencia"
+            count={topExistencias.length}
+            icon={Package}
+          />
+          <HorizontalBarChart
+            data={topExistencias}
+            valueFormatter={formatNumber}
+            setTooltip={setTooltip}
+          />
+          <ChartLegend items={topExistencias.slice(0, 5)} valueFormatter={formatNumber} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5">
+          <SectionHeader title="Pedidos abiertos por cliente" icon={BarChart3} />
+          <VerticalBarChart
+            data={pedidosResumen.topClientes}
+            valueFormatter={formatCurrency}
+            setTooltip={setTooltip}
+          />
+          <ChartLegend items={pedidosResumen.topClientes} valueFormatter={formatCurrency} />
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5">
+          <SectionHeader
+            title="Pedidos por estado"
+            count={pedidosResumen.total}
+            icon={ClipboardList}
+          />
+          {pedidosResumen.porEstado.length === 0 ? (
+            <EmptyState message="Sin pedidos por estado" icon={ShoppingCart} />
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-3 mt-2">
+                {pedidosResumen.porEstado.map((e, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100"
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: e.color }}
+                    />
+                    <span className="text-sm text-gray-700 font-medium">{e.label}</span>
+                    <span className="text-sm font-bold text-gray-900">{e.value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4">
+                <HorizontalBarChart
+                  data={pedidosResumen.porEstado}
+                  valueFormatter={(v) => v}
+                  setTooltip={setTooltip}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Gauge y resumen de vales */}
+      {totalExistencia > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 md:col-span-1">
+            <SectionHeader title="Material en vales vs existencia total" icon={Gauge} />
+            <GaugeChart
+              percent={(valesResumen.totalPiezas / totalExistencia) * 100}
+              setTooltip={setTooltip}
+            />
+            <p className="text-center text-xs text-gray-500 mt-2">
+              {formatNumber(valesResumen.totalPiezas)} de {formatNumber(totalExistencia)} piezas
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 md:col-span-2">
+            <SectionHeader title="Resumen de vales" icon={ClipboardList} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <KpiCard
+                label="Total de vales abiertos"
+                value={formatNumber(valesResumen.totalVales)}
+                icon={ClipboardList}
+                color="bg-p3-blue"
+                subtext="Folios activos"
+              />
+              <KpiCard
+                label="Total de piezas en vales"
+                value={formatNumber(valesResumen.totalPiezas)}
+                icon={Boxes}
+                color="bg-emerald-600"
+                subtext="Unidades apartadas"
+              />
+              {valesResumen.porPersona.map((p) => {
+                const r = RESPONSABLES.find((x) => x.shortLabel === p.label);
+                return (
+                  <KpiCard
+                    key={p.label}
+                    label={p.label}
+                    value={formatNumber(p.value)}
+                    icon={Users}
+                    color={r?.activeBg || 'bg-gray-500'}
+                    subtext="piezas"
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
   const renderExistencias = () => (
     <div className="space-y-4">
-      <SectionHeader title="Existencias por producto" count={existenciasFiltradas.length} icon={Package} />
+      <SectionHeader
+        title="Existencias por producto"
+        count={existenciasFiltradas.length}
+        icon={Package}
+      />
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -239,22 +962,32 @@ export default function DashboardPage() {
       <DataTable
         rows={existenciasFiltradas}
         columns={[
-          { key: 'codigo', label: 'Código' },
-          { key: 'descripcion', label: 'Descripción' },
+          { key: 'codigo', label: 'Código', sortable: true },
+          { key: 'descripcion', label: 'Descripción', sortable: true },
           {
-            key: 'existencia_en_vales',
+            key: 'material_en_vales',
             label: 'Existencia en vales',
-            format: (_, row) => formatNumber(row.material_en_vales),
+            sortable: true,
+            total: true,
+            accessor: (row) => Number(row.material_en_vales) || 0,
+            format: formatNumber,
           },
           {
-            key: 'existencia_en_almacen',
+            key: 'existencia_almacen',
             label: 'Existencia en almacén',
-            format: (_, row) => formatNumber((row.existencia_total ?? 0) - (row.material_en_vales ?? 0)),
+            sortable: true,
+            total: true,
+            accessor: (row) =>
+              Number((row.existencia_total || 0) - (row.material_en_vales || 0)),
+            format: formatNumber,
           },
           {
-            key: 'existencia_total_final',
+            key: 'existencia_total',
             label: 'Existencia total',
-            format: (_, row) => formatNumber(row.existencia_total),
+            sortable: true,
+            total: true,
+            accessor: (row) => Number(row.existencia_total) || 0,
+            format: formatNumber,
           },
         ]}
         emptyMessage="No se encontraron existencias"
@@ -269,18 +1002,15 @@ export default function DashboardPage() {
       <div className="flex flex-wrap gap-2">
         {RESPONSABLES.map((r) => {
           const isActive = valesResponsable === r.id;
-          const colorClasses = {
-            gray: isActive ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200',
-            blue: isActive ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50 border-blue-200',
-            emerald: isActive ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-600 hover:bg-emerald-50 border-emerald-200',
-            violet: isActive ? 'bg-violet-600 text-white' : 'bg-white text-violet-600 hover:bg-violet-50 border-violet-200',
-            amber: isActive ? 'bg-amber-600 text-white' : 'bg-white text-amber-600 hover:bg-amber-50 border-amber-200',
-          };
           return (
             <button
               key={r.id}
               onClick={() => setValesResponsable(r.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${colorClasses[r.color]}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                isActive
+                  ? `${r.activeBg} text-white`
+                  : `bg-white ${r.text} ${r.hover} ${r.border}`
+              }`}
             >
               <Users size={16} />
               {r.label}
@@ -291,14 +1021,21 @@ export default function DashboardPage() {
       <DataTable
         rows={vales}
         columns={[
-          { key: 'folio', label: 'Folio' },
-          { key: 'entregado_a', label: 'Entregado a' },
-          { key: 'fecha_salida', label: 'Fecha' },
-          { key: 'codigo', label: 'Código' },
-          { key: 'descripcion', label: 'Descripción' },
-          { key: 'cantidad', label: 'Cantidad', format: formatNumber },
-          { key: 'almacen_origen', label: 'Almacén' },
-          { key: 'estado', label: 'Estado' },
+          { key: 'folio', label: 'Folio', sortable: true },
+          { key: 'entregado_a', label: 'Entregado a', sortable: true },
+          { key: 'fecha_salida', label: 'Fecha', sortable: true },
+          { key: 'codigo', label: 'Código', sortable: true },
+          { key: 'descripcion', label: 'Descripción', sortable: true },
+          {
+            key: 'cantidad',
+            label: 'Cantidad',
+            sortable: true,
+            total: true,
+            accessor: (row) => Number(row.cantidad) || 0,
+            format: formatNumber,
+          },
+          { key: 'almacen_origen', label: 'Almacén', sortable: true },
+          { key: 'estado', label: 'Estado', sortable: true },
         ]}
         emptyMessage="No hay vales abiertos actualmente"
         emptyIcon={ClipboardList}
@@ -312,14 +1049,41 @@ export default function DashboardPage() {
       <DataTable
         rows={pedidos}
         columns={[
-          { key: 'folio', label: 'Folio' },
-          { key: 'cliente', label: 'Cliente' },
-          { key: 'fecha', label: 'Fecha' },
-          { key: 'importe_total', label: 'Importe', format: formatCurrency },
-          { key: 'total_facturado', label: 'Facturado', format: formatCurrency },
-          { key: 'saldo_pendiente', label: 'Saldo', format: formatCurrency },
-          { key: 'estado', label: 'Estado' },
-          { key: 'dias_pendiente', label: 'Días' },
+          { key: 'folio', label: 'Folio', sortable: true },
+          { key: 'cliente', label: 'Cliente', sortable: true },
+          { key: 'fecha', label: 'Fecha', sortable: true },
+          {
+            key: 'importe_total',
+            label: 'Importe',
+            sortable: true,
+            total: true,
+            accessor: (row) => Number(row.importe_total) || 0,
+            format: formatCurrency,
+          },
+          {
+            key: 'total_facturado',
+            label: 'Facturado',
+            sortable: true,
+            total: true,
+            accessor: (row) => Number(row.total_facturado) || 0,
+            format: formatCurrency,
+          },
+          {
+            key: 'saldo_pendiente',
+            label: 'Saldo',
+            sortable: true,
+            total: true,
+            accessor: (row) => Number(row.saldo_pendiente) || 0,
+            format: formatCurrency,
+          },
+          { key: 'estado', label: 'Estado', sortable: true },
+          {
+            key: 'dias_pendiente',
+            label: 'Días',
+            sortable: true,
+            accessor: (row) => Number(row.dias_pendiente) || 0,
+            format: formatNumber,
+          },
         ]}
         emptyMessage="No hay pedidos vivos pendientes"
         emptyIcon={ShoppingCart}
@@ -340,33 +1104,76 @@ export default function DashboardPage() {
         <DataTable
           rows={sanAntonio?.cabeceras || []}
           columns={[
-            { key: 'folio', label: 'Folio' },
-            { key: 'nopedido', label: 'No. pedido' },
-            { key: 'fechaoc', label: 'Fecha OC' },
-            { key: 'moneda', label: 'Moneda' },
-            { key: 'condicionespago', label: 'Condiciones pago' },
-            { key: 'totaloc', label: 'Total' },
-            { key: 'estadooc', label: 'Estado' },
-            { key: 'cargadaportal', label: 'Cargada portal' },
+            { key: 'folio', label: 'Folio', sortable: true },
+            { key: 'nopedido', label: 'No. pedido', sortable: true },
+            { key: 'fechaoc', label: 'Fecha OC', sortable: true },
+            { key: 'moneda', label: 'Moneda', sortable: true },
+            { key: 'condicionespago', label: 'Condiciones pago', sortable: true },
+            {
+              key: 'totaloc',
+              label: 'Total',
+              sortable: true,
+              accessor: (row) => Number(row.totaloc) || 0,
+              format: formatCurrency,
+            },
+            { key: 'estadooc', label: 'Estado', sortable: true },
+            { key: 'cargadaportal', label: 'Cargada portal', sortable: true },
           ]}
           emptyMessage="No se encontraron órdenes de San Antonio"
           emptyIcon={FileText}
         />
       </section>
       <section>
-        <SectionHeader title="Partidas visibles" count={(sanAntonio?.partidas || []).length} icon={Filter} />
+        <SectionHeader
+          title="Partidas visibles"
+          count={(sanAntonio?.partidas || []).length}
+          icon={Filter}
+        />
         <DataTable
           rows={sanAntonio?.partidas || []}
           columns={[
-            { key: 'folio', label: 'Folio' },
-            { key: 'posicion', label: 'Pos' },
-            { key: 'codigo', label: 'Código' },
-            { key: 'descripcion', label: 'Descripción' },
-            { key: 'cantidadpedido', label: 'Cantidad', format: formatNumber },
-            { key: 'preciounitario', label: 'Precio unit', format: formatCurrency },
-            { key: 'entregada', label: 'Entregada', format: formatNumber },
-            { key: 'saldo', label: 'Saldo', format: formatNumber },
-            { key: 'estadolinea', label: 'Estado' },
+            { key: 'folio', label: 'Folio', sortable: true },
+            {
+              key: 'posicion',
+              label: 'Pos',
+              sortable: true,
+              accessor: (row) => Number(row.posicion) || 0,
+              format: formatNumber,
+            },
+            { key: 'codigo', label: 'Código', sortable: true },
+            { key: 'descripcion', label: 'Descripción', sortable: true },
+            {
+              key: 'cantidadpedido',
+              label: 'Cantidad',
+              sortable: true,
+              total: true,
+              accessor: (row) => Number(row.cantidadpedido) || 0,
+              format: formatNumber,
+            },
+            {
+              key: 'preciounitario',
+              label: 'Precio unit',
+              sortable: true,
+              accessor: (row) => Number(row.preciounitario) || 0,
+              format: formatCurrency,
+            },
+            {
+              key: 'entregada',
+              label: 'Entregada',
+              sortable: true,
+              total: true,
+              accessor: (row) => Number(row.entregada) || 0,
+              format: formatNumber,
+            },
+            {
+              key: 'saldo',
+              label: 'Saldo',
+              sortable: true,
+              total: true,
+              accessor: (row) => Number(row.saldo) || 0,
+              format: formatNumber,
+            },
+            { key: 'estadolinea', label: 'Estado', sortable: true },
           ]}
           emptyMessage="Sin partidas"
           emptyIcon={Filter}
@@ -385,6 +1192,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50/70">
+      <Tooltip tooltip={tooltip} />
       <div className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -393,13 +1201,17 @@ export default function DashboardPage() {
                 <Package size={20} />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900 tracking-tight">Dashboard Operativo 3P</h1>
-                <p className="text-xs text-gray-500">{user?.nombre} · {user?.rol}</p>
+                <h1 className="text-lg font-bold text-gray-900 tracking-tight">
+                  Dashboard Operativo 3P
+                </h1>
+                <p className="text-xs text-gray-500">
+                  {user?.nombre} · {user?.rol}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => activeTab === 'resumen' ? loadResumen() : loadTabData(activeTab)}
+                onClick={() => (activeTab === 'resumen' ? loadAll() : loadTabData(activeTab))}
                 className="p-2 text-gray-500 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
                 title="Recargar"
               >
