@@ -1,3 +1,152 @@
+# Reporte de Sesión - 8 de agosto de 2026
+## Proyecto: 3P S.A. de C.V. Website (https://3psadecv.com)
+
+---
+
+## 0. Resumen de lo realizado hoy
+
+### a) Configuración del portal operativo CJ_OS / Dashboard 3P en producción
+Se avanzó en la puesta en marcha del área privada `/dashboard` para usuarios autorizados de 3P en el sitio web real.
+
+**Correcciones técnicas:**
+- Se corrigió el `tokenUrl` de OAuth2 en `api/app/auth/dependencies.py` (`/auth/login` → `/api/auth/login`).
+- Se actualizó `bcrypt` de `4.1.2` a `4.0.1` en `api/requirements.txt` por incompatibilidad con `passlib==1.7.4`.
+
+**Archivos y scripts nuevos:**
+- `api/tools/prepare-backend.ps1`: Script automatizado que lee credenciales de PostgreSQL desde `C:\Projects\CJ_Assistant\.env`, genera JWT secret, configura `api/.env`, verifica dependencias y prueba conexión a PostgreSQL.
+
+**Configuración completada:**
+- Dominio `3psadecv.com` migrado a Cloudflare.
+- Cloudflare Tunnel `3p-website-api` configurado para `api.3psadecv.com`.
+- Backend `api/.env` configurado con credenciales de PostgreSQL heredadas de CJ_Assistant.
+- Usuario administrador del portal creado:
+  - Email: `trespsadecv@hotmail.com`
+  - Nombre: `Administrador 3P`
+  - Contraseña: `Lumina38`
+- Variable `VITE_API_BASE_URL=https://api.3psadecv.com` configurada en GitHub.
+
+### b) Estado de servicios verificado
+- PostgreSQL (`cj_assistant`) corriendo en Docker en `localhost:5432`.
+- 150 tablas/vistas públicas detectadas.
+- Todas las tablas/vistas requeridas por el portal existen:
+  - `sae_existencias`, `sae_productos`, `sae_almacenes`, `sae_movimientos_inventario`
+  - `vales`, `vale_lineas`
+  - `v_pedidos_vivos`, `v_facturas_cobranza`, `v_seguimiento_documental`
+- Excel de San Antonio encontrado en `C:/Users/Ventas-3P/Desktop/SAN ANTONIO/SAN_ANTONIO_SEGUIMIENTO.xlsx`.
+
+---
+
+## 1. Estado actual del portal
+
+| Componente | Estado |
+|------------|--------|
+| Dominio en Cloudflare | ✅ Activo |
+| Cloudflare Tunnel | ✅ Configurado (ID: `7fb065ab-e870-4a66-882e-9cb197b17869`) |
+| Backend `.env` | ✅ Configurado |
+| Usuario admin | ✅ Creado |
+| Variable GitHub `VITE_API_BASE_URL` | ✅ Configurada |
+| Backend corriendo | ⏳ Pendiente de iniciar |
+| Túnel corriendo | ⏳ Pendiente de iniciar |
+| Frontend compilado con API prod | ⏳ Pendiente |
+| Login en `https://3psadecv.com/login` | ⏳ Pendiente de probar |
+
+---
+
+## 2. Problema pendiente: Error 1033 de Cloudflare
+
+Al intentar acceder a `https://api.3psadecv.com/health` apareció:
+
+```
+Error 1033 Ray ID: a27a5081b906a424
+Error del túnel de Cloudflare
+Cloudflare no puede resolverlo actualmente.
+```
+
+### Causa probable
+El túnel está configurado en Cloudflare pero el proceso `cloudflared` no está corriendo o no se pudo conectar. También es posible que las ventanas de PowerShell que abrió `start-production.ps1` se hayan cerrado.
+
+### Qué revisar el lunes
+1. Verificar si los procesos están corriendo:
+   ```powershell
+   Get-Process | Where-Object { $_.Name -like "*uvicorn*" -or $_.Name -like "*cloudflared*" }
+   ```
+2. Si no están corriendo, volver a ejecutar:
+   ```powershell
+   cd "G:\Mi unidad\pagina web\3p-website\api\tools"
+   .\start-production.ps1
+   ```
+3. Revisar las ventanas de PowerShell que se abren para ver posibles errores.
+4. Verificar en Cloudflare dashboard: **Zero Trust > Networks > Tunnels** que el túnel `3p-website-api` esté **Healthy**.
+
+---
+
+## 3. Pasos pendientes para terminar
+
+### Lunes 11 de agosto de 2026
+
+1. **Iniciar backend + túnel**
+   ```powershell
+   cd "G:\Mi unidad\pagina web\3p-website\api\tools"
+   .\start-production.ps1
+   ```
+
+2. **Probar API pública**
+   - Abrir en navegador: `https://api.3psadecv.com/health`
+   - Debe devolver: `{"status":"ok"}`
+
+3. **Compilar y desplegar frontend**
+   ```powershell
+   cd "G:\Mi unidad\pagina web\3p-website"
+   npm run build
+   npm run deploy
+   ```
+
+4. **Probar login en producción**
+   - Ir a `https://3psadecv.com/login`
+   - Usuario: `trespsadecv@hotmail.com`
+   - Contraseña: `Lumina38`
+   - Verificar que redirija a `/dashboard` y carguen los datos.
+
+---
+
+## 4. Archivos modificados en esta sesión
+
+| Archivo | Cambio |
+|---------|--------|
+| `api/app/auth/dependencies.py` | Corrección de `tokenUrl` |
+| `api/requirements.txt` | `bcrypt==4.1.2` → `bcrypt==4.0.1` |
+| `api/tools/prepare-backend.ps1` | Nuevo script de preparación automatizada |
+| `api/.env` | Creado automáticamente con credenciales de producción |
+| `api/data/users.db` | Creada con usuario administrador |
+
+---
+
+## 5. Información de conexión del portal
+
+| Elemento | Valor |
+|----------|-------|
+| URL del sitio | `https://3psadecv.com` |
+| URL del API | `https://api.3psadecv.com` |
+| Login | `https://3psadecv.com/login` |
+| Dashboard | `https://3psadecv.com/dashboard` |
+| Usuario | `trespsadecv@hotmail.com` |
+| Contraseña | `Lumina38` |
+
+---
+
+## 6. Notas importantes
+
+- **NO cerrar las ventanas de PowerShell** que abre `start-production.ps1`. Si se cierran, el portal deja de funcionar.
+- El backend corre en `http://localhost:8000` y el túnel lo expone como `https://api.3psadecv.com`.
+- La base de datos de usuarios del portal es SQLite: `api/data/users.db`.
+- El backend lee PostgreSQL (`cj_assistant`) y el Excel de San Antonio en **solo lectura**.
+
+---
+
+**Próxima sesión:** Lunes 11 de agosto de 2026. Resolver Error 1033, iniciar backend + túnel, desplegar frontend y probar login en producción.
+
+---
+
 # Reporte de Sesión - 7 de agosto de 2026
 ## Proyecto: 3P S.A. de C.V. Website (https://3psadecv.com)
 
@@ -153,7 +302,7 @@ Se agregó un `README.md` dentro de `src/_archive/` indicando qué archivos est�
 
 ---
 
-## 4. Carpetas ignoradas por Git
+## 6. Carpetas ignoradas por Git
 
 Se actualizó `.gitignore` para que no aparezcan como "sin seguimiento" las carpetas de materiales de trabajo y assets generados:
 
@@ -164,7 +313,7 @@ Esto limpia el panel de Source Control de VS Code y evita subir archivos que no 
 
 ---
 
-## 5. Qué falta probar / verificar
+## 7. Qué falta probar / verificar
 
 ### Prioridad Alta
 1. **Probar el formulario de reseñas en vivo**
@@ -181,7 +330,7 @@ Esto limpia el panel de Source Control de VS Code y evita subir archivos que no 
 
 ---
 
-## 6. Posibles mejoras para la siguiente sesión
+## 8. Posibles mejoras para la siguiente sesión
 
 - **Página de reseñas publicadas:** guardar reseñas aprobadas en Google Sheets/Airtable y mostrarlas en el sitio.
 - **reCAPTCHA v3:** subir de nivel la protección anti-spam si llega mucho spam.
@@ -191,7 +340,7 @@ Esto limpia el panel de Source Control de VS Code y evita subir archivos que no 
 
 ---
 
-## 7. Estructura de trabajo
+## 9. Estructura de trabajo
 
 **Carpeta de trabajo actual:** `G:\Mi unidad\pagina web\3p-website`
 
@@ -210,7 +359,7 @@ El deploy a GitHub Pages ocurre automáticamente vía `.github/workflows/deploy.
 
 ---
 
-## 8. Contactos / Referencias
+## 10. Contactos / Referencias
 
 - **Repositorio:** `https://github.com/Anibru300/website-3p.git`
 - **Rama de código fuente:** `master`
@@ -221,4 +370,4 @@ El deploy a GitHub Pages ocurre automáticamente vía `.github/workflows/deploy.
 
 ---
 
-**Próxima sesión:** Probar el envío de reseñas en vivo y evaluar si se necesita reCAPTCHA u otra mejora.
+**Próxima sesión:** Ver reporte superior (8 de agosto de 2026).

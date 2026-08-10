@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 from app.auth.utils import decode_access_token
 from app.database import users_connection
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
