@@ -21,9 +21,12 @@ def pedidos_vivos(
             total_facturado,
             saldo_pendiente,
             estado_facturacion AS estado,
-            dias_pendiente
+            (CURRENT_DATE - fecha_doc) AS dias_pendiente
         FROM v_pedidos_vivos
         WHERE saldo_pendiente > 0.01
+          AND estado_facturacion IN ('PENDIENTE', 'PARCIAL')
+        -- La vista no tiene un estado 'abierto'; los valores reales son PENDIENTE, PARCIAL y FACTURADO.
+        -- Solo consideramos pedidos con saldo pendiente y no totalmente facturados.
     """
     params = {}
     if busqueda:
@@ -51,10 +54,10 @@ def facturas_cobranza(
 ):
     sql = """
         SELECT
-            folio,
+            cve_doc AS folio,
             cliente,
             fecha_doc,
-            total,
+            importe_total AS total,
             estado_cobranza
         FROM v_facturas_cobranza
         WHERE estado_cobranza IN ('Pendiente', 'Vencida')

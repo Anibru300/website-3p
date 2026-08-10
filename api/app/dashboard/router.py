@@ -17,7 +17,11 @@ def dashboard_resumen(user: dict = Depends(get_current_user)):
     }
 
     queries = {
-        "pedidos_vivos": "SELECT COUNT(*) FROM v_pedidos_vivos WHERE saldo_pendiente > 0.01",
+        "pedidos_vivos": """
+            SELECT COUNT(*) FROM v_pedidos_vivos
+            WHERE saldo_pendiente > 0.01
+              AND estado_facturacion IN ('PENDIENTE', 'PARCIAL')
+        """,
         "vales_abiertos": """
             SELECT COUNT(*) FROM vales v
             JOIN vale_lineas vl ON v.id = vl.vale_id

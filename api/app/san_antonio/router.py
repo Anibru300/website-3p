@@ -10,10 +10,18 @@ from app.config import get_settings
 router = APIRouter(prefix="/api/san-antonio", tags=["san-antonio"])
 
 
+def _normalize_key(key):
+    if not key:
+        return ""
+    # Convertir a minúsculas, quitar espacios y caracteres especiales
+    return str(key).strip().lower().replace(" ", "").replace("_", "")
+
+
 def _normalize_row(row):
     return {
-        k: (v if v is not None else "")
+        _normalize_key(k): (v if v is not None else "")
         for k, v in row.items()
+        if k
     }
 
 
@@ -63,16 +71,20 @@ def ordenes_san_antonio(
     finally:
         wb.close()
 
+    # Normalizar claves a minúsculas y sin espacios/guiones bajos para el frontend
+    cabeceras = [_normalize_row(c) for c in cabeceras]
+    partidas = [_normalize_row(p) for p in partidas]
+
     busqueda_lower = busqueda.lower()
     if busqueda_lower:
         cabeceras = [
             c for c in cabeceras
             if any(busqueda_lower in str(v).lower() for v in c.values() if v is not None)
         ]
-        folios_filtrados = {str(c.get("Folio", "")).strip() for c in cabeceras}
+        folios_filtrados = {str(c.get("folio", "")).strip() for c in cabeceras}
         partidas = [
             p for p in partidas
-            if str(p.get("Folio", "")).strip() in folios_filtrados
+            if str(p.get("folio", "")).strip() in folios_filtrados
         ]
 
     return {
