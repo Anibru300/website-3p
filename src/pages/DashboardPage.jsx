@@ -947,6 +947,22 @@ export default function DashboardPage() {
       }));
   }, [existencias]);
 
+  const mejoresClientes = useMemo(() => {
+    const porCliente = {};
+    pedidos.forEach((p) => {
+      const cliente = p.cliente || 'Sin cliente';
+      porCliente[cliente] = (porCliente[cliente] || 0) + (Number(p.saldo_pendiente) || 0);
+    });
+    return Object.entries(porCliente)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([label, value], i) => ({
+        label,
+        value,
+        color: PALETTE[i % PALETTE.length],
+      }));
+  }, [pedidos]);
+
   const subalmacenesData = useMemo(() => {
     return [...subalmacenes]
       .sort((a, b) => (Number(b.valor_total) || 0) - (Number(a.valor_total) || 0))
@@ -967,11 +983,11 @@ export default function DashboardPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
         <KpiCard
-          label="Pedidos"
+          label="Pedidos abiertos"
           value={resumen?.pedidos_vivos}
           icon={ShoppingCart}
           color="bg-p3-blue"
-          subtext="Pendientes o parciales"
+          subtext="Pendientes por facturar"
         />
         <KpiCard
           label="Monto pendiente"
@@ -1041,13 +1057,17 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-          <SectionHeader title="Pedidos abiertos por cliente" icon={BarChart3} />
-          <VerticalBarChart
-            data={pedidosResumen.topClientes}
-            valueFormatter={formatCurrencyCompact}
+          <SectionHeader
+            title="Mejores clientes"
+            count={mejoresClientes.length}
+            icon={Users}
+          />
+          <HorizontalBarChart
+            data={mejoresClientes}
+            valueFormatter={formatCurrency}
             setTooltip={setTooltip}
           />
-          <ChartLegend items={pedidosResumen.topClientes} valueFormatter={formatCurrency} />
+          <ChartLegend items={mejoresClientes.slice(0, 5)} valueFormatter={formatCurrency} />
         </div>
 
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
