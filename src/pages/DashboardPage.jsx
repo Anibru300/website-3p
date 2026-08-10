@@ -191,7 +191,7 @@ function PieChart({ data, valueFormatter = (v) => v, setTooltip }) {
   });
 
   return (
-    <svg viewBox="0 0 100 100" className="w-full h-auto min-h-[16rem] max-h-72 mx-auto">
+    <svg viewBox="0 0 100 100" className="w-full h-auto min-h-[18rem] max-h-80 mx-auto">
       {slices.map((slice, idx) => (
         <path
           key={idx}
@@ -234,9 +234,9 @@ function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
 
   const values = data.map((d) => Number(d.value) || 0);
   const max = Math.max(...values, 1);
-  const labelW = 180;
+  const labelW = 220;
   const plotW = 320;
-  const barH = 26;
+  const barH = 28;
   const gap = 16;
   const height = data.length * (barH + gap) + gap;
   const width = labelW + plotW + 80;
@@ -246,14 +246,14 @@ function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
       {data.map((d, i) => {
         const y = gap + i * (barH + gap);
         const w = ((Number(d.value) || 0) / max) * plotW;
-        const label = d.label.length > 30 ? `${d.label.slice(0, 30)}...` : d.label;
+        const label = d.label.length > 28 ? `${d.label.slice(0, 28)}...` : d.label;
         return (
           <g key={i}>
             <text
               x={labelW - 10}
               y={y + barH / 2 + 4}
               textAnchor="end"
-              className="text-xs fill-gray-600"
+              className="text-sm fill-gray-600"
             >
               {label}
             </text>
@@ -298,13 +298,13 @@ function VerticalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
 
   const values = data.map((d) => Number(d.value) || 0);
   const max = Math.max(...values, 1);
-  const margin = { top: 20, right: 20, bottom: 60, left: 50 };
+  const margin = { top: 20, right: 20, bottom: 100, left: 50 };
   const plotW = 320;
   const plotH = 180;
   const width = plotW + margin.left + margin.right;
   const height = plotH + margin.top + margin.bottom;
   const step = plotW / data.length;
-  const barW = step * 0.55;
+  const barW = step * 0.5;
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-h-[18rem] max-h-80">
@@ -354,8 +354,9 @@ function VerticalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
             <text
               x={x + barW / 2}
               y={margin.top + plotH + 18}
-              textAnchor="middle"
-              className="text-[10px] fill-gray-600"
+              textAnchor="start"
+              transform={`rotate(45, ${x + barW / 2}, ${margin.top + plotH + 18})`}
+              className="text-xs fill-gray-600"
             >
               {label}
             </text>
@@ -420,15 +421,15 @@ function GaugeChart({ percent, setTooltip }) {
 
 function ChartLegend({ items, valueFormatter = (v) => v }) {
   return (
-    <div className="flex flex-wrap gap-3 justify-center mt-4">
+    <div className="flex flex-wrap gap-3 justify-center mt-4 max-w-full">
       {items.map((item) => (
         <div
           key={item.label}
-          className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100"
+          className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100 max-w-full"
         >
           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-          <span className="font-medium">{item.label}</span>
-          <span className="text-gray-900 font-semibold">{valueFormatter(item.value)}</span>
+          <span className="font-medium break-words max-w-[12rem]">{item.label}</span>
+          <span className="text-gray-900 font-semibold shrink-0">{valueFormatter(item.value)}</span>
         </div>
       ))}
     </div>
@@ -532,8 +533,11 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
                 return (
                   <td
                     key={col.key}
+                    title={col.wrap ? String(raw ?? '') : undefined}
                     className={`px-6 py-3.5 text-gray-700 align-top ${
-                      col.wrap ? '' : 'whitespace-nowrap'
+                      col.wrap
+                        ? 'break-words max-w-xs'
+                        : 'whitespace-nowrap'
                     }`}
                   >
                     {display}
@@ -571,14 +575,16 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
 function KpiCard({ label, value, icon, color = 'bg-p3-blue', subtext = '' }) {
   const IconComponent = icon;
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:shadow-lg transition-shadow">
+    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:shadow-lg transition-shadow min-h-[120px] h-full">
       <div
         className={`${color} text-white w-14 h-14 rounded-xl flex items-center justify-center shadow-sm shrink-0`}
       >
         <IconComponent size={28} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-500 font-medium truncate">{label}</p>
+        <p className="text-sm text-gray-500 font-medium leading-tight line-clamp-2 min-h-[2.5em]">
+          {label}
+        </p>
         <p className="text-3xl font-bold text-gray-900">{value ?? 0}</p>
         {subtext && <p className="text-xs text-gray-400 mt-1">{subtext}</p>}
       </div>
@@ -715,6 +721,28 @@ export default function DashboardPage() {
     return new Intl.NumberFormat('es-MX').format(num);
   };
 
+  const formatCurrencyCompact = (value) => {
+    if (value == null) return '—';
+    const num = Number(value);
+    if (Number.isNaN(num)) return value;
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(num);
+  };
+
+  const formatCurrencySmart = (value) => {
+    if (value == null) return '—';
+    const num = Number(value);
+    if (Number.isNaN(num)) return value;
+    if (Math.abs(num) >= 1_000_000) {
+      return formatCurrencyCompact(num);
+    }
+    return formatCurrency(num);
+  };
+
   const valesResumen = useMemo(() => {
     const totalPiezas = allVales.reduce((sum, v) => sum + (Number(v.cantidad) || 0), 0);
     const porPersona = RESPONSABLES.filter((r) => r.id).map((r) => {
@@ -764,7 +792,7 @@ export default function DashboardPage() {
       .sort((a, b) => (Number(b.existencia_total) || 0) - (Number(a.existencia_total) || 0))
       .slice(0, 8)
       .map((item, i) => ({
-        label: `${item.codigo || ''} - ${item.descripcion || ''}`.trim().slice(0, 40),
+        label: `${item.codigo || ''} - ${item.descripcion || ''}`.trim(),
         value: Number(item.existencia_total) || 0,
         color: PALETTE[i % PALETTE.length],
       }));
@@ -790,15 +818,15 @@ export default function DashboardPage() {
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <KpiCard
-          label="Pedidos abiertos"
+          label="Pedidos"
           value={resumen?.pedidos_vivos}
           icon={ShoppingCart}
           color="bg-p3-blue"
           subtext="Pendientes o parciales"
         />
         <KpiCard
-          label="Monto pedidos abiertos"
-          value={formatCurrency(pedidosResumen.monto)}
+          label="Monto pendiente"
+          value={formatCurrencySmart(pedidosResumen.monto)}
           icon={DollarSign}
           color="bg-p3-red"
           subtext="Saldo pendiente total"
@@ -818,14 +846,14 @@ export default function DashboardPage() {
           subtext="Material apartado"
         />
         <KpiCard
-          label="Productos bajo mínimo"
+          label="Bajo mínimo"
           value={resumen?.productos_bajo_minimo}
           icon={AlertCircle}
           color="bg-red-500"
           subtext="Requieren atención"
         />
         <KpiCard
-          label="Movimientos 90 días"
+          label="Mov. 90 días"
           value={resumen?.movimientos_90d}
           icon={TrendingUp}
           color="bg-p3-blue-light"
@@ -834,10 +862,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Gráficas principales */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
           <SectionHeader title="Material en vales por persona" icon={Users} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             <PieChart
               data={valesResumen.porPersona}
               valueFormatter={formatNumber}
@@ -862,12 +890,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
           <SectionHeader title="Pedidos abiertos por cliente" icon={BarChart3} />
           <VerticalBarChart
             data={pedidosResumen.topClientes}
-            valueFormatter={formatCurrency}
+            valueFormatter={formatCurrencyCompact}
             setTooltip={setTooltip}
           />
           <ChartLegend items={pedidosResumen.topClientes} valueFormatter={formatCurrency} />
@@ -925,7 +953,7 @@ export default function DashboardPage() {
           */}
           Valor actual del inventario distribuido por sub-almacén.
         </p>
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-10">
           <div className="xl:col-span-2">
             <HorizontalBarChart
               data={subalmacenesData}
@@ -964,7 +992,7 @@ export default function DashboardPage() {
 
       {/* Gauge y resumen de vales */}
       {totalExistencia > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 md:col-span-1">
             <SectionHeader title="Material en vales vs existencia total" icon={Gauge} />
             <GaugeChart
@@ -1036,7 +1064,7 @@ export default function DashboardPage() {
         rows={existenciasFiltradas}
         columns={[
           { key: 'codigo', label: 'Código', sortable: true },
-          { key: 'descripcion', label: 'Descripción', sortable: true },
+          { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
           {
             key: 'material_en_vales',
             label: 'Existencia en vales',
@@ -1095,10 +1123,10 @@ export default function DashboardPage() {
         rows={vales}
         columns={[
           { key: 'folio', label: 'Folio', sortable: true },
-          { key: 'entregado_a', label: 'Entregado a', sortable: true },
+          { key: 'entregado_a', label: 'Entregado a', sortable: true, wrap: true },
           { key: 'fecha_salida', label: 'Fecha', sortable: true },
           { key: 'codigo', label: 'Código', sortable: true },
-          { key: 'descripcion', label: 'Descripción', sortable: true },
+          { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
           {
             key: 'cantidad',
             label: 'Cantidad',
@@ -1107,7 +1135,7 @@ export default function DashboardPage() {
             accessor: (row) => Number(row.cantidad) || 0,
             format: formatNumber,
           },
-          { key: 'almacen_origen', label: 'Almacén', sortable: true },
+          { key: 'almacen_origen', label: 'Almacén', sortable: true, wrap: true },
           { key: 'estado', label: 'Estado', sortable: true },
         ]}
         emptyMessage="No hay vales abiertos actualmente"
@@ -1123,7 +1151,7 @@ export default function DashboardPage() {
         rows={pedidos}
         columns={[
           { key: 'folio', label: 'Folio', sortable: true },
-          { key: 'cliente', label: 'Cliente', sortable: true },
+          { key: 'cliente', label: 'Cliente', sortable: true, wrap: true },
           { key: 'fecha', label: 'Fecha', sortable: true },
           {
             key: 'importe_total',
@@ -1181,7 +1209,7 @@ export default function DashboardPage() {
             { key: 'nopedido', label: 'No. pedido', sortable: true },
             { key: 'fechaoc', label: 'Fecha OC', sortable: true },
             { key: 'moneda', label: 'Moneda', sortable: true },
-            { key: 'condicionespago', label: 'Condiciones pago', sortable: true },
+            { key: 'condicionespago', label: 'Condiciones pago', sortable: true, wrap: true },
             {
               key: 'totaloc',
               label: 'Total',
@@ -1214,7 +1242,7 @@ export default function DashboardPage() {
               format: formatNumber,
             },
             { key: 'codigo', label: 'Código', sortable: true },
-            { key: 'descripcion', label: 'Descripción', sortable: true },
+            { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
             {
               key: 'cantidadpedido',
               label: 'Cantidad',
