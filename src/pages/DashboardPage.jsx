@@ -501,7 +501,7 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
               <th
                 key={col.key}
                 onClick={() => handleHeaderClick(col)}
-                className={`px-6 py-4 text-left select-none ${
+                className={`px-4 py-3 text-left select-none ${
                   col.sortable
                     ? 'cursor-pointer hover:bg-gray-100 hover:text-p3-red transition-colors'
                     : ''
@@ -547,9 +547,9 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
                   <td
                     key={col.key}
                     title={col.wrap ? String(raw ?? '') : undefined}
-                    className={`px-6 py-3.5 text-gray-700 align-top ${
+                    className={`px-4 py-2.5 text-gray-700 align-top ${
                       col.wrap
-                        ? 'break-words max-w-md'
+                        ? 'break-words max-w-lg'
                         : 'whitespace-nowrap'
                     }`}
                   >
@@ -566,12 +566,12 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
               {columns.map((col, idx) => {
                 const total = totals[idx];
                 if (total === null) {
-                  return <td key={col.key} className="px-6 py-3.5"></td>;
+                  return <td key={col.key} className="px-4 py-2.5"></td>;
                 }
                 return (
                   <td
                     key={col.key}
-                    className={`px-6 py-3.5 ${col.wrap ? 'break-words max-w-md' : 'whitespace-nowrap'}`}
+                    className={`px-4 py-2.5 ${col.wrap ? 'break-words max-w-lg' : 'whitespace-nowrap'}`}
                   >
                     {idx === firstTotalIdx && (
                       <span className="text-gray-500 text-xs uppercase mr-2">Total</span>
@@ -773,22 +773,21 @@ export default function DashboardPage() {
   const [fotoLightboxOpen, setFotoLightboxOpen] = useState(false);
 
   // Filters
-  const [existenciasQuery] = useState('limit=500');
+  const [existenciasQuery, setExistenciasQuery] = useState('limit=500');
   const [valesQuery, setValesQuery] = useState('limit=500');
   const [valesResponsable, setValesResponsable] = useState('');
   const [pedidosQuery] = useState('limit=500');
   const [sanAntonioQuery] = useState('limit=500');
   const [existenciasSearch, setExistenciasSearch] = useState('');
 
-  const existenciasFiltradas = useMemo(() => {
-    const term = existenciasSearch.trim().toLowerCase();
-    if (!term) return existencias;
-    return existencias.filter(
-      (item) =>
-        (item.codigo?.toLowerCase() || '').includes(term) ||
-        (item.descripcion?.toLowerCase() || '').includes(term)
-    );
-  }, [existencias, existenciasSearch]);
+  // Búsqueda server-side en existencias con debounce
+  useEffect(() => {
+    const params = new URLSearchParams({ limit: '500' });
+    const term = existenciasSearch.trim();
+    if (term) params.set('busqueda', term);
+    const t = setTimeout(() => setExistenciasQuery(params.toString()), 400);
+    return () => clearTimeout(t);
+  }, [existenciasSearch]);
 
   useEffect(() => {
     const params = new URLSearchParams({ limit: '500' });
@@ -1194,11 +1193,11 @@ export default function DashboardPage() {
   );
 
   const renderExistencias = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
+      <div className="min-w-0 space-y-6">
         <SectionHeader
           title="Existencias por producto"
-          count={existenciasFiltradas.length}
+          count={existencias.length}
           icon={Package}
         />
         <div className="flex flex-col sm:flex-row gap-3">
@@ -1214,7 +1213,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <DataTable
-          rows={existenciasFiltradas}
+          rows={existencias}
           onRowClick={(row) => setExistenciasSelected(row)}
           selectedRow={existenciasSelected}
           columns={[
@@ -1370,7 +1369,7 @@ export default function DashboardPage() {
 
   const renderPedidos = () => (
     <div className="space-y-6">
-      <SectionHeader title="Pedidos vivos" count={pedidos.length} icon={ShoppingCart} />
+      <SectionHeader title="Pedidos abiertos" count={pedidos.length} icon={ShoppingCart} />
       <DataTable
         rows={pedidos}
         columns={[
@@ -1410,7 +1409,7 @@ export default function DashboardPage() {
             format: formatNumber,
           },
         ]}
-        emptyMessage="No hay pedidos vivos pendientes"
+        emptyMessage="No hay pedidos abiertos pendientes"
         emptyIcon={ShoppingCart}
       />
     </div>
@@ -1519,7 +1518,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50/70">
       <Tooltip tooltip={tooltip} />
       <div className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <div className="bg-p3-red text-white p-2 rounded-lg shadow-sm">
@@ -1554,7 +1553,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         <div className="flex overflow-x-auto gap-2 mb-6 pb-1">
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -1589,7 +1588,7 @@ export default function DashboardPage() {
             <p className="mt-3 text-sm text-gray-500">Cargando información...</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:p-6">
             {tabContent[activeTab]}
           </div>
         )}

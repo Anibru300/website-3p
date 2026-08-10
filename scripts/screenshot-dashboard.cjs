@@ -19,12 +19,29 @@ const { chromium } = require('playwright');
     // Esperar redirección al dashboard
     await page.waitForURL('**/dashboard', { timeout: 15000 });
 
-    // Esperar que carguen los datos (esperar a que desaparezca el spinner o aparezca contenido)
-    await page.waitForTimeout(5000);
+    // Esperar que carguen los datos
+    await page.waitForTimeout(3000);
 
-    // Tomar captura completa
+    // Tomar captura del resumen
     await page.screenshot({ path: 'dashboard-screenshot.png', fullPage: true });
     console.log('Captura guardada en dashboard-screenshot.png');
+
+    // Hacer clic en la pestaña Existencias
+    const existenciasTab = await page.locator('button:has-text("Existencias")').first();
+    if (await existenciasTab.count() > 0) {
+      await existenciasTab.click();
+      await page.waitForTimeout(4000);
+
+      // Hacer clic en la primera fila de la tabla para seleccionar un producto
+      const firstRow = await page.locator('table tbody tr').first();
+      if (await firstRow.count() > 0) {
+        await firstRow.click();
+        await page.waitForTimeout(2000);
+      }
+
+      await page.screenshot({ path: 'existencias-screenshot.png', fullPage: true });
+      console.log('Captura de existencias guardada en existencias-screenshot.png');
+    }
   } catch (error) {
     console.error('Error:', error.message);
     await page.screenshot({ path: 'dashboard-error.png', fullPage: true });
