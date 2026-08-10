@@ -78,6 +78,10 @@ export async function fetchExistencias(query = '') {
   return apiFetch(`/api/almacen/existencias?${query}`);
 }
 
+export async function fetchSubalmacenes() {
+  return apiFetch('/api/almacen/subalmacenes');
+}
+
 export async function fetchVales(query = '') {
   return apiFetch(`/api/almacen/vales?${query}`);
 }

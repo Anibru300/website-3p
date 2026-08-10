@@ -235,3 +235,36 @@ def vales(
     resultados.sort(key=lambda x: x["fecha_salida"] or "", reverse=True)
 
     return {"data": resultados[:limit]}
+
+
+@router.get("/subalmacenes")
+def subalmacenes(user: dict = Depends(get_current_user)):
+    sql = """
+        SELECT
+            e.cve_alm,
+            MAX(a.descripcion) AS nombre,
+            SUM(e.exist) AS existencia_total,
+            SUM(e.exist * COALESCE(p.costo_promedio, 0)) AS valor_total
+        FROM sae_existencias e
+        LEFT JOIN sae_almacenes a ON e.cve_alm = a.cve_alm
+        LEFT JOIN sae_productos p ON e.cve_art = p.cve_art
+        WHERE e.exist > 0
+        GROUP BY e.cve_alm
+        ORDER BY valor_total DESC
+    """
+
+    with postgres_cursor() as cur:
+        cur.execute(sql)
+        rows = cur.fetchall()
+
+    data = []
+    for row in rows:
+        row_dict = dict(row)
+        data.append({
+            "cve_alm": row_dict["cve_alm"],
+            "nombre": row_dict["nombre"] or f"Almacén {row_dict['cve_alm']}",
+            "existencia_total": float(row_dict["existencia_total"] or 0),
+            "valor_total": float(row_dict["valor_total"] or 0),
+        })
+
+    return {"data": data}

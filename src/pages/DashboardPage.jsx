@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   fetchDashboardResumen,
   fetchExistencias,
+  fetchSubalmacenes,
   fetchVales,
   fetchPedidosVivos,
   fetchSanAntonioOrdenes,
@@ -28,6 +29,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Warehouse,
 } from 'lucide-react';
 
 const TABS = [
@@ -189,7 +191,7 @@ function PieChart({ data, valueFormatter = (v) => v, setTooltip }) {
   });
 
   return (
-    <svg viewBox="0 0 100 100" className="w-full h-auto max-h-56 mx-auto">
+    <svg viewBox="0 0 100 100" className="w-full h-auto min-h-[16rem] max-h-72 mx-auto">
       {slices.map((slice, idx) => (
         <path
           key={idx}
@@ -217,7 +219,7 @@ function PieChart({ data, valueFormatter = (v) => v, setTooltip }) {
         y={cy}
         textAnchor="middle"
         dominantBaseline="middle"
-        className="text-[5px] fill-gray-700 font-bold"
+        className="text-[6px] fill-gray-700 font-bold"
       >
         {valueFormatter(total)}
       </text>
@@ -232,34 +234,35 @@ function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
 
   const values = data.map((d) => Number(d.value) || 0);
   const max = Math.max(...values, 1);
-  const labelW = 150;
-  const plotW = 280;
-  const barH = 22;
-  const gap = 14;
+  const labelW = 180;
+  const plotW = 320;
+  const barH = 26;
+  const gap = 16;
   const height = data.length * (barH + gap) + gap;
-  const width = labelW + plotW + 60;
+  const width = labelW + plotW + 80;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto max-h-80">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-h-[18rem] max-h-96">
       {data.map((d, i) => {
         const y = gap + i * (barH + gap);
         const w = ((Number(d.value) || 0) / max) * plotW;
+        const label = d.label.length > 30 ? `${d.label.slice(0, 30)}...` : d.label;
         return (
           <g key={i}>
             <text
               x={labelW - 10}
               y={y + barH / 2 + 4}
               textAnchor="end"
-              className="text-[10px] fill-gray-600"
+              className="text-xs fill-gray-600"
             >
-              {d.label}
+              {label}
             </text>
             <rect
               x={labelW}
               y={y}
               width={Math.max(w, 2)}
               height={barH}
-              rx={4}
+              rx={5}
               fill={d.color}
               className="transition-all duration-200 hover:opacity-80 cursor-pointer"
               onMouseEnter={(e) =>
@@ -277,7 +280,7 @@ function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
             <text
               x={labelW + Math.max(w, 2) + 6}
               y={y + barH / 2 + 4}
-              className="text-[10px] fill-gray-600"
+              className="text-xs fill-gray-600"
             >
               {valueFormatter(d.value)}
             </text>
@@ -304,7 +307,7 @@ function VerticalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
   const barW = step * 0.55;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto max-h-72">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-h-[18rem] max-h-80">
       <line
         x1={margin.left}
         y1={margin.top + plotH}
@@ -350,9 +353,9 @@ function VerticalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
             />
             <text
               x={x + barW / 2}
-              y={margin.top + plotH + 16}
+              y={margin.top + plotH + 18}
               textAnchor="middle"
-              className="text-[9px] fill-gray-600"
+              className="text-[10px] fill-gray-600"
             >
               {label}
             </text>
@@ -360,7 +363,7 @@ function VerticalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
               x={x + barW / 2}
               y={y - 6}
               textAnchor="middle"
-              className="text-[9px] fill-gray-500"
+              className="text-[10px] fill-gray-500"
             >
               {valueFormatter(d.value)}
             </text>
@@ -387,7 +390,7 @@ function GaugeChart({ percent, setTooltip }) {
   const fgPath = `M ${start.x} ${start.y} A ${r} ${r} 0 0 0 ${endValue.x} ${endValue.y}`;
 
   return (
-    <svg viewBox="0 0 200 110" className="w-full h-auto max-h-48">
+    <svg viewBox="0 0 200 110" className="w-full h-auto min-h-[14rem] max-h-56">
       <path d={bgPath} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round" />
       <path
         d={fgPath}
@@ -494,13 +497,13 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
               <th
                 key={col.key}
                 onClick={() => handleHeaderClick(col)}
-                className={`px-5 py-3.5 text-left whitespace-nowrap select-none ${
+                className={`px-6 py-4 text-left select-none ${
                   col.sortable
                     ? 'cursor-pointer hover:bg-gray-100 hover:text-p3-red transition-colors'
                     : ''
                 }`}
               >
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5 whitespace-nowrap">
                   {col.label}
                   {col.sortable && (
                     <span className="text-gray-400">
@@ -527,7 +530,12 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
                 const raw = col.accessor ? col.accessor(row) : row[col.key];
                 const display = col.format ? col.format(raw, row) : (raw ?? '—');
                 return (
-                  <td key={col.key} className="px-5 py-3 text-gray-700 whitespace-nowrap">
+                  <td
+                    key={col.key}
+                    className={`px-6 py-3.5 text-gray-700 align-top ${
+                      col.wrap ? '' : 'whitespace-nowrap'
+                    }`}
+                  >
                     {display}
                   </td>
                 );
@@ -541,10 +549,10 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
               {columns.map((col, idx) => {
                 const total = totals[idx];
                 if (total === null) {
-                  return <td key={col.key} className="px-5 py-3 whitespace-nowrap"></td>;
+                  return <td key={col.key} className="px-6 py-3.5"></td>;
                 }
                 return (
-                  <td key={col.key} className="px-5 py-3 whitespace-nowrap">
+                  <td key={col.key} className="px-6 py-3.5 whitespace-nowrap">
                     {idx === firstTotalIdx && (
                       <span className="text-gray-500 text-xs uppercase mr-2">Total</span>
                     )}
@@ -563,16 +571,16 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
 function KpiCard({ label, value, icon, color = 'bg-p3-blue', subtext = '' }) {
   const IconComponent = icon;
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 flex items-center gap-4 hover:shadow-lg transition-shadow">
+    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:shadow-lg transition-shadow">
       <div
-        className={`${color} text-white w-14 h-14 rounded-xl flex items-center justify-center shadow-sm`}
+        className={`${color} text-white w-14 h-14 rounded-xl flex items-center justify-center shadow-sm shrink-0`}
       >
         <IconComponent size={28} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-gray-500 font-medium truncate">{label}</p>
         <p className="text-3xl font-bold text-gray-900">{value ?? 0}</p>
-        {subtext && <p className="text-xs text-gray-400 mt-0.5">{subtext}</p>}
+        {subtext && <p className="text-xs text-gray-400 mt-1">{subtext}</p>}
       </div>
     </div>
   );
@@ -580,11 +588,11 @@ function KpiCard({ label, value, icon, color = 'bg-p3-blue', subtext = '' }) {
 
 function SectionHeader({ title, count, icon: Icon }) {
   return (
-    <div className="flex items-center gap-3 mb-4 pb-2 border-b border-gray-100">
-      {Icon && <Icon className="text-p3-red" size={22} />}
-      <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+    <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-100">
+      {Icon && <Icon className="text-p3-red" size={24} />}
+      <h3 className="text-xl font-bold text-gray-800">{title}</h3>
       {count !== undefined && (
-        <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+        <span className="ml-auto inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
           {count} registros
         </span>
       )}
@@ -602,6 +610,7 @@ export default function DashboardPage() {
   // Data states
   const [resumen, setResumen] = useState(null);
   const [existencias, setExistencias] = useState([]);
+  const [subalmacenes, setSubalmacenes] = useState([]);
   const [vales, setVales] = useState([]);
   const [allVales, setAllVales] = useState([]);
   const [pedidos, setPedidos] = useState([]);
@@ -635,14 +644,16 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const [r, e, v, p] = await Promise.all([
+      const [r, e, s, v, p] = await Promise.all([
         fetchDashboardResumen(),
         fetchExistencias('limit=500'),
+        fetchSubalmacenes(),
         fetchVales('limit=500'),
         fetchPedidosVivos('limit=500'),
       ]);
       setResumen(r.resumen);
       setExistencias(e.data || []);
+      setSubalmacenes(s.data || []);
       setVales(v.data || []);
       setAllVales(v.data || []);
       setPedidos(p.data || []);
@@ -759,13 +770,23 @@ export default function DashboardPage() {
       }));
   }, [existencias]);
 
+  const subalmacenesData = useMemo(() => {
+    return [...subalmacenes]
+      .sort((a, b) => (Number(b.valor_total) || 0) - (Number(a.valor_total) || 0))
+      .map((item, i) => ({
+        label: item.nombre || `Almacén ${item.cve_alm}`,
+        value: Number(item.valor_total) || 0,
+        color: PALETTE[i % PALETTE.length],
+      }));
+  }, [subalmacenes]);
+
   const totalExistencia = useMemo(
     () => existencias.reduce((sum, item) => sum + (Number(item.existencia_total) || 0), 0),
     [existencias]
   );
 
   const renderResumen = () => (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <KpiCard
@@ -813,8 +834,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Gráficas principales */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
           <SectionHeader title="Material en vales por persona" icon={Users} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             <PieChart
@@ -826,7 +847,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
           <SectionHeader
             title="Top productos en existencia"
             count={topExistencias.length}
@@ -841,8 +862,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
           <SectionHeader title="Pedidos abiertos por cliente" icon={BarChart3} />
           <VerticalBarChart
             data={pedidosResumen.topClientes}
@@ -852,7 +873,7 @@ export default function DashboardPage() {
           <ChartLegend items={pedidosResumen.topClientes} valueFormatter={formatCurrency} />
         </div>
 
-        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
           <SectionHeader
             title="Pedidos por estado"
             count={pedidosResumen.total}
@@ -889,10 +910,62 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Valorización por sub-almacén */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+        <SectionHeader
+          title="Valorización por sub-almacén"
+          count={subalmacenes.length}
+          icon={Warehouse}
+        />
+        <p className="text-sm text-gray-500 mb-5">
+          {/*
+            NOTA: Para mostrar cómo "sube o baja" la valorización con el tiempo se
+            requeriría guardar un histórico periódico de este cálculo. Por ahora se
+            muestra el valor actual del inventario por sub-almacén.
+          */}
+          Valor actual del inventario distribuido por sub-almacén.
+        </p>
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+          <div className="xl:col-span-2">
+            <HorizontalBarChart
+              data={subalmacenesData}
+              valueFormatter={formatCurrency}
+              setTooltip={setTooltip}
+            />
+          </div>
+          <div className="xl:col-span-3">
+            <DataTable
+              rows={subalmacenes}
+              columns={[
+                { key: 'nombre', label: 'Almacén', sortable: true, wrap: true },
+                {
+                  key: 'existencia_total',
+                  label: 'Existencia total',
+                  sortable: true,
+                  total: true,
+                  accessor: (row) => Number(row.existencia_total) || 0,
+                  format: formatNumber,
+                },
+                {
+                  key: 'valor_total',
+                  label: 'Valor total',
+                  sortable: true,
+                  total: true,
+                  accessor: (row) => Number(row.valor_total) || 0,
+                  format: formatCurrency,
+                },
+              ]}
+              emptyMessage="No se encontraron sub-almacenes"
+              emptyIcon={Warehouse}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Gauge y resumen de vales */}
       {totalExistencia > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 md:col-span-1">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 md:col-span-1">
             <SectionHeader title="Material en vales vs existencia total" icon={Gauge} />
             <GaugeChart
               percent={(valesResumen.totalPiezas / totalExistencia) * 100}
@@ -903,7 +976,7 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 md:col-span-2">
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 md:col-span-2">
             <SectionHeader title="Resumen de vales" icon={ClipboardList} />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <KpiCard
@@ -941,7 +1014,7 @@ export default function DashboardPage() {
   );
 
   const renderExistencias = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <SectionHeader
         title="Existencias por producto"
         count={existenciasFiltradas.length}
@@ -997,7 +1070,7 @@ export default function DashboardPage() {
   );
 
   const renderVales = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <SectionHeader title="Material en vales abiertos" count={vales.length} icon={ClipboardList} />
       <div className="flex flex-wrap gap-2">
         {RESPONSABLES.map((r) => {
@@ -1229,7 +1302,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         <div className="flex overflow-x-auto gap-2 mb-6 pb-1">
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -1264,7 +1337,7 @@ export default function DashboardPage() {
             <p className="mt-3 text-sm text-gray-500">Cargando información...</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
             {tabContent[activeTab]}
           </div>
         )}
