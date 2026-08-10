@@ -1,3 +1,4 @@
+import datetime
 import mimetypes
 import time
 from pathlib import Path
@@ -164,11 +165,32 @@ def existencias(
     return {"data": data, "total": total}
 
 
+def _to_date(value):
+    """Normaliza un valor de fecha de Excel a datetime.date."""
+    if value is None:
+        return None
+    if isinstance(value, datetime.datetime):
+        return value.date()
+    if isinstance(value, datetime.date):
+        return value
+    if isinstance(value, str):
+        value = value.strip()
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"):
+            try:
+                return datetime.datetime.strptime(value, fmt).date()
+            except ValueError:
+                continue
+    return None
+
+
 @router.get("/vales")
 def vales(
     limit: int = Query(50, ge=1, le=500),
     busqueda: str = Query(""),
     responsable: str = Query("", description="Filtrar por responsable: joan, abelardo, aaron u otros"),
+    fecha_desde: str = Query("", description="Fecha inicial YYYY-MM-DD"),
+    fecha_hasta: str = Query("", description="Fecha final YYYY-MM-DD"),
+    almacen: str = Query("", description="Filtrar por almacén origen"),
     user: dict = Depends(get_current_user),
 ):
     settings = get_settings()
@@ -242,6 +264,28 @@ def vales(
             ]
             if not any(busqueda_lower in c.lower() for c in campos if c):
                 continue
+
+        # Filtro por almacén origen
+        almacen_origen = _normalize_text(d.get("ALMACEN_ORIGEN"))
+        if almacen and almacen.lower() not in almacen_origen.lower():
+            continue
+
+        # Filtro por rango de fecha de salida
+        fecha_salida = _to_date(cab.get("FECHA_SALIDA"))
+        if fecha_salida and fecha_desde:
+            try:
+                desde = datetime.datetime.strptime(fecha_desde, "%Y-%m-%d").date()
+                if fecha_salida < desde:
+                    continue
+            except ValueError:
+                pass
+        if fecha_salida and fecha_hasta:
+            try:
+                hasta = datetime.datetime.strptime(fecha_hasta, "%Y-%m-%d").date()
+                if fecha_salida > hasta:
+                    continue
+            except ValueError:
+                pass
 
         resultados.append({
             "folio": folio,

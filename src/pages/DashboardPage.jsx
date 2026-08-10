@@ -20,6 +20,7 @@ import {
   AlertCircle,
   Users,
   Filter,
+  Calendar,
   Inbox,
   TrendingUp,
   DollarSign,
@@ -797,9 +798,21 @@ export default function DashboardPage() {
   const [existenciasTotal, setExistenciasTotal] = useState(0);
   const [valesQuery, setValesQuery] = useState('limit=500');
   const [valesResponsable, setValesResponsable] = useState('');
+  const [valesFechaDesde, setValesFechaDesde] = useState('');
+  const [valesFechaHasta, setValesFechaHasta] = useState('');
+  const [valesAlmacen, setValesAlmacen] = useState('');
   const [pedidosQuery] = useState('limit=500');
   const [sanAntonioQuery] = useState('limit=500');
   const [existenciasSearch, setExistenciasSearch] = useState('');
+
+  const almacenesOptions = useMemo(() => {
+    const set = new Set();
+    allVales.forEach((v) => {
+      const alm = (v.almacen_origen || '').trim();
+      if (alm) set.add(alm);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [allVales]);
 
   // Búsqueda server-side en existencias con debounce
   useEffect(() => {
@@ -817,8 +830,11 @@ export default function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams({ limit: '500' });
     if (valesResponsable) params.set('responsable', valesResponsable);
+    if (valesFechaDesde) params.set('fecha_desde', valesFechaDesde);
+    if (valesFechaHasta) params.set('fecha_hasta', valesFechaHasta);
+    if (valesAlmacen) params.set('almacen', valesAlmacen);
     setValesQuery(params.toString());
-  }, [valesResponsable]);
+  }, [valesResponsable, valesFechaDesde, valesFechaHasta, valesAlmacen]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -1437,6 +1453,64 @@ export default function DashboardPage() {
             </button>
           );
         })}
+      </div>
+      <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <Filter size={16} className="text-p3-red" />
+          Filtros adicionales
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Desde</label>
+            <div className="relative">
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="date"
+                value={valesFechaDesde}
+                onChange={(e) => setValesFechaDesde(e.target.value)}
+                className="pl-9 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Hasta</label>
+            <div className="relative">
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="date"
+                value={valesFechaHasta}
+                onChange={(e) => setValesFechaHasta(e.target.value)}
+                className="pl-9 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Almacén origen</label>
+            <select
+              value={valesAlmacen}
+              onChange={(e) => setValesAlmacen(e.target.value)}
+              className="min-w-[12rem] px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+            >
+              <option value="">Todos los almacenes</option>
+              {almacenesOptions.map((alm) => (
+                <option key={alm} value={alm}>
+                  {alm}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={() => {
+              setValesFechaDesde('');
+              setValesFechaHasta('');
+              setValesAlmacen('');
+              setValesResponsable('');
+            }}
+            className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            Limpiar
+          </button>
+        </div>
       </div>
       <DataTable
         rows={vales}
