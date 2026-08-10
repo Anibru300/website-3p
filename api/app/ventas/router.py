@@ -34,29 +34,18 @@ def _read_excel_sheet(wb, sheet_name):
     return data
 
 
-@router.get("/pedidos-vivos")
-def pedidos_vivos(
-    limit: int = Query(50, ge=1, le=500),
-    busqueda: str = Query(""),
-    user: dict = Depends(get_current_user),
-):
-    """Pedidos vivos reales: leídos desde el Excel de pendientes por facturar."""
+def get_pedidos_vivos_excel(busqueda: str = "", limit: int | None = None):
+    """Lee los pedidos vivos reales desde el Excel de pendientes por facturar."""
     settings = get_settings()
     excel_path = Path(settings.pedidos_pendientes_facturar_excel_path)
 
     if not excel_path.exists():
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se encontró el archivo de pedidos: {excel_path}",
-        )
+        return []
 
     try:
         wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se pudo abrir el archivo de pedidos. Puede estar abierto en Excel. Error: {exc}",
-        )
+    except Exception:
+        return []
 
     try:
         cabeceras = _read_excel_sheet(wb, "PEDIDOS")
@@ -125,7 +114,19 @@ def pedidos_vivos(
         })
 
     resultados.sort(key=lambda x: x["fecha"] or "", reverse=True)
-    return {"data": resultados[:limit]}
+    if limit:
+        resultados = resultados[:limit]
+    return resultados
+
+
+@router.get("/pedidos-vivos")
+def pedidos_vivos(
+    limit: int = Query(50, ge=1, le=500),
+    busqueda: str = Query(""),
+    user: dict = Depends(get_current_user),
+):
+    resultados = get_pedidos_vivos_excel(busqueda=busqueda, limit=limit)
+    return {"data": resultados}
 
 
 @router.get("/facturas-cobranza")

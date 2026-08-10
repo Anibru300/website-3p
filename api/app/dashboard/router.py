@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.auth.dependencies import get_current_user
 from app.database import postgres_cursor
+from app.ventas.router import get_pedidos_vivos_excel
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -16,11 +17,17 @@ def dashboard_resumen(user: dict = Depends(get_current_user)):
         "facturas_pendientes_cobranza": 0,
     }
 
+    # Pedidos vivos desde el Excel de pendientes por facturar
+    try:
+        resumen["pedidos_vivos"] = len(get_pedidos_vivos_excel())
+    except Exception:
+        resumen["pedidos_vivos"] = 0
+
     queries = {
-        "pedidos_vivos": """
-            SELECT COUNT(*) FROM v_pedidos_vivos
-            WHERE saldo_pendiente > 0.01
-              AND estado_facturacion IN ('PENDIENTE', 'PARCIAL')
+        "vales_abiertos": """
+            SELECT COUNT(*) FROM vales v
+            JOIN vale_lineas vl ON v.id = vl.vale_id
+            WHERE v.estado = 'abierto' AND vl.cantidad_viva > 0
         """,
         "vales_abiertos": """
             SELECT COUNT(*) FROM vales v
