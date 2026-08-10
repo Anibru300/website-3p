@@ -709,6 +709,12 @@ function ProductoFoto({ codigo, onExpand }) {
 
 function ImageLightbox({ codigo, descripcion, onClose }) {
   const { url, loading, error } = useProductoFoto(codigo);
+  const [scale, setScale] = useState(1);
+
+  const toggleZoom = (e) => {
+    e.stopPropagation();
+    setScale((s) => (s >= 2.5 ? 1 : 2.5));
+  };
 
   return (
     <div
@@ -718,12 +724,22 @@ function ImageLightbox({ codigo, descripcion, onClose }) {
       <button
         type="button"
         onClick={onClose}
-        className="absolute top-4 right-4 text-white/80 hover:text-white p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+        className="absolute top-4 right-4 text-white/90 hover:text-white p-2.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors z-10"
+        aria-label="Cerrar"
       >
         <X size={24} />
       </button>
+
+      <button
+        type="button"
+        onClick={toggleZoom}
+        className="absolute top-4 right-16 text-white/90 hover:text-white px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-sm font-medium z-10"
+      >
+        {scale >= 2.5 ? 'Restablecer' : 'Ampliar'}
+      </button>
+
       <div
-        className="max-w-5xl w-full max-h-screen flex flex-col items-center"
+        className="max-w-[95vw] max-h-[95vh] flex flex-col items-center overflow-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {loading && (
@@ -740,10 +756,12 @@ function ImageLightbox({ codigo, descripcion, onClose }) {
           <img
             src={url}
             alt={`Foto ampliada de ${codigo}`}
-            className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+            onClick={toggleZoom}
+            className="max-w-none max-h-[85vh] object-contain rounded-lg shadow-2xl cursor-zoom-in transition-transform duration-300"
+            style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
           />
         )}
-        <div className="mt-4 text-center">
+        <div className="mt-6 text-center">
           <p className="text-white font-semibold">{codigo}</p>
           {descripcion && <p className="text-white/70 text-sm">{descripcion}</p>}
         </div>
