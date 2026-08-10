@@ -234,26 +234,26 @@ function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
 
   const values = data.map((d) => Number(d.value) || 0);
   const max = Math.max(...values, 1);
-  const labelW = 220;
-  const plotW = 320;
-  const barH = 28;
-  const gap = 16;
+  const labelW = 240;
+  const plotW = 360;
+  const barH = 32;
+  const gap = 18;
   const height = data.length * (barH + gap) + gap;
   const width = labelW + plotW + 80;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-h-[18rem] max-h-96">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-h-[20rem] max-h-[28rem]">
       {data.map((d, i) => {
         const y = gap + i * (barH + gap);
         const w = ((Number(d.value) || 0) / max) * plotW;
-        const label = d.label.length > 28 ? `${d.label.slice(0, 28)}...` : d.label;
+        const label = d.label.length > 40 ? `${d.label.slice(0, 40)}...` : d.label;
         return (
           <g key={i}>
             <text
               x={labelW - 10}
               y={y + barH / 2 + 4}
               textAnchor="end"
-              className="text-sm fill-gray-600"
+              className="text-base fill-gray-600"
             >
               {label}
             </text>
@@ -280,7 +280,7 @@ function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
             <text
               x={labelW + Math.max(w, 2) + 6}
               y={y + barH / 2 + 4}
-              className="text-xs fill-gray-600"
+              className="text-sm fill-gray-600"
             >
               {valueFormatter(d.value)}
             </text>
@@ -536,7 +536,7 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
                     title={col.wrap ? String(raw ?? '') : undefined}
                     className={`px-6 py-3.5 text-gray-700 align-top ${
                       col.wrap
-                        ? 'break-words max-w-xs'
+                        ? 'break-words max-w-md'
                         : 'whitespace-nowrap'
                     }`}
                   >
@@ -556,7 +556,10 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
                   return <td key={col.key} className="px-6 py-3.5"></td>;
                 }
                 return (
-                  <td key={col.key} className="px-6 py-3.5 whitespace-nowrap">
+                  <td
+                    key={col.key}
+                    className={`px-6 py-3.5 ${col.wrap ? 'break-words max-w-md' : 'whitespace-nowrap'}`}
+                  >
                     {idx === firstTotalIdx && (
                       <span className="text-gray-500 text-xs uppercase mr-2">Total</span>
                     )}
@@ -814,9 +817,9 @@ export default function DashboardPage() {
   );
 
   const renderResumen = () => (
-    <div className="space-y-10">
+    <div className="space-y-8">
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
         <KpiCard
           label="Pedidos"
           value={resumen?.pedidos_vivos}
@@ -862,7 +865,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Gráficas principales */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
           <SectionHeader title="Material en vales por persona" icon={Users} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
@@ -890,7 +893,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
           <SectionHeader title="Pedidos abiertos por cliente" icon={BarChart3} />
           <VerticalBarChart
@@ -939,54 +942,56 @@ export default function DashboardPage() {
       </div>
 
       {/* Valorización por sub-almacén */}
-      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-        <SectionHeader
-          title="Valorización por sub-almacén"
-          count={subalmacenes.length}
-          icon={Warehouse}
-        />
-        <p className="text-sm text-gray-500 mb-5">
-          {/*
-            NOTA: Para mostrar cómo "sube o baja" la valorización con el tiempo se
-            requeriría guardar un histórico periódico de este cálculo. Por ahora se
-            muestra el valor actual del inventario por sub-almacén.
-          */}
-          Valor actual del inventario distribuido por sub-almacén.
-        </p>
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-10">
-          <div className="xl:col-span-2">
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+          <SectionHeader
+            title="Valorización por sub-almacén"
+            count={subalmacenes.length}
+            icon={Warehouse}
+          />
+          <p className="text-sm text-gray-500 mb-5">
+            {/*
+              NOTA: Para mostrar cómo "sube o baja" la valorización con el tiempo se
+              requeriría guardar un histórico periódico de este cálculo. Por ahora se
+              muestra el valor actual del inventario por sub-almacén.
+            */}
+            Valor actual del inventario distribuido por sub-almacén.
+          </p>
+          <div className="min-h-[24rem]">
             <HorizontalBarChart
               data={subalmacenesData}
               valueFormatter={formatCurrency}
               setTooltip={setTooltip}
             />
           </div>
-          <div className="xl:col-span-3">
-            <DataTable
-              rows={subalmacenes}
-              columns={[
-                { key: 'nombre', label: 'Almacén', sortable: true, wrap: true },
-                {
-                  key: 'existencia_total',
-                  label: 'Existencia total',
-                  sortable: true,
-                  total: true,
-                  accessor: (row) => Number(row.existencia_total) || 0,
-                  format: formatNumber,
-                },
-                {
-                  key: 'valor_total',
-                  label: 'Valor total',
-                  sortable: true,
-                  total: true,
-                  accessor: (row) => Number(row.valor_total) || 0,
-                  format: formatCurrency,
-                },
-              ]}
-              emptyMessage="No se encontraron sub-almacenes"
-              emptyIcon={Warehouse}
-            />
-          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+          <SectionHeader title="Detalle por sub-almacén" icon={Warehouse} />
+          <DataTable
+            rows={subalmacenes}
+            columns={[
+              { key: 'nombre', label: 'Almacén', sortable: true, wrap: true },
+              {
+                key: 'existencia_total',
+                label: 'Existencia total',
+                sortable: true,
+                total: true,
+                accessor: (row) => Number(row.existencia_total) || 0,
+                format: formatNumber,
+              },
+              {
+                key: 'valor_total',
+                label: 'Valor total',
+                sortable: true,
+                total: true,
+                accessor: (row) => Number(row.valor_total) || 0,
+                format: formatCurrency,
+              },
+            ]}
+            emptyMessage="No se encontraron sub-almacenes"
+            emptyIcon={Warehouse}
+          />
         </div>
       </div>
 
