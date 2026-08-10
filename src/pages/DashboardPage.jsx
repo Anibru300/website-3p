@@ -7,6 +7,7 @@ import {
   fetchVales,
   fetchPedidosVivos,
   fetchSanAntonioOrdenes,
+  fetchProductoFotoBlobUrl,
 } from '../utils/api';
 import {
   Package,
@@ -30,6 +31,8 @@ import {
   ArrowUp,
   ArrowDown,
   Warehouse,
+  Camera,
+  X,
 } from 'lucide-react';
 
 const TABS = [
@@ -436,7 +439,7 @@ function ChartLegend({ items, valueFormatter = (v) => v }) {
   );
 }
 
-function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbox }) {
+function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbox, onRowClick, selectedRow }) {
   const [sort, setSort] = useState({ key: null, dir: 'asc' });
 
   const defaultFormatNumber = (value) => {
@@ -526,7 +529,17 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
         </thead>
         <tbody className="divide-y divide-gray-100">
           {sortedRows.map((row, idx) => (
-            <tr key={idx} className="hover:bg-gray-50/70 transition-colors">
+            <tr
+              key={idx}
+              onClick={() => onRowClick?.(row)}
+              className={`transition-colors ${
+                onRowClick ? 'cursor-pointer' : ''
+              } ${
+                selectedRow && selectedRow.codigo === row.codigo
+                  ? 'bg-red-50 hover:bg-red-100'
+                  : 'hover:bg-gray-50/70'
+              }`}
+            >
               {columns.map((col) => {
                 const raw = col.accessor ? col.accessor(row) : row[col.key];
                 const display = col.format ? col.format(raw, row) : (raw ?? '—');
@@ -609,6 +622,136 @@ function SectionHeader({ title, count, icon: Icon }) {
   );
 }
 
+function useProductoFoto(codigo) {
+  const [url, setUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let objectUrl = null;
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(false);
+      setUrl(null);
+      try {
+        objectUrl = await fetchProductoFotoBlobUrl(codigo);
+        if (!cancelled) {
+          setUrl(objectUrl);
+        }
+      } catch {
+        if (!cancelled) {
+          setError(true);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [codigo]);
+
+  return { url, loading, error };
+}
+
+function ProductoFoto({ codigo, onExpand }) {
+  const { url, loading, error } = useProductoFoto(codigo);
+
+  if (error) {
+    return (
+      <div className="bg-gray-50 rounded-xl p-8 text-center border border-dashed border-gray-200">
+        <div className="mx-auto w-14 h-14 rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center mb-3">
+          <Camera className="text-gray-400" size={28} />
+        </div>
+        <p className="text-gray-500 font-medium text-sm">Sin foto disponible</p>
+        <p className="text-xs text-gray-400 mt-1">{codigo}</p>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      disabled={loading || !url}
+      className="w-full group relative rounded-xl overflow-hidden border border-gray-200 bg-gray-100 focus:outline-none focus:ring-2 focus:ring-p3-red focus:ring-offset-2 disabled:opacity-70"
+    >
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
+      {url && (
+        <>
+          <img
+            src={url}
+            alt={`Foto de ${codigo}`}
+            className="w-full h-64 object-contain bg-white transition-transform duration-300 group-hover:scale-105"
+          />
+          <span className="absolute bottom-2 right-2 bg-gray-900/70 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+            Ampliar
+          </span>
+        </>
+      )}
+    </button>
+  );
+}
+
+function ImageLightbox({ codigo, descripcion, onClose }) {
+  const { url, loading, error } = useProductoFoto(codigo);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 text-white/80 hover:text-white p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+      >
+        <X size={24} />
+      </button>
+      <div
+        className="max-w-5xl w-full max-h-screen flex flex-col items-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {loading && (
+          <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+        )}
+        {error && (
+          <div className="bg-gray-800 rounded-2xl p-12 text-center">
+            <Camera className="mx-auto text-gray-500 mb-4" size={48} />
+            <p className="text-white font-medium">No se pudo cargar la imagen</p>
+            <p className="text-gray-400 text-sm mt-1">{codigo}</p>
+          </div>
+        )}
+        {url && (
+          <img
+            src={url}
+            alt={`Foto ampliada de ${codigo}`}
+            className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+          />
+        )}
+        <div className="mt-4 text-center">
+          <p className="text-white font-semibold">{codigo}</p>
+          {descripcion && <p className="text-white/70 text-sm">{descripcion}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('resumen');
@@ -624,6 +767,10 @@ export default function DashboardPage() {
   const [allVales, setAllVales] = useState([]);
   const [pedidos, setPedidos] = useState([]);
   const [sanAntonio, setSanAntonio] = useState(null);
+
+  // Existencias selected product + lightbox
+  const [existenciasSelected, setExistenciasSelected] = useState(null);
+  const [fotoLightboxOpen, setFotoLightboxOpen] = useState(false);
 
   // Filters
   const [existenciasQuery] = useState('limit=500');
@@ -1047,58 +1194,130 @@ export default function DashboardPage() {
   );
 
   const renderExistencias = () => (
-    <div className="space-y-6">
-      <SectionHeader
-        title="Existencias por producto"
-        count={existenciasFiltradas.length}
-        icon={Package}
-      />
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            placeholder="Buscar código o descripción..."
-            value={existenciasSearch}
-            onChange={(e) => setExistenciasSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
-          />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-6">
+        <SectionHeader
+          title="Existencias por producto"
+          count={existenciasFiltradas.length}
+          icon={Package}
+        />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Buscar código o descripción..."
+              value={existenciasSearch}
+              onChange={(e) => setExistenciasSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+            />
+          </div>
+        </div>
+        <DataTable
+          rows={existenciasFiltradas}
+          onRowClick={(row) => setExistenciasSelected(row)}
+          selectedRow={existenciasSelected}
+          columns={[
+            { key: 'codigo', label: 'Código', sortable: true },
+            { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
+            {
+              key: 'material_en_vales',
+              label: 'Existencia en vales',
+              sortable: true,
+              total: true,
+              accessor: (row) => Number(row.material_en_vales) || 0,
+              format: formatNumber,
+            },
+            {
+              key: 'existencia_almacen',
+              label: 'Existencia en almacén',
+              sortable: true,
+              total: true,
+              accessor: (row) =>
+                Number((row.existencia_total || 0) - (row.material_en_vales || 0)),
+              format: formatNumber,
+            },
+            {
+              key: 'existencia_total',
+              label: 'Existencia total',
+              sortable: true,
+              total: true,
+              accessor: (row) => Number(row.existencia_total) || 0,
+              format: formatNumber,
+            },
+          ]}
+          emptyMessage="No se encontraron existencias"
+          emptyIcon={Package}
+        />
+      </div>
+
+      <div className="lg:col-span-1">
+        <div className="sticky top-24 bg-white rounded-2xl shadow-md border border-gray-100 p-5 space-y-4">
+          <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+            Foto del producto
+          </h4>
+          {!existenciasSelected ? (
+            <div className="bg-gray-50 rounded-xl p-8 text-center border border-dashed border-gray-200">
+              <div className="mx-auto w-14 h-14 rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center mb-3">
+                <Camera className="text-gray-400" size={28} />
+              </div>
+              <p className="text-gray-500 font-medium text-sm">Selecciona un producto</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Haz clic en una fila para ver su foto.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Código</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {existenciasSelected.codigo}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Descripción</p>
+                <p className="text-sm text-gray-700 leading-snug">
+                  {existenciasSelected.descripcion || '—'}
+                </p>
+              </div>
+
+              <ProductoFoto
+                codigo={existenciasSelected.codigo}
+                onExpand={() => setFotoLightboxOpen(true)}
+              />
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <p className="text-[10px] text-gray-500 uppercase">Total</p>
+                  <p className="text-sm font-bold text-gray-900">
+                    {formatNumber(existenciasSelected.existencia_total)}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <p className="text-[10px] text-gray-500 uppercase">En vales</p>
+                  <p className="text-sm font-bold text-gray-900">
+                    {formatNumber(existenciasSelected.material_en_vales)}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <p className="text-[10px] text-gray-500 uppercase">Almacén</p>
+                  <p className="text-sm font-bold text-gray-900">
+                    {formatNumber(existenciasSelected.existencia_almacen)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      <DataTable
-        rows={existenciasFiltradas}
-        columns={[
-          { key: 'codigo', label: 'Código', sortable: true },
-          { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
-          {
-            key: 'material_en_vales',
-            label: 'Existencia en vales',
-            sortable: true,
-            total: true,
-            accessor: (row) => Number(row.material_en_vales) || 0,
-            format: formatNumber,
-          },
-          {
-            key: 'existencia_almacen',
-            label: 'Existencia en almacén',
-            sortable: true,
-            total: true,
-            accessor: (row) =>
-              Number((row.existencia_total || 0) - (row.material_en_vales || 0)),
-            format: formatNumber,
-          },
-          {
-            key: 'existencia_total',
-            label: 'Existencia total',
-            sortable: true,
-            total: true,
-            accessor: (row) => Number(row.existencia_total) || 0,
-            format: formatNumber,
-          },
-        ]}
-        emptyMessage="No se encontraron existencias"
-        emptyIcon={Package}
-      />
+
+      {fotoLightboxOpen && existenciasSelected && (
+        <ImageLightbox
+          codigo={existenciasSelected.codigo}
+          descripcion={existenciasSelected.descripcion}
+          onClose={() => setFotoLightboxOpen(false)}
+        />
+      )}
     </div>
   );
 

@@ -105,3 +105,29 @@ export async function fetchMovimientosInventario(query = '') {
 export async function fetchSanAntonioOrdenes(query = '') {
   return apiFetch(`/api/san-antonio/ordenes?${query}`);
 }
+
+export function getProductoFotoUrl(codigo) {
+  return `${API_BASE}/api/almacen/foto-producto/${encodeURIComponent(codigo)}`;
+}
+
+export async function fetchProductoFotoBlobUrl(codigo) {
+  const url = getProductoFotoUrl(codigo);
+  const token = getToken();
+
+  const response = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (response.status === 401) {
+    removeToken();
+    window.location.href = '/login';
+    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
+  }
+
+  if (!response.ok) {
+    throw new Error(`Error ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}

@@ -1,6 +1,9 @@
+import mimetypes
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
 
 from app.auth.dependencies import get_current_user
@@ -268,3 +271,72 @@ def subalmacenes(user: dict = Depends(get_current_user)):
         })
 
     return {"data": data}
+
+
+# Caché simple del mapa codigo -> ruta_foto con TTL de 5 minutos
+_FOTOS_CACHE = {"map": None, "ts": 0}
+_FOTOS_TTL_SECONDS = 300
+
+
+def _get_fotos_map():
+    """Lee la hoja FOTOS_PRODUCTOS del Excel de almacén y devuelve un dict.
+
+    Si el archivo no existe o no se puede abrir, devuelve dict vacío.
+    La última versión del mapa se conserva en memoria por _FOTOS_TTL_SECONDS.
+    """
+    global _FOTOS_CACHE
+    now = time.time()
+    if _FOTOS_CACHE["map"] is not None and (now - _FOTOS_CACHE["ts"]) < _FOTOS_TTL_SECONDS:
+        return _FOTOS_CACHE["map"]
+
+    settings = get_settings()
+    excel_path = Path(settings.vales_excel_path)
+
+    if not excel_path.exists():
+        _FOTOS_CACHE = {"map": {}, "ts": now}
+        return {}
+
+    try:
+        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+    except Exception:
+        _FOTOS_CACHE = {"map": {}, "ts": now}
+        return {}
+
+    try:
+        fotos = {}
+        ws = wb["FOTOS_PRODUCTOS"]
+        headers = [_normalize_text(cell.value) for cell in ws[1]]
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if not row or all(v is None for v in row):
+                continue
+            item = {}
+            for h, v in zip(headers, row):
+                if h:
+                    item[h] = v
+            codigo = _normalize_text(item.get("CODIGO"))
+            ruta = _normalize_text(item.get("RUTA_FOTO"))
+            if codigo and ruta:
+                fotos[codigo] = ruta
+    finally:
+        wb.close()
+
+    _FOTOS_CACHE = {"map": fotos, "ts": now}
+    return fotos
+
+
+@router.get("/foto-producto/{codigo}")
+def foto_producto(codigo: str, user: dict = Depends(get_current_user)):
+    fotos = _get_fotos_map()
+    ruta = fotos.get(codigo.strip())
+    if not ruta:
+        raise HTTPException(status_code=404, detail="Foto no encontrada")
+
+    path = Path(ruta)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Foto no encontrada")
+
+    content_type, _ = mimetypes.guess_type(str(path))
+    if not content_type:
+        content_type = "image/jpeg"
+
+    return StreamingResponse(open(path, "rb"), media_type=content_type)
