@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # San Antonio Excel (solo lectura)
     san_antonio_excel_path: str = "C:/Users/Ventas-3P/Desktop/SAN ANTONIO/SAN_ANTONIO_SEGUIMIENTO.xlsx"
 
+    # Vales Excel (solo lectura)
+    vales_excel_path: str = "Y:/ALMACEN/Mejora Continua ALMACEN/Nuevo Control de Almacen/BASE DE DATOS/BD_ALMACEN_3P.xlsx"
+
     @property
     def database_url(self) -> str:
         return (

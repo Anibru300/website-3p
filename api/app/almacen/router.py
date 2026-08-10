@@ -1,9 +1,86 @@
-from fastapi import APIRouter, Depends, Query
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from openpyxl import load_workbook
 
 from app.auth.dependencies import get_current_user
+from app.config import get_settings
 from app.database import postgres_cursor
 
 router = APIRouter(prefix="/api/almacen", tags=["almacen"])
+
+
+def _normalize_text(value):
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _read_excel_sheet(wb, sheet_name):
+    if sheet_name not in wb.sheetnames:
+        return []
+    ws = wb[sheet_name]
+    headers = [_normalize_text(cell.value) for cell in ws[1]]
+    data = []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if not row or all(v is None for v in row):
+            continue
+        item = {}
+        for h, v in zip(headers, row):
+            if h:
+                item[h] = v
+        data.append(item)
+    return data
+
+
+def _get_material_en_vales_by_code():
+    """Lee el Excel de vales y devuelve un dict {codigo: cantidad_viva_total}.
+    
+    Si el archivo no existe o no se puede abrir, devuelve dict vacío.
+    """
+    settings = get_settings()
+    excel_path = Path(settings.vales_excel_path)
+
+    if not excel_path.exists():
+        return {}
+
+    try:
+        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+    except Exception:
+        return {}
+
+    try:
+        cabeceras = _read_excel_sheet(wb, "VALES")
+        detalles = _read_excel_sheet(wb, "DETALLE_VALES")
+    finally:
+        wb.close()
+
+    cabeceras_by_folio = {}
+    for c in cabeceras:
+        folio = c.get("FOLIO_VALE")
+        if folio is not None:
+            cabeceras_by_folio[str(folio).strip()] = c
+
+    material = {}
+    for d in detalles:
+        folio = str(d.get("FOLIO_VALE", "")).strip()
+        cab = cabeceras_by_folio.get(folio, {})
+
+        status_val = _normalize_text(cab.get("STATUS") or d.get("STATUS")).upper()
+        cantidad_viva = d.get("CANTIDAD_VIVA", 0) or 0
+        try:
+            cantidad_viva = float(cantidad_viva)
+        except (ValueError, TypeError):
+            cantidad_viva = 0
+
+        if status_val == "CERRADO" or cantidad_viva <= 0:
+            continue
+
+        codigo = _normalize_text(d.get("CODIGO"))
+        if codigo:
+            material[codigo] = material.get(codigo, 0) + cantidad_viva
+
+    return material
 
 
 @router.get("/existencias")
@@ -12,6 +89,9 @@ def existencias(
     busqueda: str = Query("", description="Filtrar por código o descripción"),
     user: dict = Depends(get_current_user),
 ):
+    # Material en vales desde el Excel de almacén (solo lectura)
+    material_en_vales = _get_material_en_vales_by_code()
+
     sql = """
         WITH existencias_por_producto AS (
             SELECT cve_art, SUM(exist) AS existencia_total
@@ -21,18 +101,9 @@ def existencias(
         )
         SELECT
             epp.cve_art AS codigo,
-            MAX(COALESCE(p.descripcion, sp.descripcion, '')) AS descripcion,
-            epp.existencia_total,
-            COALESCE((
-                SELECT SUM(vl.cantidad_viva)
-                FROM vale_lineas vl
-                JOIN vales v ON vl.vale_id = v.id
-                JOIN productos p2 ON vl.producto_id = p2.id
-                WHERE v.estado = 'abierto'
-                  AND (p2.codigo_sae = epp.cve_art OR p2.sku = epp.cve_art)
-            ), 0) AS material_en_vales
+            MAX(COALESCE(sp.descripcion, '')) AS descripcion,
+            epp.existencia_total
         FROM existencias_por_producto epp
-        LEFT JOIN productos p ON p.codigo_sae = epp.cve_art OR p.sku = epp.cve_art
         LEFT JOIN sae_productos sp ON sp.cve_art = epp.cve_art
         WHERE 1=1
     """
@@ -41,18 +112,32 @@ def existencias(
         sql += """
             AND (
                 LOWER(epp.cve_art) LIKE LOWER(%(busqueda)s)
-                OR LOWER(COALESCE(p.descripcion, sp.descripcion, '')) LIKE LOWER(%(busqueda)s)
+                OR LOWER(COALESCE(sp.descripcion, '')) LIKE LOWER(%(busqueda)s)
             )
         """
         params["busqueda"] = f"%{busqueda}%"
-    sql += " GROUP BY epp.cve_art, epp.existencia_total ORDER BY MAX(COALESCE(p.descripcion, sp.descripcion, '')) LIMIT %(limit)s"
+    sql += " GROUP BY epp.cve_art, epp.existencia_total ORDER BY MAX(COALESCE(sp.descripcion, '')) LIMIT %(limit)s"
     params["limit"] = limit
 
     with postgres_cursor() as cur:
         cur.execute(sql, params)
         rows = cur.fetchall()
 
-    return {"data": [dict(row) for row in rows]}
+    data = []
+    for row in rows:
+        row_dict = dict(row)
+        codigo = row_dict["codigo"]
+        existencia_total = float(row_dict["existencia_total"] or 0)
+        mat_vales = float(material_en_vales.get(codigo, 0))
+        data.append({
+            "codigo": codigo,
+            "descripcion": row_dict["descripcion"],
+            "existencia_total": existencia_total,
+            "material_en_vales": mat_vales,
+            "existencia_almacen": existencia_total - mat_vales,
+        })
+
+    return {"data": data}
 
 
 @router.get("/vales")
@@ -62,50 +147,91 @@ def vales(
     responsable: str = Query("", description="Filtrar por responsable: joan, abelardo, aaron u otros"),
     user: dict = Depends(get_current_user),
 ):
-    sql = """
-        SELECT
-            v.id,
-            v.folio,
-            v.fecha AS fecha_salida,
-            v.entregado_a,
-            p.sku AS codigo,
-            p.descripcion,
-            vl.cantidad,
-            u.codigo AS almacen_origen,
-            v.estado
-        FROM vales v
-        JOIN vale_lineas vl ON v.id = vl.vale_id
-        JOIN productos p ON vl.producto_id = p.id
-        LEFT JOIN ubicaciones u ON vl.ubicacion_origen_id = u.id
-        WHERE v.estado = 'abierto' AND vl.cantidad_viva > 0
-    """
-    params = {}
-    if busqueda:
-        sql += """
-            AND (
-                LOWER(v.folio) LIKE LOWER(%(busqueda)s)
-                OR LOWER(v.entregado_a) LIKE LOWER(%(busqueda)s)
-                OR LOWER(p.sku) LIKE LOWER(%(busqueda)s)
-                OR LOWER(p.descripcion) LIKE LOWER(%(busqueda)s)
-            )
-        """
-        params["busqueda"] = f"%{busqueda}%"
-    if responsable:
-        responsable_lower = responsable.lower().strip()
-        if responsable_lower == "otros":
-            sql += """
-                AND LOWER(v.entregado_a) NOT IN ('joan', 'abelardo', 'aaron')
-            """
-        else:
-            sql += """
-                AND LOWER(v.entregado_a) LIKE LOWER(%(responsable)s)
-            """
-            params["responsable"] = f"%{responsable_lower}%"
-    sql += " ORDER BY v.fecha DESC LIMIT %(limit)s"
-    params["limit"] = limit
+    settings = get_settings()
+    excel_path = Path(settings.vales_excel_path)
 
-    with postgres_cursor() as cur:
-        cur.execute(sql, params)
-        rows = cur.fetchall()
+    if not excel_path.exists():
+        raise HTTPException(
+            status_code=503,
+            detail=f"No se encontró el archivo de vales: {excel_path}",
+        )
 
-    return {"data": [dict(row) for row in rows]}
+    try:
+        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"No se pudo abrir el archivo de vales. Puede estar abierto en Excel. Error: {exc}",
+        )
+
+    try:
+        cabeceras = _read_excel_sheet(wb, "VALES")
+        detalles = _read_excel_sheet(wb, "DETALLE_VALES")
+    finally:
+        wb.close()
+
+    # Indexar cabeceras por folio
+    cabeceras_by_folio = {}
+    for c in cabeceras:
+        folio = c.get("FOLIO_VALE")
+        if folio is not None:
+            cabeceras_by_folio[str(folio).strip()] = c
+
+    # Combinar detalles con cabeceras
+    resultados = []
+    for d in detalles:
+        folio = str(d.get("FOLIO_VALE", "")).strip()
+        cab = cabeceras_by_folio.get(folio, {})
+
+        # Filtrar solo vales abiertos / con cantidad viva
+        status_val = _normalize_text(cab.get("STATUS") or d.get("STATUS")).upper()
+        cantidad_viva = d.get("CANTIDAD_VIVA", 0) or 0
+        try:
+            cantidad_viva = float(cantidad_viva)
+        except (ValueError, TypeError):
+            cantidad_viva = 0
+
+        if status_val == "CERRADO" or cantidad_viva <= 0:
+            continue
+
+        entregado_a = _normalize_text(cab.get("ENTREGADO_A"))
+
+        # Filtro por responsable
+        if responsable:
+            responsable_lower = responsable.lower().strip()
+            entregado_lower = entregado_a.lower()
+            if responsable_lower == "otros":
+                if any(n in entregado_lower for n in ["joan", "abelardo", "aaron"]):
+                    continue
+            elif responsable_lower not in entregado_lower:
+                continue
+
+        # Filtro por búsqueda
+        if busqueda:
+            busqueda_lower = busqueda.lower()
+            campos = [
+                str(folio),
+                entregado_a,
+                _normalize_text(d.get("CODIGO")),
+                _normalize_text(d.get("DESCRIPCION")),
+                _normalize_text(d.get("ALMACEN_ORIGEN")),
+            ]
+            if not any(busqueda_lower in c.lower() for c in campos if c):
+                continue
+
+        resultados.append({
+            "folio": folio,
+            "entregado_a": entregado_a,
+            "fecha_salida": cab.get("FECHA_SALIDA"),
+            "codigo": _normalize_text(d.get("CODIGO")),
+            "descripcion": _normalize_text(d.get("DESCRIPCION")),
+            "cantidad": d.get("CANTIDAD", 0),
+            "almacen_origen": _normalize_text(d.get("ALMACEN_ORIGEN")),
+            "estado": _normalize_text(cab.get("STATUS") or d.get("STATUS")),
+            "cantidad_viva": cantidad_viva,
+        })
+
+    # Ordenar por fecha de salida descendente
+    resultados.sort(key=lambda x: x["fecha_salida"] or "", reverse=True)
+
+    return {"data": resultados[:limit]}
