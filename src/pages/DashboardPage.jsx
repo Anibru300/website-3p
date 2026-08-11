@@ -34,6 +34,9 @@ import {
   Warehouse,
   Camera,
   X,
+  Eye,
+  Layers,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 const TABS = [
@@ -440,7 +443,7 @@ function ChartLegend({ items, valueFormatter = (v) => v }) {
   );
 }
 
-function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbox, onRowClick, selectedRow }) {
+function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbox, onRowClick, onRowDoubleClick, selectedRow }) {
   const [sort, setSort] = useState({ key: null, dir: 'asc' });
 
   const defaultFormatNumber = (value) => {
@@ -533,8 +536,9 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
             <tr
               key={idx}
               onClick={() => onRowClick?.(row)}
+              onDoubleClick={() => onRowDoubleClick?.(row)}
               className={`transition-colors ${
-                onRowClick ? 'cursor-pointer' : ''
+                onRowClick || onRowDoubleClick ? 'cursor-pointer' : ''
               } ${
                 selectedRow && selectedRow.codigo === row.codigo
                   ? 'bg-red-50 hover:bg-red-100'
@@ -801,9 +805,12 @@ export default function DashboardPage() {
   const [valesFechaDesde, setValesFechaDesde] = useState('');
   const [valesFechaHasta, setValesFechaHasta] = useState('');
   const [valesAlmacen, setValesAlmacen] = useState('');
+  const [valesModo, setValesModo] = useState('desglose'); // 'desglose' | 'global'
+  const [valeSeleccionado, setValeSeleccionado] = useState(null);
   const [pedidosQuery] = useState('limit=500');
   const [sanAntonioQuery] = useState('limit=500');
   const [existenciasSearch, setExistenciasSearch] = useState('');
+  const [existenciasAlmacen, setExistenciasAlmacen] = useState('');
 
   const almacenesOptions = useMemo(() => {
     const set = new Set();
@@ -823,9 +830,10 @@ export default function DashboardPage() {
     });
     const term = existenciasSearch.trim();
     if (term) params.set('busqueda', term);
+    if (existenciasAlmacen) params.set('almacen', existenciasAlmacen);
     const t = setTimeout(() => setExistenciasQuery(params.toString()), 400);
     return () => clearTimeout(t);
-  }, [existenciasSearch]);
+  }, [existenciasSearch, existenciasAlmacen]);
 
   useEffect(() => {
     const params = new URLSearchParams({ limit: '500' });
@@ -949,6 +957,33 @@ export default function DashboardPage() {
     return { totalPiezas, totalVales: allVales.length, porPersona };
   }, [allVales]);
 
+  const valesGlobal = useMemo(() => {
+    const agrupado = {};
+    vales.forEach((v) => {
+      const codigo = v.codigo || 'Sin código';
+      if (!agrupado[codigo]) {
+        agrupado[codigo] = {
+          codigo,
+          descripcion: v.descripcion || '',
+          cantidad_viva: 0,
+          cantidad: 0,
+          folios: new Set(),
+          almacenes: new Set(),
+        };
+      }
+      agrupado[codigo].cantidad_viva += Number(v.cantidad_viva) || 0;
+      agrupado[codigo].cantidad += Number(v.cantidad) || 0;
+      agrupado[codigo].folios.add(v.folio);
+      if (v.almacen_origen) agrupado[codigo].almacenes.add(v.almacen_origen);
+    });
+    return Object.values(agrupado).map((g) => ({
+      ...g,
+      folios: Array.from(g.folios).sort(),
+      almacenes: Array.from(g.almacenes).sort(),
+      folios_count: g.folios.size,
+    }));
+  }, [vales]);
+
   const pedidosResumen = useMemo(() => {
     const total = pedidos.length;
     const monto = pedidos.reduce((sum, p) => sum + (Number(p.saldo_pendiente) || 0), 0);
@@ -1040,7 +1075,7 @@ export default function DashboardPage() {
   const renderResumen = () => (
     <div className="space-y-8">
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <KpiCard
           label="Pedidos abiertos"
           value={resumen?.pedidos_vivos}
@@ -1049,11 +1084,18 @@ export default function DashboardPage() {
           subtext="Pendientes por facturar"
         />
         <KpiCard
-          label="Monto pendiente"
-          value={formatCurrencySmart(pedidosResumen.monto)}
+          label="Pendiente MXN"
+          value={formatCurrencySmart(resumen?.monto_pendiente_mxn)}
           icon={DollarSign}
           color="bg-p3-red"
-          subtext="Saldo pendiente total"
+          subtext="Saldo en pesos"
+        />
+        <KpiCard
+          label="Pendiente USD"
+          value={formatCurrencySmart(resumen?.monto_pendiente_usd)}
+          icon={DollarSign}
+          color="bg-emerald-600"
+          subtext="Saldo en dólares"
         />
         <KpiCard
           label="Vales abiertos"
@@ -1290,6 +1332,21 @@ export default function DashboardPage() {
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
             />
           </div>
+          <div className="relative min-w-[16rem]">
+            <Warehouse className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <select
+              value={existenciasAlmacen}
+              onChange={(e) => setExistenciasAlmacen(e.target.value)}
+              className="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow appearance-none"
+            >
+              <option value="">Todos los almacenes</option>
+              {subalmacenes.map((s) => (
+                <option key={s.cve_alm} value={s.cve_alm}>
+                  {s.nombre || `Almacén ${s.cve_alm}`}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <DataTable
           rows={existencias}
@@ -1432,9 +1489,45 @@ export default function DashboardPage() {
     </div>
   );
 
+  const detalleVale = useMemo(() => {
+    if (!valeSeleccionado) return [];
+    return vales.filter((v) => v.folio === valeSeleccionado.folio);
+  }, [valeSeleccionado, vales]);
+
   const renderVales = () => (
     <div className="space-y-6">
-      <SectionHeader title="Material en vales abiertos" count={vales.length} icon={ClipboardList} />
+      <SectionHeader
+        title="Material en vales abiertos"
+        count={valesModo === 'global' ? valesGlobal.length : vales.length}
+        icon={ClipboardList}
+      />
+
+      {/* Modo vista */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setValesModo('desglose')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+            valesModo === 'desglose'
+              ? 'bg-p3-red text-white border-p3-red'
+              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          <FileText size={16} />
+          Desglose por vale
+        </button>
+        <button
+          onClick={() => setValesModo('global')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+            valesModo === 'global'
+              ? 'bg-p3-red text-white border-p3-red'
+              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          <Layers size={16} />
+          Global por código
+        </button>
+      </div>
+
       <div className="flex flex-wrap gap-2">
         {RESPONSABLES.map((r) => {
           const isActive = valesResponsable === r.id;
@@ -1512,28 +1605,133 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
-      <DataTable
-        rows={vales}
-        columns={[
-          { key: 'folio', label: 'Folio', sortable: true },
-          { key: 'entregado_a', label: 'Entregado a', sortable: true, wrap: true },
-          { key: 'fecha_salida', label: 'Fecha', sortable: true },
-          { key: 'codigo', label: 'Código', sortable: true },
-          { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
-          {
-            key: 'cantidad',
-            label: 'Cantidad',
-            sortable: true,
-            total: true,
-            accessor: (row) => Number(row.cantidad) || 0,
-            format: formatNumber,
-          },
-          { key: 'almacen_origen', label: 'Almacén', sortable: true, wrap: true },
-          { key: 'estado', label: 'Estado', sortable: true },
-        ]}
-        emptyMessage="No hay vales abiertos actualmente"
-        emptyIcon={ClipboardList}
-      />
+
+      {valesModo === 'global' ? (
+        <DataTable
+          rows={valesGlobal}
+          columns={[
+            { key: 'codigo', label: 'Código', sortable: true },
+            { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
+            {
+              key: 'cantidad_viva',
+              label: 'Cantidad viva total',
+              sortable: true,
+              total: true,
+              accessor: (row) => Number(row.cantidad_viva) || 0,
+              format: formatNumber,
+            },
+            {
+              key: 'folios_count',
+              label: 'Vales',
+              sortable: true,
+              accessor: (row) => Number(row.folios_count) || 0,
+              format: formatNumber,
+            },
+            {
+              key: 'almacenes',
+              label: 'Almacenes',
+              sortable: false,
+              wrap: true,
+              accessor: (row) => (row.almacenes || []).join(', '),
+            },
+          ]}
+          emptyMessage="No hay vales abiertos actualmente"
+          emptyIcon={ClipboardList}
+        />
+      ) : (
+        <DataTable
+          rows={vales}
+          onRowDoubleClick={(row) => setValeSeleccionado(row)}
+          columns={[
+            { key: 'folio', label: 'Folio', sortable: true },
+            { key: 'entregado_a', label: 'Entregado a', sortable: true, wrap: true },
+            { key: 'fecha_salida', label: 'Fecha', sortable: true },
+            { key: 'codigo', label: 'Código', sortable: true },
+            { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
+            {
+              key: 'cantidad',
+              label: 'Cantidad',
+              sortable: true,
+              total: true,
+              accessor: (row) => Number(row.cantidad) || 0,
+              format: formatNumber,
+            },
+            { key: 'almacen_origen', label: 'Almacén', sortable: true, wrap: true },
+            { key: 'estado', label: 'Estado', sortable: true },
+          ]}
+          emptyMessage="No hay vales abiertos actualmente"
+          emptyIcon={ClipboardList}
+        />
+      )}
+
+      {/* Modal detalle de vale */}
+      {valeSeleccionado && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  Vale {valeSeleccionado.folio}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {detalleVale.length} partida{detalleVale.length === 1 ? '' : 's'} · Entregado a:{' '}
+                  {valeSeleccionado.entregado_a || '—'}
+                </p>
+              </div>
+              <button
+                onClick={() => setValeSeleccionado(null)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="p-5 overflow-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-500">Fecha de salida</p>
+                  <p className="font-semibold text-gray-900">{valeSeleccionado.fecha_salida || '—'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-500">Estado</p>
+                  <p className="font-semibold text-gray-900">{valeSeleccionado.estado || '—'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-500">Total piezas</p>
+                  <p className="font-semibold text-gray-900">
+                    {formatNumber(detalleVale.reduce((s, v) => s + (Number(v.cantidad) || 0), 0))}
+                  </p>
+                </div>
+              </div>
+              <DataTable
+                rows={detalleVale}
+                columns={[
+                  { key: 'codigo', label: 'Código', sortable: true },
+                  { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
+                  {
+                    key: 'cantidad',
+                    label: 'Cantidad',
+                    sortable: true,
+                    total: true,
+                    accessor: (row) => Number(row.cantidad) || 0,
+                    format: formatNumber,
+                  },
+                  {
+                    key: 'cantidad_viva',
+                    label: 'Cantidad viva',
+                    sortable: true,
+                    total: true,
+                    accessor: (row) => Number(row.cantidad_viva) || 0,
+                    format: formatNumber,
+                  },
+                  { key: 'almacen_origen', label: 'Almacén origen', sortable: true, wrap: true },
+                ]}
+                emptyMessage="Sin partidas"
+                emptyIcon={ClipboardList}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

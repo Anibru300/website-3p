@@ -98,18 +98,38 @@ def get_pedidos_vivos_excel(busqueda: str = "", limit: int | None = None):
 
         totales = agg.get(folio, {})
         saldo_pendiente = totales.get("saldo_pendiente", 0.0)
+        importe_total = totales.get("importe_total", 0.0)
+        total_facturado = totales.get("total_facturado", 0.0)
+
         # Ignorar pedidos que ya quedaron en cero por redondeo
         if saldo_pendiente <= 0.01:
             continue
+
+        # Clasificación automática por montos (más confiable que el texto del Excel)
+        if total_facturado > 0.01:
+            estado_calculado = "Parcial"
+        else:
+            estado_calculado = "Pendiente"
+
+        # Moneda de origen del pedido (defecto MXN si no viene)
+        moneda_val = _normalize_text(c.get("MONEDA") or c.get("MONEDA_PEDIDO") or "MXN").upper()
+        if moneda_val not in ("USD", "MXN", "PESOS", "DOLARES", "DÓLARES"):
+            moneda_val = "MXN"
+        if moneda_val in ("PESOS",):
+            moneda_val = "MXN"
+        if moneda_val in ("DOLARES", "DÓLARES"):
+            moneda_val = "USD"
 
         resultados.append({
             "folio": folio,
             "cliente": cliente,
             "fecha": fecha.isoformat() if hasattr(fecha, "isoformat") else fecha,
-            "importe_total": totales.get("importe_total", 0.0),
-            "total_facturado": totales.get("total_facturado", 0.0),
+            "importe_total": importe_total,
+            "total_facturado": total_facturado,
             "saldo_pendiente": saldo_pendiente,
-            "estado": _normalize_text(c.get("STATUS_GENERAL")),
+            "estado": estado_calculado,
+            "estado_original": _normalize_text(c.get("STATUS_GENERAL")),
+            "moneda": moneda_val,
             "dias_pendiente": dias_pendiente,
         })
 

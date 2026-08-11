@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 
+from app.almacen.router import get_vales_abiertos_count
 from app.auth.dependencies import get_current_user
 from app.database import postgres_cursor
 from app.ventas.router import get_pedidos_vivos_excel
@@ -15,25 +16,31 @@ def dashboard_resumen(user: dict = Depends(get_current_user)):
         "productos_bajo_minimo": 0,
         "movimientos_90d": 0,
         "facturas_pendientes_cobranza": 0,
+        "monto_pendiente_mxn": 0,
+        "monto_pendiente_usd": 0,
     }
 
     # Pedidos vivos desde el Excel de pendientes por facturar
     try:
-        resumen["pedidos_vivos"] = len(get_pedidos_vivos_excel())
+        pedidos = get_pedidos_vivos_excel()
+        resumen["pedidos_vivos"] = len(pedidos)
+        for p in pedidos:
+            moneda = (p.get("moneda") or "MXN").upper().strip()
+            saldo = float(p.get("saldo_pendiente") or 0)
+            if moneda == "USD":
+                resumen["monto_pendiente_usd"] += saldo
+            else:
+                resumen["monto_pendiente_mxn"] += saldo
     except Exception:
         resumen["pedidos_vivos"] = 0
 
+    # Vales abiertos desde el Excel de almacén (misma fuente que la sección de vales)
+    try:
+        resumen["vales_abiertos"] = get_vales_abiertos_count()
+    except Exception:
+        resumen["vales_abiertos"] = 0
+
     queries = {
-        "vales_abiertos": """
-            SELECT COUNT(*) FROM vales v
-            JOIN vale_lineas vl ON v.id = vl.vale_id
-            WHERE v.estado = 'abierto' AND vl.cantidad_viva > 0
-        """,
-        "vales_abiertos": """
-            SELECT COUNT(*) FROM vales v
-            JOIN vale_lineas vl ON v.id = vl.vale_id
-            WHERE v.estado = 'abierto' AND vl.cantidad_viva > 0
-        """,
         "productos_bajo_minimo": """
             SELECT COUNT(*) FROM sae_existencias
             WHERE exist <= stock_min

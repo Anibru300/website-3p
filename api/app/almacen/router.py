@@ -87,21 +87,76 @@ def _get_material_en_vales_by_code():
     return material
 
 
+def get_vales_abiertos_count():
+    """Cuenta folios de vale distintos con cantidad viva > 0.
+
+    Lee el Excel de vales directamente (la misma fuente que la sección de vales).
+    """
+    settings = get_settings()
+    excel_path = Path(settings.vales_excel_path)
+
+    if not excel_path.exists():
+        return 0
+
+    try:
+        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+    except Exception:
+        return 0
+
+    try:
+        cabeceras = _read_excel_sheet(wb, "VALES")
+        detalles = _read_excel_sheet(wb, "DETALLE_VALES")
+    finally:
+        wb.close()
+
+    cabeceras_by_folio = {}
+    for c in cabeceras:
+        folio = c.get("FOLIO_VALE")
+        if folio is not None:
+            cabeceras_by_folio[str(folio).strip()] = c
+
+    folios_abiertos = set()
+    for d in detalles:
+        folio = str(d.get("FOLIO_VALE", "")).strip()
+        cab = cabeceras_by_folio.get(folio, {})
+
+        status_val = _normalize_text(cab.get("STATUS") or d.get("STATUS")).upper()
+        cantidad_viva = d.get("CANTIDAD_VIVA", 0) or 0
+        try:
+            cantidad_viva = float(cantidad_viva)
+        except (ValueError, TypeError):
+            cantidad_viva = 0
+
+        if status_val == "CERRADO" or cantidad_viva <= 0:
+            continue
+
+        folios_abiertos.add(folio)
+
+    return len(folios_abiertos)
+
+
 @router.get("/existencias")
 def existencias(
     limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0, description="Registros a omitir para paginación"),
     busqueda: str = Query("", description="Filtrar por código o descripción"),
+    almacen: str = Query("", description="Filtrar por clave de almacén (cve_alm)"),
     user: dict = Depends(get_current_user),
 ):
     # Material en vales desde el Excel de almacén (solo lectura)
     material_en_vales = _get_material_en_vales_by_code()
 
-    base_sql = """
+    almacen_filtro = ""
+    params = {}
+    if almacen:
+        almacen_filtro = "AND cve_alm = %(almacen)s"
+        params["almacen"] = almacen
+
+    base_sql = f"""
         WITH existencias_por_producto AS (
             SELECT cve_art, SUM(exist) AS existencia_total
             FROM sae_existencias
-            WHERE exist > 0
+            WHERE exist > 0 {almacen_filtro}
             GROUP BY cve_art
         )
         SELECT
@@ -112,11 +167,11 @@ def existencias(
         LEFT JOIN sae_productos sp ON sp.cve_art = epp.cve_art
         WHERE 1=1
     """
-    count_sql = """
+    count_sql = f"""
         WITH existencias_por_producto AS (
             SELECT cve_art, SUM(exist) AS existencia_total
             FROM sae_existencias
-            WHERE exist > 0
+            WHERE exist > 0 {almacen_filtro}
             GROUP BY cve_art
         )
         SELECT COUNT(*) AS total
@@ -124,7 +179,6 @@ def existencias(
         LEFT JOIN sae_productos sp ON sp.cve_art = epp.cve_art
         WHERE 1=1
     """
-    params = {}
     if busqueda:
         filtro = """
             AND (
@@ -144,7 +198,7 @@ def existencias(
         cur.execute(base_sql, params)
         rows = cur.fetchall()
 
-        cur.execute(count_sql, {k: v for k, v in params.items() if k in ("busqueda",)})
+        cur.execute(count_sql, {k: v for k, v in params.items() if k in ("busqueda", "almacen")})
         total_row = cur.fetchone()
         total = total_row["total"] if total_row else 0
 
