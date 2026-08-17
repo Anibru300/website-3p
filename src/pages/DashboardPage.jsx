@@ -797,7 +797,6 @@ export default function DashboardPage() {
 
   // Filters
   const EXISTENCIAS_PAGE_SIZE = 50;
-  const [existenciasQuery, setExistenciasQuery] = useState(`limit=${EXISTENCIAS_PAGE_SIZE}`);
   const [existenciasOffset, setExistenciasOffset] = useState(0);
   const [existenciasTotal, setExistenciasTotal] = useState(0);
   const [valesQuery, setValesQuery] = useState('limit=500');
@@ -811,6 +810,8 @@ export default function DashboardPage() {
   const [sanAntonioQuery] = useState('limit=500');
   const [existenciasSearch, setExistenciasSearch] = useState('');
   const [existenciasAlmacen, setExistenciasAlmacen] = useState('');
+  const [existenciasFiltro, setExistenciasFiltro] = useState('con'); // 'con' | 'sin' | 'todos'
+  const [existenciasLoading, setExistenciasLoading] = useState(false);
 
   const almacenesOptions = useMemo(() => {
     const set = new Set();
@@ -821,19 +822,48 @@ export default function DashboardPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [allVales]);
 
-  // Búsqueda server-side en existencias con debounce
+  // Carga de existencias con loading sutil (no bloquea toda la página)
+  const loadExistencias = useCallback(
+    async (query) => {
+      setExistenciasLoading(true);
+      setError(null);
+      try {
+        const data = await fetchExistencias(query);
+        setExistencias(data.data || []);
+        setExistenciasTotal(data.total || 0);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setExistenciasLoading(false);
+      }
+    },
+    []
+  );
+
+  const buildExistenciasQuery = useCallback(
+    (offset = 0) => {
+      const params = new URLSearchParams({
+        limit: String(EXISTENCIAS_PAGE_SIZE),
+        offset: String(offset),
+      });
+      const term = existenciasSearch.trim();
+      if (term) params.set('busqueda', term);
+      if (existenciasAlmacen) params.set('almacen', existenciasAlmacen);
+      if (existenciasFiltro && existenciasFiltro !== 'con') params.set('existencia', existenciasFiltro);
+      return params.toString();
+    },
+    [existenciasSearch, existenciasAlmacen, existenciasFiltro]
+  );
+
+  // Búsqueda server-side en existencias con debounce fluido
   useEffect(() => {
     setExistenciasOffset(0);
-    const params = new URLSearchParams({
-      limit: String(EXISTENCIAS_PAGE_SIZE),
-      offset: '0',
-    });
-    const term = existenciasSearch.trim();
-    if (term) params.set('busqueda', term);
-    if (existenciasAlmacen) params.set('almacen', existenciasAlmacen);
-    const t = setTimeout(() => setExistenciasQuery(params.toString()), 400);
+    const query = buildExistenciasQuery(0);
+    const t = setTimeout(() => {
+      loadExistencias(query);
+    }, 600);
     return () => clearTimeout(t);
-  }, [existenciasSearch, existenciasAlmacen]);
+  }, [buildExistenciasQuery, loadExistencias]);
 
   useEffect(() => {
     const params = new URLSearchParams({ limit: '500' });
@@ -873,11 +903,7 @@ export default function DashboardPage() {
       setLoading(true);
       setError(null);
       try {
-        if (tab === 'existencias') {
-          const data = await fetchExistencias(existenciasQuery);
-          setExistencias(data.data || []);
-          setExistenciasTotal(data.total || 0);
-        } else if (tab === 'vales') {
+        if (tab === 'vales') {
           const data = await fetchVales(valesQuery);
           setVales(data.data || []);
         } else if (tab === 'pedidos') {
@@ -893,7 +919,7 @@ export default function DashboardPage() {
         setLoading(false);
       }
     },
-    [existenciasQuery, valesQuery, pedidosQuery, sanAntonioQuery]
+    [valesQuery, pedidosQuery, sanAntonioQuery]
   );
 
   useEffect(() => {
@@ -901,10 +927,12 @@ export default function DashboardPage() {
   }, [loadAll]);
 
   useEffect(() => {
-    if (activeTab !== 'resumen') {
+    if (activeTab === 'existencias') {
+      loadExistencias(buildExistenciasQuery(existenciasOffset));
+    } else if (activeTab !== 'resumen') {
       loadTabData(activeTab);
     }
-  }, [activeTab, existenciasQuery, valesQuery, pedidosQuery, sanAntonioQuery, loadTabData]);
+  }, [activeTab, valesQuery, pedidosQuery, sanAntonioQuery, loadTabData, loadExistencias, buildExistenciasQuery, existenciasOffset]);
 
   const formatCurrency = (value) => {
     if (value == null) return '—';
@@ -1049,12 +1077,9 @@ export default function DashboardPage() {
   const handleExistenciasPageChange = useCallback(
     (newOffset) => {
       setExistenciasOffset(newOffset);
-      const params = new URLSearchParams(existenciasQuery);
-      params.set('offset', String(newOffset));
-      params.set('limit', String(EXISTENCIAS_PAGE_SIZE));
-      setExistenciasQuery(params.toString());
+      loadExistencias(buildExistenciasQuery(newOffset));
     },
-    [existenciasQuery]
+    [buildExistenciasQuery, loadExistencias]
   );
 
   const subalmacenesData = useMemo(() => {
@@ -1321,7 +1346,7 @@ export default function DashboardPage() {
           count={existencias.length}
           icon={Package}
         />
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col lg:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
@@ -1331,8 +1356,13 @@ export default function DashboardPage() {
               onChange={(e) => setExistenciasSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
             />
+            {existenciasLoading && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="w-4 h-4 border-2 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
           </div>
-          <div className="relative min-w-[16rem]">
+          <div className="relative min-w-[12rem] lg:min-w-[16rem]">
             <Warehouse className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <select
               value={existenciasAlmacen}
@@ -1347,12 +1377,33 @@ export default function DashboardPage() {
               ))}
             </select>
           </div>
+          <div className="relative min-w-[10rem]">
+            <Boxes className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <select
+              value={existenciasFiltro}
+              onChange={(e) => setExistenciasFiltro(e.target.value)}
+              className="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow appearance-none"
+            >
+              <option value="con">Con existencia</option>
+              <option value="sin">Sin existencia</option>
+              <option value="todos">Todos</option>
+            </select>
+          </div>
         </div>
-        <DataTable
-          rows={existencias}
-          onRowClick={(row) => setExistenciasSelected(row)}
-          selectedRow={existenciasSelected}
-          columns={[
+        <div className="relative">
+          {existenciasLoading && (
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-start justify-center pt-20 rounded-2xl">
+              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-md border border-gray-100 text-sm text-gray-600">
+                <div className="w-4 h-4 border-2 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+                Cargando...
+              </div>
+            </div>
+          )}
+          <DataTable
+            rows={existencias}
+            onRowClick={(row) => setExistenciasSelected(row)}
+            selectedRow={existenciasSelected}
+            columns={[
             { key: 'codigo', label: 'Código', sortable: true },
             { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
             {
@@ -1384,6 +1435,7 @@ export default function DashboardPage() {
           emptyMessage="No se encontraron existencias"
           emptyIcon={Package}
         />
+        </div>
         {existenciasTotal > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
             <p className="text-sm text-gray-500">

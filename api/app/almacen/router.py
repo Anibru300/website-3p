@@ -141,6 +141,7 @@ def existencias(
     offset: int = Query(0, ge=0, description="Registros a omitir para paginación"),
     busqueda: str = Query("", description="Filtrar por código o descripción"),
     almacen: str = Query("", description="Filtrar por clave de almacén (cve_alm)"),
+    existencia: str = Query("con", description="Filtrar por existencia: con, sin, todos"),
     user: dict = Depends(get_current_user),
 ):
     # Material en vales desde el Excel de almacén (solo lectura)
@@ -152,37 +153,49 @@ def existencias(
         almacen_filtro = "AND cve_alm = %(almacen)s"
         params["almacen"] = almacen
 
+    # Normalizar filtro de existencia
+    existencia = (existencia or "con").lower().strip()
+    if existencia not in ("con", "sin", "todos"):
+        existencia = "con"
+
+    existencia_filtro = ""
+    if existencia == "con":
+        existencia_filtro = "AND COALESCE(ef.existencia_total, 0) > 0"
+    elif existencia == "sin":
+        existencia_filtro = "AND COALESCE(ef.existencia_total, 0) = 0"
+    # 'todos' no aplica filtro adicional
+
     base_sql = f"""
-        WITH existencias_por_producto AS (
-            SELECT cve_art, SUM(exist) AS existencia_total
+        WITH existencias_filtradas AS (
+            SELECT cve_art, COALESCE(SUM(exist), 0) AS existencia_total
             FROM sae_existencias
-            WHERE exist > 0 {almacen_filtro}
+            WHERE 1=1 {almacen_filtro}
             GROUP BY cve_art
         )
         SELECT
-            epp.cve_art AS codigo,
+            sp.cve_art AS codigo,
             MAX(COALESCE(sp.descripcion, '')) AS descripcion,
-            epp.existencia_total
-        FROM existencias_por_producto epp
-        LEFT JOIN sae_productos sp ON sp.cve_art = epp.cve_art
+            COALESCE(ef.existencia_total, 0) AS existencia_total
+        FROM sae_productos sp
+        LEFT JOIN existencias_filtradas ef ON ef.cve_art = sp.cve_art
         WHERE 1=1
     """
     count_sql = f"""
-        WITH existencias_por_producto AS (
-            SELECT cve_art, SUM(exist) AS existencia_total
+        WITH existencias_filtradas AS (
+            SELECT cve_art, COALESCE(SUM(exist), 0) AS existencia_total
             FROM sae_existencias
-            WHERE exist > 0 {almacen_filtro}
+            WHERE 1=1 {almacen_filtro}
             GROUP BY cve_art
         )
         SELECT COUNT(*) AS total
-        FROM existencias_por_producto epp
-        LEFT JOIN sae_productos sp ON sp.cve_art = epp.cve_art
+        FROM sae_productos sp
+        LEFT JOIN existencias_filtradas ef ON ef.cve_art = sp.cve_art
         WHERE 1=1
     """
     if busqueda:
         filtro = """
             AND (
-                LOWER(epp.cve_art) LIKE LOWER(%(busqueda)s)
+                LOWER(sp.cve_art) LIKE LOWER(%(busqueda)s)
                 OR LOWER(COALESCE(sp.descripcion, '')) LIKE LOWER(%(busqueda)s)
             )
         """
@@ -190,7 +203,14 @@ def existencias(
         count_sql += filtro
         params["busqueda"] = f"%{busqueda}%"
 
-    base_sql += " GROUP BY epp.cve_art, epp.existencia_total ORDER BY MAX(COALESCE(sp.descripcion, '')) LIMIT %(limit)s OFFSET %(offset)s"
+    base_sql += f"""
+        {existencia_filtro}
+        GROUP BY sp.cve_art, ef.existencia_total
+        ORDER BY MAX(COALESCE(sp.descripcion, ''))
+        LIMIT %(limit)s OFFSET %(offset)s
+    """
+    count_sql += f" {existencia_filtro}"
+
     params["limit"] = limit
     params["offset"] = offset
 
