@@ -997,6 +997,13 @@ export default function DashboardPage() {
     return new Intl.NumberFormat('es-MX').format(num);
   };
 
+  const formatDate = (value) => {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
   const formatCurrencyCompact = (value) => {
     if (value == null) return '—';
     const num = Number(value);
@@ -1985,6 +1992,8 @@ export default function DashboardPage() {
             rows={historialVentas}
             columns={[
               { key: 'cliente', label: 'Cliente', sortable: true, wrap: true },
+              { key: 'folio_factura', label: 'Folio factura', sortable: true },
+              { key: 'fecha_factura', label: 'Fecha factura', sortable: true, accessor: (row) => row.fecha_factura, format: formatDate },
               { key: 'codigo', label: 'Código', sortable: true },
               { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
               {
