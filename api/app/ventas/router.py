@@ -1,4 +1,5 @@
 import datetime
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,6 +10,16 @@ from app.config import get_settings
 from app.database import postgres_cursor
 
 router = APIRouter(prefix="/api/ventas", tags=["ventas"])
+
+# Caché en memoria para el historial de ventas
+_CACHE_TTL_SECONDS = 30 * 60  # 30 minutos
+_historial_cache = {
+    "timestamp": 0,
+    "excel_mtime": 0,
+    "filas": [],
+    "clientes": [],
+    "codigos": [],
+}
 
 
 def _normalize_text(value):
@@ -258,6 +269,101 @@ def _read_seguimiento_documental(wb):
     return data
 
 
+def _build_historial_item(item):
+    """Convierte una fila cruda del Excel en el diccionario que expone la API."""
+    cantidad = _to_float(item.get("Cantidad"))
+    precio_unitario = _to_float(item.get("Precio Unitario"))
+    importe_partida = _to_float(item.get("Importe Partida"))
+    tipo_cambio = _to_float(item.get("Tipo de Cambio"))
+
+    return {
+        "cliente": _normalize_text(item.get("Cliente Pedido")),
+        "codigo": _normalize_text(item.get("Codigo Producto")),
+        "descripcion": _normalize_text(item.get("Descripcion Producto")),
+        "cantidad": cantidad,
+        "precio_unitario": precio_unitario,
+        "importe_partida": importe_partida,
+        "moneda": _normalize_text(item.get("Moneda")).upper() or "MXN",
+        "tipo_cambio": tipo_cambio,
+        "almacen": _normalize_text(item.get("Nombre Almacen Linea")),
+        "folio_factura": _normalize_text(item.get("Folio Factura")),
+        "folio_pedido": _normalize_text(item.get("Folio Pedido")),
+        "fecha_factura": _iso_date(item.get("Fecha Factura")),
+        "fecha_pedido": _iso_date(item.get("Fecha Pedido")),
+    }
+
+
+def _load_historial_cache():
+    """Lee el Excel de facturación y guarda en caché las filas de factura y metadatos."""
+    global _historial_cache
+    settings = get_settings()
+    excel_path = Path(settings.ventas_facturacion_excel_path)
+
+    if not excel_path.exists():
+        _historial_cache = {
+            "timestamp": time.time(),
+            "excel_mtime": 0,
+            "filas": [],
+            "clientes": [],
+            "codigos": [],
+        }
+        return
+
+    try:
+        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+    except Exception:
+        return
+
+    try:
+        filas_crudas = _read_seguimiento_documental(wb)
+    finally:
+        wb.close()
+
+    filas = []
+    clientes_set = set()
+    codigos_set = set()
+
+    for item in filas_crudas:
+        tipo_fila = _normalize_text(item.get("Tipo de Fila")).lower()
+        if "factura" not in tipo_fila:
+            continue
+        fila = _build_historial_item(item)
+        filas.append(fila)
+        if fila["cliente"]:
+            clientes_set.add(fila["cliente"])
+        if fila["codigo"]:
+            codigos_set.add(fila["codigo"])
+
+    filas.sort(key=lambda x: (x["cliente"] or "", x["fecha_factura"] or "", x["codigo"] or ""))
+
+    _historial_cache = {
+        "timestamp": time.time(),
+        "excel_mtime": excel_path.stat().st_mtime,
+        "filas": filas,
+        "clientes": sorted(clientes_set),
+        "codigos": sorted(codigos_set),
+    }
+
+
+def _get_cached_historial():
+    """Devuelve la caché del historial, recargándola si expiró o cambió el Excel."""
+    settings = get_settings()
+    excel_path = Path(settings.ventas_facturacion_excel_path)
+
+    needs_reload = False
+    if not _historial_cache["filas"]:
+        needs_reload = True
+    elif time.time() - _historial_cache["timestamp"] > _CACHE_TTL_SECONDS:
+        needs_reload = True
+    elif excel_path.exists() and excel_path.stat().st_mtime != _historial_cache["excel_mtime"]:
+        needs_reload = True
+
+    if needs_reload:
+        _load_historial_cache()
+
+    return _historial_cache
+
+
 @router.get("/historial")
 def historial_ventas(
     limit: int = Query(100, ge=1, le=500),
@@ -268,33 +374,25 @@ def historial_ventas(
     moneda: str = Query(""),
     user: dict = Depends(get_current_user),
 ):
-    """Lee el historial de ventas desde el Excel de facturación.
+    """Lee el historial de ventas desde la caché en memoria.
 
     Filtra solo filas donde 'Tipo de Fila' contenga la palabra 'factura'.
     Permite buscar por cliente, código, descripción o moneda.
     Soporta paginación con limit/offset.
     """
-    settings = get_settings()
-    excel_path = Path(settings.ventas_facturacion_excel_path)
-
-    if not excel_path.exists():
+    cache = _get_cached_historial()
+    if not cache["filas"]:
+        settings = get_settings()
+        excel_path = Path(settings.ventas_facturacion_excel_path)
+        if not excel_path.exists():
+            raise HTTPException(
+                status_code=503,
+                detail=f"No se encontró el archivo de ventas: {excel_path}",
+            )
         raise HTTPException(
             status_code=503,
-            detail=f"No se encontró el archivo de ventas: {excel_path}",
+            detail="No se pudo cargar el historial de ventas. Puede estar abierto en Excel.",
         )
-
-    try:
-        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se pudo abrir el archivo de ventas. Puede estar abierto en Excel. Error: {exc}",
-        )
-
-    try:
-        filas = _read_seguimiento_documental(wb)
-    finally:
-        wb.close()
 
     busqueda_lower = busqueda.lower().strip()
     cliente_lower = cliente.lower().strip()
@@ -302,53 +400,24 @@ def historial_ventas(
     moneda_upper = moneda.upper().strip()
 
     resultados = []
-    for item in filas:
-        tipo_fila = _normalize_text(item.get("Tipo de Fila")).lower()
-        if "factura" not in tipo_fila:
-            continue
-
-        cliente_val = _normalize_text(item.get("Cliente Pedido"))
-        codigo_val = _normalize_text(item.get("Codigo Producto"))
-        descripcion_val = _normalize_text(item.get("Descripcion Producto"))
-        moneda_val = _normalize_text(item.get("Moneda")).upper()
-
+    for fila in cache["filas"]:
         # Filtro por búsqueda general
         if busqueda_lower and not any(
             busqueda_lower in campo
-            for campo in (cliente_val.lower(), codigo_val.lower(), descripcion_val.lower())
+            for campo in (fila["cliente"].lower(), fila["codigo"].lower(), fila["descripcion"].lower())
         ):
             continue
 
         # Filtros específicos
-        if cliente_lower and cliente_lower not in cliente_val.lower():
+        if cliente_lower and cliente_lower not in fila["cliente"].lower():
             continue
-        if codigo_lower and codigo_lower not in codigo_val.lower():
+        if codigo_lower and codigo_lower not in fila["codigo"].lower():
             continue
-        if moneda_upper and moneda_upper not in moneda_val:
+        if moneda_upper and moneda_upper not in fila["moneda"]:
             continue
 
-        cantidad = _to_float(item.get("Cantidad"))
-        precio_unitario = _to_float(item.get("Precio Unitario"))
-        importe_partida = _to_float(item.get("Importe Partida"))
-        tipo_cambio = _to_float(item.get("Tipo de Cambio"))
+        resultados.append(fila)
 
-        resultados.append({
-            "cliente": cliente_val,
-            "codigo": codigo_val,
-            "descripcion": descripcion_val,
-            "cantidad": cantidad,
-            "precio_unitario": precio_unitario,
-            "importe_partida": importe_partida,
-            "moneda": moneda_val or "MXN",
-            "tipo_cambio": tipo_cambio,
-            "almacen": _normalize_text(item.get("Nombre Almacen Linea")),
-            "folio_factura": _normalize_text(item.get("Folio Factura")),
-            "folio_pedido": _normalize_text(item.get("Folio Pedido")),
-            "fecha_factura": _iso_date(item.get("Fecha Factura")),
-            "fecha_pedido": _iso_date(item.get("Fecha Pedido")),
-        })
-
-    resultados.sort(key=lambda x: (x["cliente"] or "", x["fecha_factura"] or "", x["codigo"] or ""))
     total = len(resultados)
     totales = {"MXN": 0.0, "USD": 0.0}
     for r in resultados:
@@ -367,33 +436,18 @@ def historial_ventas(
 @router.get("/historial/metadata")
 def historial_ventas_metadata(user: dict = Depends(get_current_user)):
     """Devuelve listas únicas de clientes y códigos del historial de ventas."""
-    settings = get_settings()
-    excel_path = Path(settings.ventas_facturacion_excel_path)
-
-    if not excel_path.exists():
+    cache = _get_cached_historial()
+    if not cache["filas"]:
+        settings = get_settings()
+        excel_path = Path(settings.ventas_facturacion_excel_path)
+        if not excel_path.exists():
+            raise HTTPException(
+                status_code=503,
+                detail=f"No se encontró el archivo de ventas: {excel_path}",
+            )
         raise HTTPException(
             status_code=503,
-            detail=f"No se encontró el archivo de ventas: {excel_path}",
+            detail="No se pudo cargar el historial de ventas. Puede estar abierto en Excel.",
         )
 
-    try:
-        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se pudo abrir el archivo de ventas. Puede estar abierto en Excel. Error: {exc}",
-        )
-
-    try:
-        filas = _read_seguimiento_documental(wb)
-    finally:
-        wb.close()
-
-    clientes = sorted(
-        {_normalize_text(item.get("Cliente Pedido")) for item in filas if "factura" in _normalize_text(item.get("Tipo de Fila")).lower() and _normalize_text(item.get("Cliente Pedido"))}
-    )
-    codigos = sorted(
-        {_normalize_text(item.get("Codigo Producto")) for item in filas if "factura" in _normalize_text(item.get("Tipo de Fila")).lower() and _normalize_text(item.get("Codigo Producto"))}
-    )
-
-    return {"clientes": clientes, "codigos": codigos}
+    return {"clientes": cache["clientes"], "codigos": cache["codigos"]}
