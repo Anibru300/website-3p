@@ -8,6 +8,7 @@ from app.auth.router import router as auth_router
 from app.config import get_settings
 from app.dashboard.router import router as dashboard_router
 from app.inventario.router import router as inventario_router
+from app.cotizaciones.router import router as cotizaciones_router
 from app.san_antonio.router import router as san_antonio_router
 from app.ventas.router import precargar_historial_cache, router as ventas_router
 
@@ -32,6 +33,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_router)
     app.include_router(almacen_router)
     app.include_router(ventas_router)
+    app.include_router(cotizaciones_router)
     app.include_router(inventario_router)
     app.include_router(san_antonio_router)
 

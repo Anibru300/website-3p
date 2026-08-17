@@ -6,6 +6,7 @@ import MsSchippersPage from './pages/MsSchippersPage';
 import GenericBrandPage from './pages/GenericBrandPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import CotizadorPage from './pages/CotizadorPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { ToastProvider } from './components/ui/Toast';
 
@@ -64,6 +65,14 @@ function App() {
     content = (
       <ProtectedRoute>
         <DashboardPage />
+      </ProtectedRoute>
+    );
+    showHeader = false;
+    mainClass = '';
+  } else if (segments[0] === 'cotizador') {
+    content = (
+      <ProtectedRoute>
+        <CotizadorPage />
       </ProtectedRoute>
     );
     showHeader = false;

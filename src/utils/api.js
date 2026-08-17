@@ -98,6 +98,27 @@ export async function fetchHistorialVentasMetadata() {
   return apiFetch('/api/ventas/historial/metadata');
 }
 
+export async function fetchPrecioReferencia(codigo, cliente = '') {
+  const params = new URLSearchParams({ codigo });
+  if (cliente) params.set('cliente', cliente);
+  return apiFetch(`/api/cotizaciones/precio-referencia?${params.toString()}`);
+}
+
+export async function guardarCotizacion(data) {
+  return apiFetch('/api/cotizaciones', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function listarCotizaciones(query = '') {
+  return apiFetch(`/api/cotizaciones?${query}`);
+}
+
+export async function obtenerCotizacionPdfUrl(id) {
+  return `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/cotizaciones/${id}/pdf`;
+}
+
 export async function fetchFacturasCobranza(query = '') {
   return apiFetch(`/api/ventas/facturas-cobranza?${query}`);
 }

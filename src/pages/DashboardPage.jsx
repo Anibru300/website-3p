@@ -40,6 +40,7 @@ import {
   Layers,
   FileSpreadsheet,
   History,
+  Calculator,
 } from 'lucide-react';
 
 const TABS = [
@@ -2223,6 +2224,14 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => (window.location.href = '/cotizador')}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
+                title="Cotizador"
+              >
+                <Calculator size={18} />
+                <span className="hidden sm:inline">Cotizador</span>
+              </button>
               <button
                 onClick={() => (activeTab === 'resumen' ? loadAll() : loadTabData(activeTab))}
                 className="p-2 text-gray-500 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
