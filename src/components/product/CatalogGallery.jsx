@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
-import { choreTimeProducts } from '../../data/choreTimeProducts';
 import { 
-  X, ZoomIn, ChevronLeft, ChevronRight, Download, 
-  FileText, Eye, CheckCircle, Package, ArrowRight,
-  ExternalLink, Phone, MessageCircle
+  X, ZoomIn, ChevronLeft, ChevronRight, 
+  FileText, ExternalLink, Phone
 } from 'lucide-react';
 import { FadeInSection } from '../ui';
 
@@ -13,34 +11,6 @@ const CatalogGallery = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Catálogo principal - Chore-Time con PDF (oculto temporalmente)
-  const mainCatalog = {
-    id: 'chore-time',
-    name: 'CHORE-TIME',
-    origin: 'USA',
-    description: language === 'es'
-      ? `Catálogo completo de refacciones originales para sistemas avícolas. ${choreTimeProducts.length} productos en stock.`
-      : `Complete catalog of original spare parts for poultry systems. ${choreTimeProducts.length} products in stock.`,
-    image: '/images/brands/chore-time.svg',
-    pdfUrl: 'catalogs/catalogo-chore-time.pdf',
-    pdfSize: '1.7 MB',
-    pdfPages: '12 páginas',
-    products: [
-      'Tarjetas Electrónicas',
-      'Displays y Teclados', 
-      'Motores y Mecánico',
-      'Sensores',
-      'Eléctrico y Alimentación',
-      'Accesorios y Estructura'
-    ],
-    stats: {
-      products: choreTimeProducts.length,
-      inStock: true,
-      updated: 'Abril 2026'
-    }
-  };
-
-  // Catálogos en desarrollo
   const allCatalogs = [
     {
       id: 'fancom',
@@ -148,11 +118,6 @@ const CatalogGallery = () => {
     setSelectedImage(allCatalogs[newIndex]);
   };
 
-  // Navegar a la página de productos Chore-Time (oculto temporalmente)
-  const goToChoreTimeProducts = () => {
-    window.location.href = '/marcas/chore-time';
-  };
-
   // Cerrar modal con tecla ESC
   useEffect(() => {
     const handleEsc = (e) => {
@@ -184,128 +149,9 @@ const CatalogGallery = () => {
           </p>
         </FadeInSection>
 
-        {/* CATÁLOGO DESTACADO - CHORE-TIME (oculto temporalmente) */}
-        {false && (
-        <FadeInSection className="mb-16">
-          <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
-            <div className="grid lg:grid-cols-2">
-              {/* Lado Izquierdo - Visual */}
-              <div className="bg-gradient-to-br from-[#1B3A5C] to-[#2d5a8e] p-8 lg:p-12 flex flex-col items-center justify-center text-white relative overflow-hidden">
-                {/* Patrón de fondo */}
-                <div className="absolute inset-0 opacity-10 pointer-events-none">
-                  <div className="absolute top-10 left-10 w-32 h-32 border-4 border-white rounded-full"></div>
-                  <div className="absolute bottom-10 right-10 w-48 h-48 border-4 border-white rounded-full"></div>
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-4 border-white rounded-full"></div>
-                </div>
-                
-                <div className="relative z-10 text-center">
-                  <div className="bg-white rounded-2xl p-6 mb-6 inline-block shadow-2xl">
-                    <img 
-                      src={mainCatalog.image} 
-                      alt={mainCatalog.name}
-                      className="h-20 w-auto"
-                      loading="lazy"
-                    />
-                  </div>
-                  <h3 className="text-3xl font-bold mb-2">{mainCatalog.name}</h3>
-                  <p className="text-white/80 text-lg mb-6">{mainCatalog.origin}</p>
-                  
-                  {/* Stats */}
-                  <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
-                    <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full">
-                      <Package size={16} />
-                      <span>{mainCatalog.stats.products} productos</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-green-500/20 px-4 py-2 rounded-full">
-                      <CheckCircle size={16} className="text-green-400" />
-                      <span className="text-green-300">En stock</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Lado Derecho - Información y Descarga */}
-              <div className="p-8 lg:p-12">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold mb-4">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                  {language === 'es' ? 'Disponible para descarga' : 'Available for download'}
-                </div>
-
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  {language === 'es' 
-                    ? 'Catálogo de Refacciones Originales' 
-                    : 'Original Spare Parts Catalog'}
-                </h3>
-
-                <p className="text-gray-600 mb-6 leading-relaxed">
-                  {mainCatalog.description}
-                </p>
-
-                {/* Categorías */}
-                <div className="mb-8">
-                  <p className="text-sm font-semibold text-gray-700 mb-3">
-                    {language === 'es' ? 'Categorías incluidas:' : 'Categories included:'}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {mainCatalog.products.map((product, idx) => (
-                      <span 
-                        key={idx}
-                        className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg border border-gray-200"
-                      >
-                        {product}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Info del PDF */}
-                <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-8 p-4 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <FileText size={18} />
-                    <span>PDF</span>
-                  </div>
-                  <div className="w-px h-4 bg-gray-300"></div>
-                  <span>{mainCatalog.pdfSize}</span>
-                  <div className="w-px h-4 bg-gray-300"></div>
-                  <span>{mainCatalog.pdfPages}</span>
-                  <div className="w-px h-4 bg-gray-300 hidden sm:block"></div>
-                  <span className="hidden sm:inline">Actualizado: {mainCatalog.stats.updated}</span>
-                </div>
-
-                {/* Botones de acción - CORREGIDOS V2 */}
-                <div className="flex flex-col sm:flex-row gap-4" style={{ isolation: 'isolate' }}>
-                  <a
-                    href={mainCatalog.pdfUrl}
-                    download
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-p3-red text-white font-semibold rounded-xl hover:bg-p3-red-dark transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                  >
-                    <Download size={20} />
-                    {language === 'es' ? 'Descargar Catálogo PDF' : 'Download PDF Catalog'}
-                  </a>
-                  <div 
-                    className="flex-1 cursor-pointer"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      goToChoreTimeProducts();
-                    }}
-                  >
-                    <div className="flex items-center justify-center gap-2 px-6 py-4 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-p3-red hover:text-p3-red transition-all h-full w-full">
-                      <Eye size={20} />
-                      {language === 'es' ? 'Ver Productos Online' : 'View Products Online'}
-                      <ArrowRight size={16} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </FadeInSection>
-        )}
-
         {/* CATÁLOGOS DE TODAS LAS MARCAS */}
         <FadeInSection>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
             {allCatalogs.map((catalog, index) => {
               const CardWrapper = catalog.href ? 'a' : 'div';
               const cardProps = catalog.href
@@ -315,7 +161,7 @@ const CatalogGallery = () => {
                 <FadeInSection key={catalog.id} delay={index * 50}>
                   <CardWrapper
                     {...cardProps}
-                    className="group block bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 hover:border-gray-200 cursor-pointer"
+                    className="group block bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 hover:border-gray-200 cursor-pointer h-full flex flex-col"
                   >
                     {/* Imagen del logo */}
                     <div className="h-40 bg-gray-50 flex items-center justify-center p-6 relative overflow-hidden">
@@ -360,7 +206,7 @@ const CatalogGallery = () => {
                     </div>
 
                     {/* Información */}
-                    <div className="p-4">
+                    <div className="p-4 flex-1 flex flex-col">
                       <div className="flex items-center justify-between mb-1">
                         <h4 className="font-bold text-gray-900">{catalog.name}</h4>
                         <span className="text-xs text-gray-400">{catalog.origin}</span>
@@ -452,21 +298,20 @@ const CatalogGallery = () => {
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full z-[150]"
                 onClick={(e) => { e.stopPropagation(); goToNext(); }}
                 aria-label="Siguiente"
-                style={{ right: '16px' }}
               >
                 <ChevronRight size={48} />
               </button>
               
               {/* Contenido del modal */}
               <div 
-                className="max-w-3xl w-full flex flex-col items-center"
+                className="max-w-3xl w-full flex flex-col items-center px-4"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="bg-white rounded-2xl p-8 md:p-12 mb-4 shadow-2xl">
+                <div className="bg-white rounded-2xl p-6 md:p-12 mb-4 shadow-2xl w-full">
                   <img 
                     src={selectedImage.image} 
                     alt={selectedImage.name}
-                    className="max-w-full max-h-[50vh] md:max-h-[55vh] object-contain"
+                    className="max-w-full max-h-[45vh] sm:max-h-[50vh] md:max-h-[55vh] object-contain mx-auto"
                     loading="lazy"
                     style={{ minWidth: '200px', minHeight: '100px' }}
                     onError={(e) => {

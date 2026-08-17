@@ -154,7 +154,7 @@ const MsSchippersPage = () => {
       </section>
 
       {/* Filtros */}
-      <section className="sticky top-20 z-30 bg-white border-b shadow-sm">
+      <section className="sticky top-[136px] z-30 bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex flex-wrap gap-2 flex-1">
@@ -193,7 +193,7 @@ const MsSchippersPage = () => {
       {/* Catálogo */}
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
             {productosFiltrados.map((prod) => {
               const Icon = productIcon[prod.categoria] || Package;
               const meta = msSchippersCategoryMeta[prod.categoria] || msSchippersCategoryMeta.otro;

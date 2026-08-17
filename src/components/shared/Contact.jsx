@@ -208,7 +208,7 @@ const Contact = () => {
                 ></iframe>
                 
                 {/* Logo de 3P superpuesto en el mapa */}
-                <div className="absolute bottom-4 left-4 bg-white dark:bg-gray-900 rounded-xl p-2 shadow-lg flex items-center gap-2">
+                <div className="absolute bottom-4 right-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-xl p-2 shadow-lg flex items-center gap-2">
                   <img 
                     src="/images/logo-3p-header.png" 
                     alt="3P Logo" 

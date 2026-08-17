@@ -1,4 +1,4 @@
-import { ArrowLeft, Construction, Phone, Mail } from 'lucide-react';
+import { ArrowLeft, Sparkles, Clock, MapPin, Phone, Mail, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { SEO } from '../components/shared';
 
@@ -104,85 +104,158 @@ const GenericBrandPage = ({ brandId }) => {
   const contactText = t('brandPage.contactText').replace('{brand}', brand.name);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <SEO
         title={`${brand.name} | Distribuidor Autorizado - 3P S.A. DE C.V.`}
         description={description}
         keywords={brand.keywords}
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-        <a href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-8 transition-colors">
-          <ArrowLeft size={18} />
-          <span>{t('brandPage.backToHome')}</span>
-        </a>
+      {/* Hero con color de marca */}
+      <section
+        className="relative text-white py-16 md:py-24"
+        style={{ backgroundColor: brand.color }}
+      >
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-10">
+          <div className="absolute top-10 left-10 w-40 h-40 border-4 border-white rounded-full" />
+          <div className="absolute bottom-10 right-10 w-64 h-64 border-4 border-white rounded-full" />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-br from-black/20 to-transparent" />
 
-        <div className="text-center max-w-2xl mx-auto">
-          {/* Brand Logo */}
-          <div className="mb-8">
-            <div
-              className="w-32 h-32 rounded-2xl mx-auto flex items-center justify-center shadow-lg mb-6"
-              style={{ backgroundColor: brand.color }}
-            >
-              <img
-                src={brand.image || `/images/brands/${brandId}.svg`}
-                alt={brand.name}
-                className="w-24 h-24 object-contain"
-                loading="lazy"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  const parent = e.target.parentElement;
-                  if (parent) {
-                    parent.textContent = brand.name.charAt(0);
-                    parent.className = 'text-white text-2xl font-bold';
-                  }
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Construction size={40} className="text-gray-400" />
-          </div>
-
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{brand.name}</h1>
-          <p className="text-lg text-gray-600 mb-8">{description}</p>
-
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-8">
-            <p className="text-amber-800">
-              <strong>{t('brandPage.catalogInDevelopment')}</strong><br />
-              {contactText}
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-            <a
-              href="https://wa.me/524771284661"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#25D366] text-white font-medium rounded-lg hover:bg-[#128C7E] transition-colors"
-            >
-              <Phone size={18} />
-              {t('brandPage.whatsappLabel')}
-            </a>
-            <a
-              href="mailto:trespsadecv@hotmail.com"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <Mail size={18} />
-              {t('brandPage.emailLabel')}
-            </a>
-          </div>
-
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <a
             href="/"
-            className="inline-flex items-center justify-center gap-2 text-p3-red hover:text-p3-red-dark font-medium transition-colors"
+            className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-colors"
           >
             <ArrowLeft size={18} />
-            {t('brandPage.backToCatalog')}
+            <span>{t('brandPage.backToHome')}</span>
           </a>
+
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+            <div className="max-w-2xl">
+              <div className="inline-block px-3 py-1 bg-white/20 text-white text-sm font-semibold rounded-full mb-4">
+                Distribuidor Autorizado en México
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                {brand.name}
+              </h1>
+              <p className="text-xl text-white/90 leading-relaxed">
+                {description}
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <div
+                className="w-28 h-28 md:w-36 md:h-36 bg-white rounded-2xl flex items-center justify-center p-4 shadow-2xl"
+              >
+                <img
+                  src={brand.image || `/images/brands/${brandId}.svg`}
+                  alt={brand.name}
+                  className="w-full h-full object-contain"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    const parent = e.target.parentElement;
+                    if (parent) {
+                      parent.textContent = brand.name.charAt(0);
+                      parent.className = 'text-4xl font-bold text-gray-800';
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Contenido principal */}
+      <section className="py-12 md:py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden -mt-20 relative z-20">
+            <div className="p-8 md:p-12 text-center">
+              <div className="w-20 h-20 bg-p3-blue/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Sparkles size={36} className="text-p3-blue" />
+              </div>
+
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                Catálogo en preparación
+              </h2>
+              <p className="text-gray-600 text-lg mb-8 max-w-xl mx-auto leading-relaxed">
+                {contactText}
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
+                <a
+                  href="https://wa.me/524771284661"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#25D366] text-white font-semibold rounded-xl hover:bg-[#128C7E] transition-colors"
+                >
+                  <Phone size={18} />
+                  {t('brandPage.whatsappLabel')}
+                </a>
+                <a
+                  href="mailto:trespsadecv@hotmail.com"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+                >
+                  <Mail size={18} />
+                  {t('brandPage.emailLabel')}
+                </a>
+              </div>
+
+              <div className="border-t border-gray-100 pt-8">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">
+                  ¿Por qué elegir {brand.name}?
+                </h3>
+                <div className="grid sm:grid-cols-3 gap-4 text-left">
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <Clock size={20} className="text-p3-red mb-2" />
+                    <p className="font-semibold text-gray-900 text-sm">Respuesta rápida</p>
+                    <p className="text-gray-500 text-sm">Te contactamos en menos de 24 horas.</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <MapPin size={20} className="text-p3-red mb-2" />
+                    <p className="font-semibold text-gray-900 text-sm">Inventario local</p>
+                    <p className="text-gray-500 text-sm">Stock y distribución desde León, Gto.</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <Phone size={20} className="text-p3-red mb-2" />
+                    <p className="font-semibold text-gray-900 text-sm">Asesoría técnica</p>
+                    <p className="text-gray-500 text-sm">Especialistas en equipos avícolas.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA inferior */}
+      <section className="py-16 bg-white border-t border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+            Explora nuestros catálogos activos
+          </h2>
+          <p className="text-gray-600 mb-8">
+            Mientras preparamos el catálogo de {brand.name}, puedes revisar las líneas que ya tenemos disponibles.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              href="/#catalogos"
+              className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-p3-red text-white font-semibold rounded-xl hover:bg-p3-red-dark transition-colors"
+            >
+              <ExternalLink size={18} />
+              Ver catálogos disponibles
+            </a>
+            <a
+              href="/"
+              className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+            >
+              <ArrowLeft size={18} />
+              {t('brandPage.backToHome')}
+            </a>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

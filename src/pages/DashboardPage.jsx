@@ -198,7 +198,7 @@ function PieChart({ data, valueFormatter = (v) => v, setTooltip }) {
   });
 
   return (
-    <svg viewBox="0 0 100 100" className="w-full h-auto min-h-[18rem] max-h-80 mx-auto">
+    <svg viewBox="0 0 100 100" className="w-full h-auto min-h-[16rem] sm:min-h-[18rem] max-h-80 mx-auto">
       {slices.map((slice, idx) => (
         <path
           key={idx}
@@ -249,7 +249,7 @@ function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
   const width = labelW + plotW + 80;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-h-[20rem] max-h-[28rem]">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-h-[16rem] sm:min-h-[20rem] max-h-[28rem]">
       {data.map((d, i) => {
         const y = gap + i * (barH + gap);
         const w = ((Number(d.value) || 0) / max) * plotW;
@@ -314,7 +314,7 @@ function VerticalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
   const barW = step * 0.5;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-h-[18rem] max-h-80">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-h-[16rem] sm:min-h-[18rem] max-h-80">
       <line
         x1={margin.left}
         y1={margin.top + plotH}
@@ -398,7 +398,7 @@ function GaugeChart({ percent, setTooltip }) {
   const fgPath = `M ${start.x} ${start.y} A ${r} ${r} 0 0 0 ${endValue.x} ${endValue.y}`;
 
   return (
-    <svg viewBox="0 0 200 110" className="w-full h-auto min-h-[14rem] max-h-56">
+    <svg viewBox="0 0 200 110" className="w-full h-auto min-h-[12rem] sm:min-h-[14rem] max-h-56">
       <path d={bgPath} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round" />
       <path
         d={fgPath}
@@ -497,15 +497,15 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-md">
-      <table className="min-w-full text-sm">
+    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-md w-full">
+      <table className="w-full text-sm">
         <thead className="bg-gray-50 text-gray-600 font-semibold uppercase tracking-wide text-xs">
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
                 onClick={() => handleHeaderClick(col)}
-                className={`px-4 py-3 text-left select-none ${
+                className={`px-3 lg:px-4 py-3 text-left select-none ${
                   col.sortable
                     ? 'cursor-pointer hover:bg-gray-100 hover:text-p3-red transition-colors'
                     : ''
@@ -552,7 +552,7 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
                   <td
                     key={col.key}
                     title={col.wrap ? String(raw ?? '') : undefined}
-                    className={`px-4 py-2.5 text-gray-700 align-top ${
+                    className={`px-3 lg:px-4 py-2.5 text-gray-700 align-top ${
                       col.wrap
                         ? 'break-words max-w-lg'
                         : 'whitespace-nowrap'
@@ -571,12 +571,12 @@ function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbo
               {columns.map((col, idx) => {
                 const total = totals[idx];
                 if (total === null) {
-                  return <td key={col.key} className="px-4 py-2.5"></td>;
+                  return <td key={col.key} className="px-3 lg:px-4 py-2.5"></td>;
                 }
                 return (
                   <td
                     key={col.key}
-                    className={`px-4 py-2.5 ${col.wrap ? 'break-words max-w-lg' : 'whitespace-nowrap'}`}
+                    className={`px-3 lg:px-4 py-2.5 ${col.wrap ? 'break-words max-w-lg' : 'whitespace-nowrap'}`}
                   >
                     {idx === firstTotalIdx && (
                       <span className="text-gray-500 text-xs uppercase mr-2">Total</span>
@@ -606,7 +606,7 @@ function KpiCard({ label, value, icon, color = 'bg-p3-blue', subtext = '' }) {
         <p className="text-sm text-gray-500 font-medium leading-tight line-clamp-2 min-h-[2.5em]">
           {label}
         </p>
-        <p className="text-3xl font-bold text-gray-900">{value ?? 0}</p>
+        <p className="text-2xl sm:text-3xl font-bold text-gray-900">{value ?? 0}</p>
         {subtext && <p className="text-xs text-gray-400 mt-1">{subtext}</p>}
       </div>
     </div>
@@ -723,7 +723,7 @@ function ImageLightbox({ codigo, descripcion, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-3 sm:p-4"
       onClick={onClose}
     >
       <button
@@ -1075,7 +1075,7 @@ export default function DashboardPage() {
   const renderResumen = () => (
     <div className="space-y-8">
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
         <KpiCard
           label="Pedidos abiertos"
           value={resumen?.pedidos_vivos}
@@ -1278,7 +1278,7 @@ export default function DashboardPage() {
 
           <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 md:col-span-2">
             <SectionHeader title="Resumen de vales" icon={ClipboardList} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
               <KpiCard
                 label="Total de vales abiertos"
                 value={formatNumber(valesResumen.totalVales)}
@@ -1314,7 +1314,7 @@ export default function DashboardPage() {
   );
 
   const renderExistencias = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] xl:grid-cols-[1fr,360px] 2xl:grid-cols-[1fr,400px] gap-4 lg:gap-6">
       <div className="min-w-0 space-y-6">
         <SectionHeader
           title="Existencias por producto"
@@ -1666,8 +1666,8 @@ export default function DashboardPage() {
 
       {/* Modal detalle de vale */}
       {valeSeleccionado && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col mx-2 sm:mx-0">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">
@@ -1886,8 +1886,8 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50/70">
       <Tooltip tooltip={tooltip} />
       <div className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        <div className="w-full px-3 sm:px-4 lg:px-6 xl:px-8">
+          <div className="mx-auto max-w-7xl xl:max-w-[1600px] 2xl:max-w-[1920px] flex items-center justify-between h-14 sm:h-16">
             <div className="flex items-center gap-3">
               <div className="bg-p3-red text-white p-2 rounded-lg shadow-sm">
                 <Package size={20} />
@@ -1921,8 +1921,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-        <div className="flex overflow-x-auto gap-2 mb-6 pb-1">
+      <div className="w-full px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="mx-auto max-w-7xl xl:max-w-[1600px] 2xl:max-w-[1920px]">
+          <div className="flex overflow-x-auto gap-2 mb-6 pb-1">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1960,6 +1961,7 @@ export default function DashboardPage() {
             {tabContent[activeTab]}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
