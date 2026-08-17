@@ -1,4 +1,5 @@
 import datetime
+import pickle
 import time
 from pathlib import Path
 
@@ -293,6 +294,49 @@ def _build_historial_item(item):
     }
 
 
+def _cache_file_path(excel_path: Path) -> Path:
+    """Ruta del archivo de caché en disco basado en la ruta del Excel."""
+    cache_dir = Path(__file__).resolve().parent.parent / "data" / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    # Usar el nombre del Excel para el archivo de caché
+    return cache_dir / f"{excel_path.stem}_historial_cache.pkl"
+
+
+def _save_cache_to_disk(excel_path: Path):
+    """Guarda la caché actual en disco para cargas rápidas futuras."""
+    try:
+        cache_path = _cache_file_path(excel_path)
+        with open(cache_path, "wb") as f:
+            pickle.dump(_historial_cache, f)
+    except Exception:
+        pass
+
+
+def _load_cache_from_disk(excel_path: Path) -> bool:
+    """Carga la caché desde disco si es válida (más reciente que el Excel).
+
+    Devuelve True si se cargó correctamente.
+    """
+    global _historial_cache
+    cache_path = _cache_file_path(excel_path)
+    if not cache_path.exists():
+        return False
+
+    try:
+        with open(cache_path, "rb") as f:
+            cached = pickle.load(f)
+
+        excel_mtime = excel_path.stat().st_mtime
+        if cached.get("excel_mtime") != excel_mtime:
+            return False
+
+        _historial_cache = cached
+        _historial_cache["timestamp"] = time.time()
+        return True
+    except Exception:
+        return False
+
+
 def _load_historial_cache():
     """Lee el Excel de facturación y guarda en caché las filas de factura y metadatos."""
     global _historial_cache
@@ -307,6 +351,10 @@ def _load_historial_cache():
             "clientes": [],
             "codigos": [],
         }
+        return
+
+    # Intentar cargar desde caché en disco primero
+    if _load_cache_from_disk(excel_path):
         return
 
     try:
@@ -343,6 +391,13 @@ def _load_historial_cache():
         "clientes": sorted(clientes_set),
         "codigos": sorted(codigos_set),
     }
+
+    _save_cache_to_disk(excel_path)
+
+
+def precargar_historial_cache():
+    """Fuerza la carga inicial del caché del historial de ventas."""
+    _load_historial_cache()
 
 
 def _get_cached_historial():

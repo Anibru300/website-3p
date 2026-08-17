@@ -1,3 +1,5 @@
+import threading
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,7 +9,7 @@ from app.config import get_settings
 from app.dashboard.router import router as dashboard_router
 from app.inventario.router import router as inventario_router
 from app.san_antonio.router import router as san_antonio_router
-from app.ventas.router import router as ventas_router
+from app.ventas.router import precargar_historial_cache, router as ventas_router
 
 
 def create_app() -> FastAPI:
@@ -36,6 +38,13 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health_check():
         return {"status": "ok"}
+
+    @app.on_event("startup")
+    def startup_precargar_cache():
+        # Precargar el historial de ventas en segundo plano para que la
+        # primera petición no tenga que leer el Excel completo.
+        thread = threading.Thread(target=precargar_historial_cache, daemon=True)
+        thread.start()
 
     return app
 

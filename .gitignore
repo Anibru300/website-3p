@@ -48,6 +48,7 @@ gh-pages-assets/
 # Backend local
 api/.venv/
 api/data/
+api/app/data/
 api/.env
 api/tools/.cloudflared/
 api/tools/cloudflared.exe
