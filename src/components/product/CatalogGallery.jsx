@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
-  X, ZoomIn, ChevronLeft, ChevronRight, 
+  X, ZoomIn, ChevronLeft, ChevronRight, ArrowRight,
   FileText, ExternalLink, Phone
 } from 'lucide-react';
 import { FadeInSection } from '../ui';
