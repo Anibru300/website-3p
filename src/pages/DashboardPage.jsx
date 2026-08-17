@@ -1892,6 +1892,16 @@ export default function DashboardPage() {
   );
 
   const renderHistorialVentas = () => {
+    const clientesOptions = useMemo(() => {
+      const set = new Set(historialVentas.map((r) => r.cliente).filter(Boolean));
+      return Array.from(set).sort((a, b) => a.localeCompare(b));
+    }, [historialVentas]);
+
+    const codigosOptions = useMemo(() => {
+      const set = new Set(historialVentas.map((r) => r.codigo).filter(Boolean));
+      return Array.from(set).sort((a, b) => a.localeCompare(b));
+    }, [historialVentas]);
+
     const totalesPorMoneda = historialVentas.reduce(
       (acc, row) => {
         const moneda = row.moneda === 'USD' ? 'USD' : 'MXN';
@@ -1946,23 +1956,33 @@ export default function DashboardPage() {
           </div>
           <div className="relative min-w-[12rem]">
             <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Filtrar por cliente..."
+            <select
               value={historialCliente}
               onChange={(e) => setHistorialCliente(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
-            />
+              className="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow appearance-none"
+            >
+              <option value="">Todos los clientes</option>
+              {clientesOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="relative min-w-[10rem]">
             <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Código..."
+            <select
               value={historialCodigo}
               onChange={(e) => setHistorialCodigo(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
-            />
+              className="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow appearance-none"
+            >
+              <option value="">Todos los códigos</option>
+              {codigosOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="relative min-w-[8rem]">
             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
