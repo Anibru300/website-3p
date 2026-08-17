@@ -899,7 +899,7 @@ export default function DashboardPage() {
     const query = buildExistenciasQuery(0);
     const t = setTimeout(() => {
       loadExistencias(query);
-    }, 600);
+    }, 300);
     return () => clearTimeout(t);
   }, [buildExistenciasQuery, loadExistencias]);
 
@@ -908,7 +908,7 @@ export default function DashboardPage() {
     const query = buildHistorialQuery();
     const t = setTimeout(() => {
       loadHistorialVentas(query);
-    }, 600);
+    }, 400);
     return () => clearTimeout(t);
   }, [buildHistorialQuery, loadHistorialVentas]);
 
@@ -1441,10 +1441,10 @@ export default function DashboardPage() {
         </div>
         <div className="relative">
           {existenciasLoading && (
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-start justify-center pt-20 rounded-2xl">
-              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-md border border-gray-100 text-sm text-gray-600">
-                <div className="w-4 h-4 border-2 border-p3-red border-t-transparent rounded-full animate-spin"></div>
-                Cargando...
+            <div className="absolute top-2 right-2 z-10">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full shadow-sm border border-gray-100 text-xs text-gray-600">
+                <div className="w-3.5 h-3.5 border-2 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+                Actualizando...
               </div>
             </div>
           )}
@@ -1974,10 +1974,10 @@ export default function DashboardPage() {
         {/* Tabla */}
         <div className="relative">
           {historialLoading && (
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-start justify-center pt-20 rounded-2xl">
-              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-md border border-gray-100 text-sm text-gray-600">
-                <div className="w-4 h-4 border-2 border-p3-red border-t-transparent rounded-full animate-spin"></div>
-                Cargando...
+            <div className="absolute top-2 right-2 z-10">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full shadow-sm border border-gray-100 text-xs text-gray-600">
+                <div className="w-3.5 h-3.5 border-2 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+                Actualizando...
               </div>
             </div>
           )}
