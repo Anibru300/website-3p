@@ -10,12 +10,10 @@ import {
   ArrowLeft,
   Calculator,
   Download,
-  FileText,
   Package,
   Plus,
   Save,
   Trash2,
-  Truck,
   User,
 } from 'lucide-react';
 
@@ -24,7 +22,14 @@ const MONEDAS = [
   { value: 'MXN', label: 'Pesos Mexicanos (MXN)' },
 ];
 
-const CONDICIONES = ['Contado', 'Crédito 30 días', 'Crédito 60 días', 'Crédito 90 días'];
+const CONDICIONES = [
+  'Contado',
+  '15 días de crédito',
+  '30 días de crédito',
+  '60 días de crédito',
+  '70 días',
+  '90 días de crédito',
+];
 
 function formatCurrency(value, moneda = 'USD') {
   if (value == null) return '—';
@@ -46,9 +51,13 @@ export default function CotizadorPage() {
   const [tiempoEntrega, setTiempoEntrega] = useState(
     'De 3-5 días después de su orden de compra y/o existencias en almacén y/o proveedor.'
   );
-  const [conEnvio, setConEnvio] = useState(false);
+  const [leyendaEnvio, setLeyendaEnvio] = useState('');
+  const [conDescuento, setConDescuento] = useState(false);
+  const [conStockLeon, setConStockLeon] = useState(false);
+  const [folio, setFolio] = useState('');
   const [lineas, setLineas] = useState([]);
 
+  const [clientesOptions, setClientesOptions] = useState([]);
   const [codigosOptions, setCodigosOptions] = useState([]);
   const [descripcionesMap, setDescripcionesMap] = useState({});
   const [loadingPrecio, setLoadingPrecio] = useState({});
@@ -57,12 +66,12 @@ export default function CotizadorPage() {
   const [cotizacionGuardada, setCotizacionGuardada] = useState(null);
   const [error, setError] = useState(null);
 
-  // Cargar catálogo de códigos desde historial de ventas
+  // Cargar catálogos de clientes y códigos desde historial de ventas
   useEffect(() => {
     fetchHistorialVentasMetadata()
       .then((meta) => {
-        const codigos = meta.codigos || [];
-        setCodigosOptions(codigos);
+        setClientesOptions(meta.clientes || []);
+        setCodigosOptions(meta.codigos || []);
       })
       .catch(() => {});
   }, []);
@@ -109,6 +118,23 @@ export default function CotizadorPage() {
   const eliminarLinea = (id) => {
     setLineas((prev) => prev.filter((l) => l.id !== id));
   };
+
+  const generarFolio = useCallback((clienteValue) => {
+    const clienteLimpio = String(clienteValue || cliente).trim().toUpperCase();
+    if (!clienteLimpio) return '';
+    const hoy = new Date();
+    const yy = String(hoy.getFullYear()).slice(-2);
+    const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dd = String(hoy.getDate()).padStart(2, '0');
+    return `${clienteLimpio} ${yy}${mm}${dd}`;
+  }, [cliente]);
+
+  // Actualizar folio cuando cambia el cliente (solo si el usuario no lo editó manualmente)
+  useEffect(() => {
+    if (!folio || folio === generarFolio(cliente)) {
+      setFolio(generarFolio(cliente));
+    }
+  }, [cliente, folio, generarFolio]);
 
   const actualizarLinea = (id, campo, valor) => {
     setLineas((prev) =>
@@ -186,19 +212,22 @@ export default function CotizadorPage() {
     setError(null);
     try {
       const data = {
+        folio,
         cliente,
         atencion,
         moneda,
         condiciones,
         tiempo_entrega: tiempoEntrega,
-        con_envio: conEnvio,
+        leyenda_envio: leyendaEnvio,
+        con_descuento: conDescuento,
+        con_stock_leon: conStockLeon,
         lineas: lineas.map((l) => ({
           codigo: l.codigo,
           descripcion: l.descripcion,
           almacen: l.almacen,
           cantidad: Number(l.cantidad) || 0,
           precio_unitario: Number(l.precio_unitario) || 0,
-          descuento_pct: Number(l.descuento_pct) || 0,
+          descuento_pct: conDescuento ? Number(l.descuento_pct) || 0 : 0,
         })),
       };
       const result = await guardarCotizacion(data);
@@ -283,14 +312,32 @@ export default function CotizadorPage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Folio</label>
                 <input
                   type="text"
+                  value={folio}
+                  onChange={(e) => setFolio(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red"
+                  placeholder="Se genera automáticamente"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Se genera automáticamente al seleccionar cliente. Puedes editarlo.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
+                <select
                   value={cliente}
                   onChange={(e) => setCliente(e.target.value)}
                   className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red"
-                  placeholder="Nombre del cliente"
-                />
+                >
+                  <option value="">Seleccionar cliente...</option>
+                  {clientesOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Atención a</label>
@@ -332,7 +379,7 @@ export default function CotizadorPage() {
                   ))}
                 </select>
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tiempo de entrega
                 </label>
@@ -343,18 +390,41 @@ export default function CotizadorPage() {
                   className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red"
                 />
               </div>
-              <div className="md:col-span-2 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="conEnvio"
-                  checked={conEnvio}
-                  onChange={(e) => setConEnvio(e.target.checked)}
-                  className="w-5 h-5 text-p3-red rounded border-gray-300 focus:ring-p3-red"
-                />
-                <label htmlFor="conEnvio" className="text-sm text-gray-700 flex items-center gap-2">
-                  <Truck size={16} />
-                  Incluir envío
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Leyenda de envío / entrega
                 </label>
+                <input
+                  type="text"
+                  value={leyendaEnvio}
+                  onChange={(e) => setLeyendaEnvio(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red"
+                  placeholder="Ej. LAB, entrega en domicilio, etc."
+                />
+              </div>
+              <div className="md:col-span-2 flex flex-wrap items-center gap-6">
+                <button
+                  type="button"
+                  onClick={() => setConDescuento((v) => !v)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    conDescuento
+                      ? 'bg-p3-red text-white border-p3-red'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {conDescuento ? 'Con descuento' : 'Sin descuento'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConStockLeon((v) => !v)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    conStockLeon
+                      ? 'bg-p3-red text-white border-p3-red'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {conStockLeon ? 'Con stock en León' : 'Sin stock en León'}
+                </button>
               </div>
             </div>
           </div>
@@ -385,7 +455,9 @@ export default function CotizadorPage() {
                       <th className="px-2 py-2 text-left font-medium">Almacén</th>
                       <th className="px-2 py-2 text-right font-medium w-24">Cantidad</th>
                       <th className="px-2 py-2 text-right font-medium w-32">P. Unitario</th>
-                      <th className="px-2 py-2 text-right font-medium w-24">Desc %</th>
+                      {conDescuento && (
+                        <th className="px-2 py-2 text-right font-medium w-24">Desc %</th>
+                      )}
                       <th className="px-2 py-2 text-right font-medium w-32">Total</th>
                       <th className="px-2 py-2 w-10"></th>
                     </tr>
@@ -452,17 +524,19 @@ export default function CotizadorPage() {
                             className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs text-right"
                           />
                         </td>
-                        <td className="px-2 py-2 align-top">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            value={l.descuento_pct}
-                            onChange={(e) => actualizarLinea(l.id, 'descuento_pct', e.target.value)}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs text-right"
-                          />
-                        </td>
+                        {conDescuento && (
+                          <td className="px-2 py-2 align-top">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.01"
+                              value={l.descuento_pct}
+                              onChange={(e) => actualizarLinea(l.id, 'descuento_pct', e.target.value)}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs text-right"
+                            />
+                          </td>
+                        )}
                         <td className="px-2 py-2 align-top text-right font-medium text-gray-700">
                           {formatCurrency(l.total, moneda)}
                         </td>
@@ -514,7 +588,8 @@ export default function CotizadorPage() {
           {/* Nota */}
           <p className="text-xs text-gray-500">
             * El precio de referencia se carga automáticamente del historial de ventas (último precio
-            facturado a este cliente, o el último precio general si no aplica).
+            facturado a este cliente, o el último precio general si no aplica). El folio se genera
+            automáticamente al estilo del Excel: CLIENTE + YYMMDD.
           </p>
         </div>
       </main>

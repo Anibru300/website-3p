@@ -32,6 +32,12 @@ def _cotizaciones_db_path() -> Path:
     return base / "cotizaciones.db"
 
 
+def _column_exists(conn, table, column):
+    cur = conn.cursor()
+    cur.execute(f"PRAGMA table_info({table})")
+    return any(row[1] == column for row in cur.fetchall())
+
+
 def _init_cotizaciones_db():
     path = _cotizaciones_db_path()
     conn = sqlite3.connect(str(path))
@@ -47,7 +53,9 @@ def _init_cotizaciones_db():
                 moneda TEXT NOT NULL DEFAULT 'USD',
                 condiciones TEXT,
                 tiempo_entrega TEXT,
-                con_envio INTEGER DEFAULT 0,
+                leyenda_envio TEXT,
+                con_descuento INTEGER DEFAULT 0,
+                con_stock_leon INTEGER DEFAULT 0,
                 usuario_email TEXT,
                 usuario_nombre TEXT,
                 subtotal REAL DEFAULT 0,
@@ -74,6 +82,14 @@ def _init_cotizaciones_db():
             )
             """
         )
+        # Migraciones para tablas existentes
+        if not _column_exists(conn, "cotizaciones", "leyenda_envio"):
+            cur.execute("ALTER TABLE cotizaciones ADD COLUMN leyenda_envio TEXT")
+        if not _column_exists(conn, "cotizaciones", "con_descuento"):
+            cur.execute("ALTER TABLE cotizaciones ADD COLUMN con_descuento INTEGER DEFAULT 0")
+        if not _column_exists(conn, "cotizaciones", "con_stock_leon"):
+            cur.execute("ALTER TABLE cotizaciones ADD COLUMN con_stock_leon INTEGER DEFAULT 0")
+        # Eliminar con_envio si existe (ya no se usa)
         conn.commit()
     finally:
         conn.close()
@@ -155,13 +171,24 @@ class LineaCotizacionInput(BaseModel):
 
 
 class CotizacionInput(BaseModel):
+    folio: str = ""
     cliente: str
     atencion: str = ""
     moneda: str = "USD"
     condiciones: str = "Contado"
     tiempo_entrega: str = "De 3-5 días después de su orden de compra y/o existencias en almacén y/o proveedor."
-    con_envio: bool = False
+    leyenda_envio: str = ""
+    con_descuento: bool = False
+    con_stock_leon: bool = False
     lineas: list[LineaCotizacionInput]
+
+
+def _generar_folio(cliente: str, fecha: datetime.datetime | None = None) -> str:
+    """Genera folio al estilo del Excel: CLIENTE YYMMDD."""
+    if fecha is None:
+        fecha = datetime.datetime.now()
+    cliente_limpio = str(cliente).strip().upper()
+    return f"{cliente_limpio} {fecha.strftime('%y%m%d')}"
 
 
 @router.post("")
@@ -174,7 +201,7 @@ def guardar_cotizacion(
 
     fecha = datetime.datetime.now()
     fecha_str = fecha.isoformat()
-    folio = f"COT-{fecha.strftime('%Y%m%d')}-{fecha.strftime('%H%M%S')}"
+    folio = data.folio.strip() if data.folio.strip() else _generar_folio(data.cliente, fecha)
 
     # Calcular totales
     subtotal = 0.0
@@ -198,9 +225,9 @@ def guardar_cotizacion(
         cur.execute(
             """
             INSERT INTO cotizaciones
-            (folio, cliente, atencion, moneda, condiciones, tiempo_entrega, con_envio,
-             usuario_email, usuario_nombre, subtotal, iva, total, fecha)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (folio, cliente, atencion, moneda, condiciones, tiempo_entrega, leyenda_envio,
+             con_descuento, con_stock_leon, usuario_email, usuario_nombre, subtotal, iva, total, fecha)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 folio,
@@ -209,7 +236,9 @@ def guardar_cotizacion(
                 data.moneda.upper(),
                 data.condiciones.strip(),
                 data.tiempo_entrega.strip(),
-                1 if data.con_envio else 0,
+                data.leyenda_envio.strip(),
+                1 if data.con_descuento else 0,
+                1 if data.con_stock_leon else 0,
                 user.get("email", ""),
                 user.get("nombre", ""),
                 subtotal,
@@ -417,8 +446,12 @@ def generar_pdf_cotizacion(
     # Condiciones
     elements.append(Paragraph(f"<b>Condiciones de pago:</b> {cot['condiciones']}", styles["Normal"]))
     elements.append(Paragraph(f"<b>Tiempo de entrega:</b> {cot['tiempo_entrega']}", styles["Normal"]))
-    if cot["con_envio"]:
-        elements.append(Paragraph("<b>Incluye envío.</b>", styles["Normal"]))
+    if cot["leyenda_envio"]:
+        elements.append(Paragraph(f"<b>Envío:</b> {cot['leyenda_envio']}", styles["Normal"]))
+    if cot["con_descuento"]:
+        elements.append(Paragraph("<b>Descuento aplicado por línea.</b>", styles["Normal"]))
+    if cot["con_stock_leon"]:
+        elements.append(Paragraph("<b>Con stock en León.</b>", styles["Normal"]))
     elements.append(Spacer(1, 30))
 
     # Firma
