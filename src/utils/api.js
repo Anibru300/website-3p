@@ -94,6 +94,10 @@ export async function fetchHistorialVentas(query = '') {
   return apiFetch(`/api/ventas/historial?${query}`);
 }
 
+export async function fetchHistorialVentasMetadata() {
+  return apiFetch('/api/ventas/historial/metadata');
+}
+
 export async function fetchFacturasCobranza(query = '') {
   return apiFetch(`/api/ventas/facturas-cobranza?${query}`);
 }

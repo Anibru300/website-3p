@@ -348,3 +348,38 @@ def historial_ventas(
 
     resultados.sort(key=lambda x: (x["cliente"] or "", x["fecha_factura"] or "", x["codigo"] or ""))
     return {"data": resultados[:limit]}
+
+
+@router.get("/historial/metadata")
+def historial_ventas_metadata(user: dict = Depends(get_current_user)):
+    """Devuelve listas únicas de clientes y códigos del historial de ventas."""
+    settings = get_settings()
+    excel_path = Path(settings.ventas_facturacion_excel_path)
+
+    if not excel_path.exists():
+        raise HTTPException(
+            status_code=503,
+            detail=f"No se encontró el archivo de ventas: {excel_path}",
+        )
+
+    try:
+        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"No se pudo abrir el archivo de ventas. Puede estar abierto en Excel. Error: {exc}",
+        )
+
+    try:
+        filas = _read_seguimiento_documental(wb)
+    finally:
+        wb.close()
+
+    clientes = sorted(
+        {_normalize_text(item.get("Cliente Pedido")) for item in filas if "factura" in _normalize_text(item.get("Tipo de Fila")).lower() and _normalize_text(item.get("Cliente Pedido"))}
+    )
+    codigos = sorted(
+        {_normalize_text(item.get("Codigo Producto")) for item in filas if "factura" in _normalize_text(item.get("Tipo de Fila")).lower() and _normalize_text(item.get("Codigo Producto"))}
+    )
+
+    return {"clientes": clientes, "codigos": codigos}

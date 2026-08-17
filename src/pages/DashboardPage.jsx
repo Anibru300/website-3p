@@ -9,6 +9,7 @@ import {
   fetchSanAntonioOrdenes,
   fetchProductoFotoBlobUrl,
   fetchHistorialVentas,
+  fetchHistorialVentasMetadata,
 } from '../utils/api';
 import {
   Package,
@@ -801,6 +802,8 @@ export default function DashboardPage() {
   const [historialCodigo, setHistorialCodigo] = useState('');
   const [historialMoneda, setHistorialMoneda] = useState('');
   const [historialLoading, setHistorialLoading] = useState(false);
+  const [historialClientesOptions, setHistorialClientesOptions] = useState([]);
+  const [historialCodigosOptions, setHistorialCodigosOptions] = useState([]);
 
   // Existencias selected product + lightbox
   const [existenciasSelected, setExistenciasSelected] = useState(null);
@@ -982,6 +985,18 @@ export default function DashboardPage() {
       loadTabData(activeTab);
     }
   }, [activeTab, valesQuery, pedidosQuery, sanAntonioQuery, loadTabData, loadExistencias, loadHistorialVentas, buildExistenciasQuery, buildHistorialQuery, existenciasOffset]);
+
+  // Carga metadatos de clientes/códigos para selects del historial de ventas
+  useEffect(() => {
+    if (activeTab !== 'ventas') return;
+    if (historialClientesOptions.length > 0 || historialCodigosOptions.length > 0) return;
+    fetchHistorialVentasMetadata()
+      .then((meta) => {
+        setHistorialClientesOptions(meta.clientes || []);
+        setHistorialCodigosOptions(meta.codigos || []);
+      })
+      .catch(() => {});
+  }, [activeTab, historialClientesOptions, historialCodigosOptions]);
 
   const formatCurrency = (value) => {
     if (value == null) return '—';
@@ -1892,16 +1907,6 @@ export default function DashboardPage() {
   );
 
   const renderHistorialVentas = () => {
-    const clientesOptions = useMemo(() => {
-      const set = new Set(historialVentas.map((r) => r.cliente).filter(Boolean));
-      return Array.from(set).sort((a, b) => a.localeCompare(b));
-    }, [historialVentas]);
-
-    const codigosOptions = useMemo(() => {
-      const set = new Set(historialVentas.map((r) => r.codigo).filter(Boolean));
-      return Array.from(set).sort((a, b) => a.localeCompare(b));
-    }, [historialVentas]);
-
     const totalesPorMoneda = historialVentas.reduce(
       (acc, row) => {
         const moneda = row.moneda === 'USD' ? 'USD' : 'MXN';
@@ -1962,7 +1967,7 @@ export default function DashboardPage() {
               className="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow appearance-none"
             >
               <option value="">Todos los clientes</option>
-              {clientesOptions.map((c) => (
+              {historialClientesOptions.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
@@ -1977,7 +1982,7 @@ export default function DashboardPage() {
               className="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow appearance-none"
             >
               <option value="">Todos los códigos</option>
-              {codigosOptions.map((c) => (
+              {historialCodigosOptions.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
