@@ -90,6 +90,10 @@ export async function fetchPedidosVivos(query = '') {
   return apiFetch(`/api/ventas/pedidos-vivos?${query}`);
 }
 
+export async function fetchHistorialVentas(query = '') {
+  return apiFetch(`/api/ventas/historial?${query}`);
+}
+
 export async function fetchFacturasCobranza(query = '') {
   return apiFetch(`/api/ventas/facturas-cobranza?${query}`);
 }

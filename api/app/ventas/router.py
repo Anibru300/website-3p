@@ -207,3 +207,144 @@ def seguimiento_documental(
         rows = cur.fetchall()
 
     return {"data": [dict(row) for row in rows]}
+
+
+def _to_float(value):
+    if value is None:
+        return 0.0
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def _iso_date(value):
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value) if value else None
+
+
+def _read_seguimiento_documental(wb):
+    """Lee la hoja 'Seguimiento_Documental' cuyos headers están en la fila 4.
+
+    Las primeras filas contienen metadatos (título, vacías); los datos reales
+    empiezan en la fila 5.
+    """
+    sheet_name = "Seguimiento_Documental"
+    if sheet_name not in wb.sheetnames:
+        return []
+    ws = wb[sheet_name]
+    rows_iter = ws.iter_rows(values_only=True)
+
+    # Saltar filas hasta encontrar los headers en la fila 4 (índice 3)
+    for _ in range(3):
+        next(rows_iter, None)
+
+    headers = [_normalize_text(cell) for cell in next(rows_iter, [])]
+    if not headers:
+        return []
+
+    data = []
+    for row in rows_iter:
+        if not row or all(v is None for v in row):
+            continue
+        item = {}
+        for h, v in zip(headers, row):
+            if h:
+                item[h] = v
+        data.append(item)
+    return data
+
+
+@router.get("/historial")
+def historial_ventas(
+    limit: int = Query(500, ge=1, le=5000),
+    busqueda: str = Query(""),
+    cliente: str = Query(""),
+    codigo: str = Query(""),
+    moneda: str = Query(""),
+    user: dict = Depends(get_current_user),
+):
+    """Lee el historial de ventas desde el Excel de facturación.
+
+    Filtra solo filas donde 'Tipo de Fila' contenga la palabra 'factura'.
+    Permite buscar por cliente, código, descripción o moneda.
+    """
+    settings = get_settings()
+    excel_path = Path(settings.ventas_facturacion_excel_path)
+
+    if not excel_path.exists():
+        raise HTTPException(
+            status_code=503,
+            detail=f"No se encontró el archivo de ventas: {excel_path}",
+        )
+
+    try:
+        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"No se pudo abrir el archivo de ventas. Puede estar abierto en Excel. Error: {exc}",
+        )
+
+    try:
+        filas = _read_seguimiento_documental(wb)
+    finally:
+        wb.close()
+
+    busqueda_lower = busqueda.lower().strip()
+    cliente_lower = cliente.lower().strip()
+    codigo_lower = codigo.lower().strip()
+    moneda_upper = moneda.upper().strip()
+
+    resultados = []
+    for item in filas:
+        tipo_fila = _normalize_text(item.get("Tipo de Fila")).lower()
+        if "factura" not in tipo_fila:
+            continue
+
+        cliente_val = _normalize_text(item.get("Cliente Pedido"))
+        codigo_val = _normalize_text(item.get("Codigo Producto"))
+        descripcion_val = _normalize_text(item.get("Descripcion Producto"))
+        moneda_val = _normalize_text(item.get("Moneda")).upper()
+
+        # Filtro por búsqueda general
+        if busqueda_lower and not any(
+            busqueda_lower in campo
+            for campo in (cliente_val.lower(), codigo_val.lower(), descripcion_val.lower())
+        ):
+            continue
+
+        # Filtros específicos
+        if cliente_lower and cliente_lower not in cliente_val.lower():
+            continue
+        if codigo_lower and codigo_lower not in codigo_val.lower():
+            continue
+        if moneda_upper and moneda_upper not in moneda_val:
+            continue
+
+        cantidad = _to_float(item.get("Cantidad"))
+        precio_unitario = _to_float(item.get("Precio Unitario"))
+        importe_partida = _to_float(item.get("Importe Partida"))
+        tipo_cambio = _to_float(item.get("Tipo de Cambio"))
+
+        resultados.append({
+            "cliente": cliente_val,
+            "codigo": codigo_val,
+            "descripcion": descripcion_val,
+            "cantidad": cantidad,
+            "precio_unitario": precio_unitario,
+            "importe_partida": importe_partida,
+            "moneda": moneda_val or "MXN",
+            "tipo_cambio": tipo_cambio,
+            "almacen": _normalize_text(item.get("Nombre Almacen Linea")),
+            "folio_factura": _normalize_text(item.get("Folio Factura")),
+            "folio_pedido": _normalize_text(item.get("Folio Pedido")),
+            "fecha_factura": _iso_date(item.get("Fecha Factura")),
+            "fecha_pedido": _iso_date(item.get("Fecha Pedido")),
+        })
+
+    resultados.sort(key=lambda x: (x["cliente"] or "", x["fecha_factura"] or "", x["codigo"] or ""))
+    return {"data": resultados[:limit]}

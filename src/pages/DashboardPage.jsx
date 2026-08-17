@@ -8,6 +8,7 @@ import {
   fetchPedidosVivos,
   fetchSanAntonioOrdenes,
   fetchProductoFotoBlobUrl,
+  fetchHistorialVentas,
 } from '../utils/api';
 import {
   Package,
@@ -37,6 +38,7 @@ import {
   Eye,
   Layers,
   FileSpreadsheet,
+  History,
 } from 'lucide-react';
 
 const TABS = [
@@ -44,6 +46,7 @@ const TABS = [
   { id: 'existencias', label: 'Existencias', icon: Package },
   { id: 'vales', label: 'Material en vales', icon: ClipboardList },
   { id: 'pedidos', label: 'Pedidos abiertos', icon: ShoppingCart },
+  { id: 'ventas', label: 'Historial de ventas', icon: History },
   { id: 'san-antonio', label: 'San Antonio', icon: FileText },
 ];
 
@@ -791,6 +794,14 @@ export default function DashboardPage() {
   const [pedidos, setPedidos] = useState([]);
   const [sanAntonio, setSanAntonio] = useState(null);
 
+  // Historial de ventas
+  const [historialVentas, setHistorialVentas] = useState([]);
+  const [historialSearch, setHistorialSearch] = useState('');
+  const [historialCliente, setHistorialCliente] = useState('');
+  const [historialCodigo, setHistorialCodigo] = useState('');
+  const [historialMoneda, setHistorialMoneda] = useState('');
+  const [historialLoading, setHistorialLoading] = useState(false);
+
   // Existencias selected product + lightbox
   const [existenciasSelected, setExistenciasSelected] = useState(null);
   const [fotoLightboxOpen, setFotoLightboxOpen] = useState(false);
@@ -855,6 +866,33 @@ export default function DashboardPage() {
     [existenciasSearch, existenciasAlmacen, existenciasFiltro]
   );
 
+  // Carga de historial de ventas con loading sutil
+  const loadHistorialVentas = useCallback(
+    async (query) => {
+      setHistorialLoading(true);
+      setError(null);
+      try {
+        const data = await fetchHistorialVentas(query);
+        setHistorialVentas(data.data || []);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setHistorialLoading(false);
+      }
+    },
+    []
+  );
+
+  const buildHistorialQuery = useCallback(() => {
+    const params = new URLSearchParams({ limit: '5000' });
+    const term = historialSearch.trim();
+    if (term) params.set('busqueda', term);
+    if (historialCliente) params.set('cliente', historialCliente);
+    if (historialCodigo) params.set('codigo', historialCodigo);
+    if (historialMoneda) params.set('moneda', historialMoneda);
+    return params.toString();
+  }, [historialSearch, historialCliente, historialCodigo, historialMoneda]);
+
   // Búsqueda server-side en existencias con debounce fluido
   useEffect(() => {
     setExistenciasOffset(0);
@@ -864,6 +902,15 @@ export default function DashboardPage() {
     }, 600);
     return () => clearTimeout(t);
   }, [buildExistenciasQuery, loadExistencias]);
+
+  // Búsqueda en historial de ventas con debounce
+  useEffect(() => {
+    const query = buildHistorialQuery();
+    const t = setTimeout(() => {
+      loadHistorialVentas(query);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [buildHistorialQuery, loadHistorialVentas]);
 
   useEffect(() => {
     const params = new URLSearchParams({ limit: '500' });
@@ -929,10 +976,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (activeTab === 'existencias') {
       loadExistencias(buildExistenciasQuery(existenciasOffset));
+    } else if (activeTab === 'ventas') {
+      loadHistorialVentas(buildHistorialQuery());
     } else if (activeTab !== 'resumen') {
       loadTabData(activeTab);
     }
-  }, [activeTab, valesQuery, pedidosQuery, sanAntonioQuery, loadTabData, loadExistencias, buildExistenciasQuery, existenciasOffset]);
+  }, [activeTab, valesQuery, pedidosQuery, sanAntonioQuery, loadTabData, loadExistencias, loadHistorialVentas, buildExistenciasQuery, buildHistorialQuery, existenciasOffset]);
 
   const formatCurrency = (value) => {
     if (value == null) return '—';
@@ -1835,6 +1884,142 @@ export default function DashboardPage() {
     </div>
   );
 
+  const renderHistorialVentas = () => {
+    const totalesPorMoneda = historialVentas.reduce(
+      (acc, row) => {
+        const moneda = row.moneda === 'USD' ? 'USD' : 'MXN';
+        acc[moneda] += Number(row.importe_partida) || 0;
+        return acc;
+      },
+      { MXN: 0, USD: 0 }
+    );
+
+    return (
+      <div className="space-y-6">
+        <SectionHeader
+          title="Historial de ventas"
+          count={historialVentas.length}
+          icon={History}
+        />
+
+        {/* KPIs de totales */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <KpiCard
+            label="Total ventas MXN"
+            value={formatCurrency(totalesPorMoneda.MXN)}
+            icon={DollarSign}
+            color="bg-p3-red"
+            subtext={`${historialVentas.filter((r) => r.moneda !== 'USD').length} partidas`}
+          />
+          <KpiCard
+            label="Total ventas USD"
+            value={formatCurrency(totalesPorMoneda.USD)}
+            icon={DollarSign}
+            color="bg-emerald-600"
+            subtext={`${historialVentas.filter((r) => r.moneda === 'USD').length} partidas`}
+          />
+        </div>
+
+        {/* Filtros */}
+        <div className="flex flex-col lg:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Buscar cliente, código o descripción..."
+              value={historialSearch}
+              onChange={(e) => setHistorialSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+            />
+            {historialLoading && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="w-4 h-4 border-2 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+          </div>
+          <div className="relative min-w-[12rem]">
+            <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Filtrar por cliente..."
+              value={historialCliente}
+              onChange={(e) => setHistorialCliente(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+            />
+          </div>
+          <div className="relative min-w-[10rem]">
+            <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Código..."
+              value={historialCodigo}
+              onChange={(e) => setHistorialCodigo(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+            />
+          </div>
+          <div className="relative min-w-[8rem]">
+            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <select
+              value={historialMoneda}
+              onChange={(e) => setHistorialMoneda(e.target.value)}
+              className="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow appearance-none"
+            >
+              <option value="">Todas las monedas</option>
+              <option value="MXN">Pesos (MXN)</option>
+              <option value="USD">Dólares (USD)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Tabla */}
+        <div className="relative">
+          {historialLoading && (
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-start justify-center pt-20 rounded-2xl">
+              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-md border border-gray-100 text-sm text-gray-600">
+                <div className="w-4 h-4 border-2 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+                Cargando...
+              </div>
+            </div>
+          )}
+          <DataTable
+            rows={historialVentas}
+            columns={[
+              { key: 'cliente', label: 'Cliente', sortable: true, wrap: true },
+              { key: 'codigo', label: 'Código', sortable: true },
+              { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
+              {
+                key: 'cantidad',
+                label: 'Cantidad',
+                sortable: true,
+                total: true,
+                accessor: (row) => Number(row.cantidad) || 0,
+                format: formatNumber,
+              },
+              {
+                key: 'precio_unitario',
+                label: 'Precio unitario',
+                sortable: true,
+                accessor: (row) => Number(row.precio_unitario) || 0,
+                format: formatCurrency,
+              },
+              {
+                key: 'importe_partida',
+                label: 'Importe',
+                sortable: true,
+                total: true,
+                accessor: (row) => Number(row.importe_partida) || 0,
+                format: formatCurrency,
+              },
+              { key: 'moneda', label: 'Moneda', sortable: true },
+            ]}
+            emptyMessage="No se encontraron ventas con esos criterios"
+            emptyIcon={History}
+          />
+        </div>
+      </div>
+    );
+  };
+
   const renderSanAntonio = () => (
     <div className="space-y-8">
       {sanAntonio?.error && (
@@ -1931,6 +2116,7 @@ export default function DashboardPage() {
     existencias: renderExistencias(),
     vales: renderVales(),
     pedidos: renderPedidos(),
+    ventas: renderHistorialVentas(),
     'san-antonio': renderSanAntonio(),
   };
 

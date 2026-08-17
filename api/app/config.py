@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # Pedidos pendientes por facturar Excel (solo lectura)
     pedidos_pendientes_facturar_excel_path: str = "Y:/1 - CONTROL DE ALMACEN/BASES DE DATOS/BD pedidos pendientes por facturar.xlsx"
 
+    # Historial de ventas / facturación Excel (solo lectura)
+    ventas_facturacion_excel_path: str = "Y:/1 - CONTROL DE ALMACEN/BASES DE DATOS/VENTAS_FACTURACION_BASE.xlsx"
+
     @property
     def database_url(self) -> str:
         return (
