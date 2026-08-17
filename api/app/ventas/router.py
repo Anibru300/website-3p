@@ -260,7 +260,8 @@ def _read_seguimiento_documental(wb):
 
 @router.get("/historial")
 def historial_ventas(
-    limit: int = Query(500, ge=1, le=5000),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     busqueda: str = Query(""),
     cliente: str = Query(""),
     codigo: str = Query(""),
@@ -271,6 +272,7 @@ def historial_ventas(
 
     Filtra solo filas donde 'Tipo de Fila' contenga la palabra 'factura'.
     Permite buscar por cliente, código, descripción o moneda.
+    Soporta paginación con limit/offset.
     """
     settings = get_settings()
     excel_path = Path(settings.ventas_facturacion_excel_path)
@@ -347,7 +349,19 @@ def historial_ventas(
         })
 
     resultados.sort(key=lambda x: (x["cliente"] or "", x["fecha_factura"] or "", x["codigo"] or ""))
-    return {"data": resultados[:limit]}
+    total = len(resultados)
+    totales = {"MXN": 0.0, "USD": 0.0}
+    for r in resultados:
+        moneda = r["moneda"] if r["moneda"] == "USD" else "MXN"
+        totales[moneda] += r["importe_partida"]
+
+    return {
+        "data": resultados[offset : offset + limit],
+        "total": total,
+        "totales": totales,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @router.get("/historial/metadata")

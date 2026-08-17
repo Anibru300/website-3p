@@ -804,6 +804,9 @@ export default function DashboardPage() {
   const [historialLoading, setHistorialLoading] = useState(false);
   const [historialClientesOptions, setHistorialClientesOptions] = useState([]);
   const [historialCodigosOptions, setHistorialCodigosOptions] = useState([]);
+  const [historialOffset, setHistorialOffset] = useState(0);
+  const [historialTotal, setHistorialTotal] = useState(0);
+  const [historialTotales, setHistorialTotales] = useState({ MXN: 0, USD: 0 });
 
   // Existencias selected product + lightbox
   const [existenciasSelected, setExistenciasSelected] = useState(null);
@@ -811,6 +814,7 @@ export default function DashboardPage() {
 
   // Filters
   const EXISTENCIAS_PAGE_SIZE = 50;
+  const HISTORIAL_PAGE_SIZE = 100;
   const [existenciasOffset, setExistenciasOffset] = useState(0);
   const [existenciasTotal, setExistenciasTotal] = useState(0);
   const [valesQuery, setValesQuery] = useState('limit=500');
@@ -877,6 +881,8 @@ export default function DashboardPage() {
       try {
         const data = await fetchHistorialVentas(query);
         setHistorialVentas(data.data || []);
+        setHistorialTotal(data.total || 0);
+        setHistorialTotales(data.totales || { MXN: 0, USD: 0 });
       } catch (err) {
         setError(err.message);
       } finally {
@@ -886,15 +892,21 @@ export default function DashboardPage() {
     []
   );
 
-  const buildHistorialQuery = useCallback(() => {
-    const params = new URLSearchParams({ limit: '5000' });
-    const term = historialSearch.trim();
-    if (term) params.set('busqueda', term);
-    if (historialCliente) params.set('cliente', historialCliente);
-    if (historialCodigo) params.set('codigo', historialCodigo);
-    if (historialMoneda) params.set('moneda', historialMoneda);
-    return params.toString();
-  }, [historialSearch, historialCliente, historialCodigo, historialMoneda]);
+  const buildHistorialQuery = useCallback(
+    (offset = 0) => {
+      const params = new URLSearchParams({
+        limit: String(HISTORIAL_PAGE_SIZE),
+        offset: String(offset),
+      });
+      const term = historialSearch.trim();
+      if (term) params.set('busqueda', term);
+      if (historialCliente) params.set('cliente', historialCliente);
+      if (historialCodigo) params.set('codigo', historialCodigo);
+      if (historialMoneda) params.set('moneda', historialMoneda);
+      return params.toString();
+    },
+    [historialSearch, historialCliente, historialCodigo, historialMoneda]
+  );
 
   // Búsqueda server-side en existencias con debounce fluido
   useEffect(() => {
@@ -908,7 +920,8 @@ export default function DashboardPage() {
 
   // Búsqueda en historial de ventas con debounce
   useEffect(() => {
-    const query = buildHistorialQuery();
+    setHistorialOffset(0);
+    const query = buildHistorialQuery(0);
     const t = setTimeout(() => {
       loadHistorialVentas(query);
     }, 400);
@@ -980,11 +993,11 @@ export default function DashboardPage() {
     if (activeTab === 'existencias') {
       loadExistencias(buildExistenciasQuery(existenciasOffset));
     } else if (activeTab === 'ventas') {
-      loadHistorialVentas(buildHistorialQuery());
+      loadHistorialVentas(buildHistorialQuery(historialOffset));
     } else if (activeTab !== 'resumen') {
       loadTabData(activeTab);
     }
-  }, [activeTab, valesQuery, pedidosQuery, sanAntonioQuery, loadTabData, loadExistencias, loadHistorialVentas, buildExistenciasQuery, buildHistorialQuery, existenciasOffset]);
+  }, [activeTab, valesQuery, pedidosQuery, sanAntonioQuery, loadTabData, loadExistencias, loadHistorialVentas, buildExistenciasQuery, buildHistorialQuery, existenciasOffset, historialOffset]);
 
   // Carga metadatos de clientes/códigos para selects del historial de ventas
   useEffect(() => {
@@ -1907,20 +1920,22 @@ export default function DashboardPage() {
   );
 
   const renderHistorialVentas = () => {
-    const totalesPorMoneda = historialVentas.reduce(
-      (acc, row) => {
-        const moneda = row.moneda === 'USD' ? 'USD' : 'MXN';
-        acc[moneda] += Number(row.importe_partida) || 0;
-        return acc;
-      },
-      { MXN: 0, USD: 0 }
-    );
+    const historialPageInfo = useMemo(() => {
+      const page = Math.floor(historialOffset / HISTORIAL_PAGE_SIZE) + 1;
+      const totalPages = Math.ceil(historialTotal / HISTORIAL_PAGE_SIZE) || 1;
+      return { page, totalPages };
+    }, [historialOffset, historialTotal]);
+
+    const handleHistorialPageChange = (newOffset) => {
+      setHistorialOffset(newOffset);
+      loadHistorialVentas(buildHistorialQuery(newOffset));
+    };
 
     return (
       <div className="space-y-6">
         <SectionHeader
           title="Historial de ventas"
-          count={historialVentas.length}
+          count={historialTotal}
           icon={History}
         />
 
@@ -1928,17 +1943,17 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <KpiCard
             label="Total ventas MXN"
-            value={formatCurrency(totalesPorMoneda.MXN)}
+            value={formatCurrency(historialTotales.MXN)}
             icon={DollarSign}
             color="bg-p3-red"
-            subtext={`${historialVentas.filter((r) => r.moneda !== 'USD').length} partidas`}
+            subtext="Total acumulado filtrado"
           />
           <KpiCard
             label="Total ventas USD"
-            value={formatCurrency(totalesPorMoneda.USD)}
+            value={formatCurrency(historialTotales.USD)}
             icon={DollarSign}
             color="bg-emerald-600"
-            subtext={`${historialVentas.filter((r) => r.moneda === 'USD').length} partidas`}
+            subtext="Total acumulado filtrado"
           />
         </div>
 
@@ -2050,6 +2065,40 @@ export default function DashboardPage() {
             emptyIcon={History}
           />
         </div>
+
+        {historialTotal > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            <p className="text-sm text-gray-500">
+              Mostrando <span className="font-semibold text-gray-700">{historialVentas.length}</span> de{' '}
+              <span className="font-semibold text-gray-700">{historialTotal}</span> registros
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  handleHistorialPageChange(Math.max(0, historialOffset - HISTORIAL_PAGE_SIZE))
+                }
+                disabled={historialOffset === 0}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              <span className="text-sm text-gray-600 px-2">
+                Página {historialPageInfo.page} de {historialPageInfo.totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  handleHistorialPageChange(historialOffset + HISTORIAL_PAGE_SIZE)
+                }
+                disabled={historialOffset + HISTORIAL_PAGE_SIZE >= historialTotal}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
