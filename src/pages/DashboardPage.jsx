@@ -1390,6 +1390,12 @@ export default function DashboardPage() {
     [existencias]
   );
 
+  const historialPageInfo = useMemo(() => {
+    const page = Math.floor(historialOffset / HISTORIAL_PAGE_SIZE) + 1;
+    const totalPages = Math.ceil(historialTotal / HISTORIAL_PAGE_SIZE) || 1;
+    return { page, totalPages };
+  }, [historialOffset, historialTotal]);
+
   const handleChartItemClick = (chart, item) => {
     if (!item) return;
     if (chart === 'vales-persona') {
@@ -2282,12 +2288,6 @@ export default function DashboardPage() {
   );
 
   const renderHistorialVentas = () => {
-    const historialPageInfo = useMemo(() => {
-      const page = Math.floor(historialOffset / HISTORIAL_PAGE_SIZE) + 1;
-      const totalPages = Math.ceil(historialTotal / HISTORIAL_PAGE_SIZE) || 1;
-      return { page, totalPages };
-    }, [historialOffset, historialTotal]);
-
     const handleHistorialPageChange = (newOffset) => {
       setHistorialOffset(newOffset);
       loadHistorialVentas(buildHistorialQuery(newOffset));
