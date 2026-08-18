@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
+  descargarCotizacionPdf,
   fetchHistorialVentasMetadata,
   fetchPrecioReferencia,
   fetchVendedoresCotizaciones,
   guardarCotizacion,
-  obtenerCotizacionPdfUrl,
 } from '../utils/api';
 import {
   ArrowLeft,
@@ -260,9 +260,20 @@ export default function CotizadorPage() {
     }
   };
 
-  const descargarPdf = () => {
+  const [descargandoPdf, setDescargandoPdf] = useState(false);
+
+  const descargarPdf = async () => {
     if (!cotizacionGuardada?.id) return;
-    window.open(obtenerCotizacionPdfUrl(cotizacionGuardada.id), '_blank');
+    setDescargandoPdf(true);
+    try {
+      const filename = `${cotizacionGuardada.folio || `cotizacion-${cotizacionGuardada.id}`}.pdf`;
+      await descargarCotizacionPdf(cotizacionGuardada.id, filename);
+    } catch (err) {
+      console.error('[CotizadorPage] Error al descargar PDF:', err);
+      setError(err.message || 'Ocurrió un error al descargar el PDF.');
+    } finally {
+      setDescargandoPdf(false);
+    }
   };
 
   useEffect(() => {
@@ -317,10 +328,11 @@ export default function CotizadorPage() {
               </div>
               <button
                 onClick={descargarPdf}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                disabled={descargandoPdf}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
               >
                 <Download size={18} />
-                Descargar PDF
+                {descargandoPdf ? 'Preparando PDF...' : 'Descargar PDF'}
               </button>
             </div>
           )}

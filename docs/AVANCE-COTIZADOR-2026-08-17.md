@@ -35,22 +35,22 @@
 ## 🔍 Investigación del cierre de sesión al guardar
 - Se agregaron logs detallados en frontend y backend.
 - Se hizo una prueba local de `POST /api/cotizaciones` con un token válido y respondió `200 OK` correctamente.
-- El backend registró la petición: `127.0.0.1 - "POST /api/cotizaciones HTTP/1.1" 200 OK`.
-- Posibles causas si vuelve a pasar:
-  1. Token JWT expirado (duración: 8 horas).
-  2. La petición no llegó al backend por algún proxy/intermediario.
-  3. Error de CORS/credenciales (menos probable porque los GET funcionan).
+- Se hizo una prueba en producción (`https://api.3psadecv.com`) con curl y también respondió `200 OK`.
+- Posible causa principal: token JWT expirado durante el día de trabajo.
+- **Corrección aplicada:** duración del token extendida de 8 horas a **24 horas** (`api/app/config.py`).
+- **Logging agregado:** registros en `api/app/auth/dependencies.py` para detectar peticiones sin token o token inválido.
 - **Próxima prueba:** intentar guardar desde el navegador. Si se cierra la sesión, revisar la consola del navegador (F12) para ver el mensaje exacto de `apiFetch`.
 
 ## ⚠️ Notas importantes
-- El backend fue reiniciado manualmente para aplicar los cambios. Si las tareas programadas (`3P-Website-Backend` y `3P-Website-Tunnel`) no se reiniciaron, conviene detenerlas y volverlas a ejecutar desde el Task Scheduler para que usen el código actualizado.
-- El túnel de Cloudflare debe estar activo para que la API sea accesible desde internet (`api.3psadecv.com`).
+- El backend fue reiniciado manualmente para aplicar los cambios (token de 24 horas y logging).
+- Backend y túnel están corriendo y respondiendo en `https://api.3psadecv.com`.
+- El túnel de Cloudflare debe estar activo para que la API sea accesible desde internet.
 
-## 📋 Pendientes para mañana
+## 📋 Pendientes
 
 1. **Verificar en producción que Guardar ya no cierre sesión**
    - Probar desde el navegador con la consola abierta (F12).
-   - Si hay 401, revisar la duración del token y la hora del servidor/cliente.
+   - Si vuelve a pasar, revisar logs de `api/logs/backend.log` para ver si hay `[auth] Token invalido o expirado`.
    - Si hay error de red/CORS, revisar Cloudflare y el túnel.
 
 2. **Mejorar el PDF**

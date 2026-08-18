@@ -10,6 +10,8 @@ import {
   fetchProductoFotoBlobUrl,
   fetchHistorialVentas,
   fetchHistorialVentasMetadata,
+  guardarSnapshotValorInventario,
+  fetchHistorialValorInventario,
 } from '../utils/api';
 import {
   Package,
@@ -41,6 +43,7 @@ import {
   FileSpreadsheet,
   History,
   Calculator,
+  Activity,
 } from 'lucide-react';
 
 const TABS = [
@@ -50,6 +53,7 @@ const TABS = [
   { id: 'pedidos', label: 'Pedidos abiertos', icon: ShoppingCart },
   { id: 'ventas', label: 'Historial de ventas', icon: History },
   { id: 'san-antonio', label: 'San Antonio', icon: FileText },
+  { id: 'valor-inventario', label: 'Valor de inventario', icon: Activity },
 ];
 
 const COLORS = {
@@ -427,6 +431,137 @@ function GaugeChart({ percent, setTooltip }) {
       <text x={cx} y={cy + 8} textAnchor="middle" className="text-2xl fill-gray-800 font-bold">
         {p.toFixed(1)}%
       </text>
+    </svg>
+  );
+}
+
+function LineChart({ series, valueFormatter = (v) => v, setTooltip }) {
+  if (!series || series.length === 0 || series.every((s) => !s.values || s.values.length === 0)) {
+    return <EmptyState message="Sin datos para gráfica" icon={BarChart3} />;
+  }
+
+  const margin = { top: 20, right: 30, bottom: 70, left: 80 };
+  const plotW = 800;
+  const plotH = 350;
+  const width = plotW + margin.left + margin.right;
+  const height = plotH + margin.top + margin.bottom;
+
+  const allDates = [...new Set(series.flatMap((s) => s.values.map((v) => v.fecha)))].sort();
+  const allValues = series.flatMap((s) => s.values.map((v) => v.value));
+  const minValue = Math.min(...allValues, 0);
+  const maxValue = Math.max(...allValues, 1);
+  const valueRange = maxValue - minValue || 1;
+
+  const getX = (index) => margin.left + (index / Math.max(allDates.length - 1, 1)) * plotW;
+  const getY = (value) => margin.top + plotH - ((value - minValue) / valueRange) * plotH;
+
+  const seriesWithPaths = series.map((s) => {
+    const points = s.values.map((v) => {
+      const idx = allDates.indexOf(v.fecha);
+      return { x: getX(idx), y: getY(v.value), fecha: v.fecha, value: v.value };
+    });
+    const path =
+      points.length > 0 ? `M ${points.map((p) => `${p.x} ${p.y}`).join(' L ')}` : '';
+    return { ...s, points, path };
+  });
+
+  const formatAxisDate = (dateStr) => {
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+  };
+
+  const ticks = 5;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-h-[20rem] max-h-[32rem]">
+      {[...Array(ticks)].map((_, i) => {
+        const tick = i / (ticks - 1);
+        const y = margin.top + plotH - tick * plotH;
+        const value = minValue + tick * valueRange;
+        return (
+          <g key={i}>
+            <line
+              x1={margin.left}
+              y1={y}
+              x2={margin.left + plotW}
+              y2={y}
+              stroke="#e5e7eb"
+              strokeWidth="1"
+            />
+            <text
+              x={margin.left - 10}
+              y={y + 4}
+              textAnchor="end"
+              className="text-xs fill-gray-500"
+            >
+              {valueFormatter(value)}
+            </text>
+          </g>
+        );
+      })}
+
+      {seriesWithPaths.map((s, idx) => (
+        <g key={idx}>
+          <path
+            d={s.path}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={s.isTotal ? 3 : 2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="transition-all duration-300"
+          />
+          {s.points.map((p, pidx) => (
+            <circle
+              key={pidx}
+              cx={p.x}
+              cy={p.y}
+              r={s.isTotal ? 4 : 3}
+              fill={s.color}
+              stroke="white"
+              strokeWidth="2"
+              className="cursor-pointer"
+              onMouseEnter={(e) =>
+                setTooltip({
+                  content: `${s.label}\n${formatAxisDate(p.fecha)}: ${valueFormatter(p.value)}`,
+                  x: e.clientX,
+                  y: e.clientY,
+                })
+              }
+              onMouseMove={(e) =>
+                setTooltip((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null))
+              }
+              onMouseLeave={() => setTooltip(null)}
+            />
+          ))}
+        </g>
+      ))}
+
+      {allDates.map((date, i) => {
+        const x = getX(i);
+        return (
+          <g key={date}>
+            <line
+              x1={x}
+              y1={margin.top + plotH}
+              x2={x}
+              y2={margin.top + plotH + 5}
+              stroke="#9ca3af"
+              strokeWidth="1"
+            />
+            <text
+              x={x}
+              y={margin.top + plotH + 20}
+              textAnchor="start"
+              className="text-xs fill-gray-500"
+              transform={`rotate(-45, ${x}, ${margin.top + plotH + 20})`}
+            >
+              {formatAxisDate(date)}
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 }
@@ -809,6 +944,13 @@ export default function DashboardPage() {
   const [historialTotal, setHistorialTotal] = useState(0);
   const [historialTotales, setHistorialTotales] = useState({ MXN: 0, USD: 0 });
 
+  // Historial de valor del inventario
+  const [historialValor, setHistorialValor] = useState([]);
+  const [historialValorLoading, setHistorialValorLoading] = useState(false);
+  const [historialValorDesde, setHistorialValorDesde] = useState('');
+  const [historialValorHasta, setHistorialValorHasta] = useState('');
+  const [historialValorVisibleSeries, setHistorialValorVisibleSeries] = useState({});
+
   // Existencias selected product + lightbox
   const [existenciasSelected, setExistenciasSelected] = useState(null);
   const [fotoLightboxOpen, setFotoLightboxOpen] = useState(false);
@@ -892,6 +1034,22 @@ export default function DashboardPage() {
     },
     []
   );
+
+  const loadHistorialValorInventario = useCallback(async () => {
+    setHistorialValorLoading(true);
+    setError(null);
+    try {
+      const params = {};
+      if (historialValorDesde) params.fecha_desde = historialValorDesde;
+      if (historialValorHasta) params.fecha_hasta = historialValorHasta;
+      const data = await fetchHistorialValorInventario(params);
+      setHistorialValor(data.data || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setHistorialValorLoading(false);
+    }
+  }, [historialValorDesde, historialValorHasta]);
 
   const buildHistorialQuery = useCallback(
     (offset = 0) => {
@@ -995,10 +1153,12 @@ export default function DashboardPage() {
       loadExistencias(buildExistenciasQuery(existenciasOffset));
     } else if (activeTab === 'ventas') {
       loadHistorialVentas(buildHistorialQuery(historialOffset));
+    } else if (activeTab === 'valor-inventario') {
+      loadHistorialValorInventario();
     } else if (activeTab !== 'resumen') {
       loadTabData(activeTab);
     }
-  }, [activeTab, valesQuery, pedidosQuery, sanAntonioQuery, loadTabData, loadExistencias, loadHistorialVentas, buildExistenciasQuery, buildHistorialQuery, existenciasOffset, historialOffset]);
+  }, [activeTab, valesQuery, pedidosQuery, sanAntonioQuery, loadTabData, loadExistencias, loadHistorialVentas, loadHistorialValorInventario, buildExistenciasQuery, buildHistorialQuery, existenciasOffset, historialOffset]);
 
   // Carga metadatos de clientes/códigos para selects del historial de ventas
   useEffect(() => {
@@ -1011,6 +1171,21 @@ export default function DashboardPage() {
       })
       .catch(() => {});
   }, [activeTab, historialClientesOptions, historialCodigosOptions]);
+
+  // Snapshot automático del valor del inventario si no existe del día actual
+  useEffect(() => {
+    if (activeTab !== 'valor-inventario') return;
+    if (historialValorLoading) return;
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    const tieneHoy = historialValor.some((d) => d.fecha === hoy);
+
+    if (!tieneHoy) {
+      guardarSnapshotValorInventario()
+        .then(() => loadHistorialValorInventario())
+        .catch(() => {});
+    }
+  }, [activeTab, historialValor, historialValorLoading, loadHistorialValorInventario]);
 
   const formatCurrency = (value) => {
     if (value == null) return '—';
@@ -2195,6 +2370,182 @@ export default function DashboardPage() {
     </div>
   );
 
+  const renderValorInventario = () => {
+    const fechas = [...new Set(historialValor.map((d) => d.fecha))].sort();
+    const almacenes = historialValor
+      .filter((d) => d.cve_alm && d.cve_alm !== 'TOTAL')
+      .map((d) => ({ cve_alm: d.cve_alm, nombre_alm: d.nombre_alm }));
+    const uniqueAlmacenes = Array.from(new Map(almacenes.map((a) => [a.cve_alm, a])).values());
+
+    const buildSeries = () => {
+      const totalSeries = {
+        label: 'Total',
+        color: COLORS.red,
+        isTotal: true,
+        values: fechas.map((f) => {
+          const row = historialValor.find((d) => d.fecha === f && (!d.cve_alm || d.cve_alm === 'TOTAL'));
+          return { fecha: f, value: row ? row.valor_total : 0 };
+        }),
+      };
+
+      const almacenSeries = uniqueAlmacenes.map((alm, i) => ({
+        label: alm.nombre_alm || `Almacén ${alm.cve_alm}`,
+        color: PALETTE[(i + 1) % PALETTE.length],
+        values: fechas.map((f) => {
+          const row = historialValor.find((d) => d.fecha === f && d.cve_alm === alm.cve_alm);
+          return { fecha: f, value: row ? row.valor_total : 0 };
+        }),
+      }));
+
+      return [totalSeries, ...almacenSeries].filter(
+        (s) => !Object.prototype.hasOwnProperty.call(historialValorVisibleSeries, s.label) || historialValorVisibleSeries[s.label]
+      );
+    };
+
+    const series = buildSeries();
+
+    const totalRows = historialValor.filter((d) => !d.cve_alm || d.cve_alm === 'TOTAL').sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const valorActual = totalRows.length > 0 ? totalRows[totalRows.length - 1].valor_total : 0;
+    const valorAnterior = totalRows.length > 1 ? totalRows[totalRows.length - 2].valor_total : valorActual;
+    const cambio = valorActual - valorAnterior;
+    const cambioPct = valorAnterior !== 0 ? (cambio / valorAnterior) * 100 : 0;
+
+    const toggleSeries = (label) => {
+      setHistorialValorVisibleSeries((prev) => ({
+        ...prev,
+        [label]: !(Object.prototype.hasOwnProperty.call(prev, label) ? prev[label] : true),
+      }));
+    };
+
+    return (
+      <div className="space-y-6">
+        <SectionHeader title="Valor histórico del inventario" icon={Activity} />
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <KpiCard
+            label="Valor actual"
+            value={formatCurrencySmart(valorActual)}
+            icon={DollarSign}
+            color="bg-p3-blue"
+            subtext="Inventario total hoy"
+          />
+          <KpiCard
+            label="Cambio vs día anterior"
+            value={formatCurrencySmart(cambio)}
+            icon={cambio >= 0 ? ArrowUp : ArrowDown}
+            color={cambio >= 0 ? 'bg-emerald-600' : 'bg-red-500'}
+            subtext={`${cambioPct >= 0 ? '+' : ''}${cambioPct.toFixed(2)}%`}
+          />
+          <KpiCard
+            label="Días registrados"
+            value={fechas.length}
+            icon={Calendar}
+            color="bg-p3-blue-light"
+            subtext="Snapshots guardados"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-end gap-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Desde</label>
+            <input
+              type="date"
+              value={historialValorDesde}
+              onChange={(e) => setHistorialValorDesde(e.target.value)}
+              className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-p3-red focus:border-p3-red"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Hasta</label>
+            <input
+              type="date"
+              value={historialValorHasta}
+              onChange={(e) => setHistorialValorHasta(e.target.value)}
+              className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-p3-red focus:border-p3-red"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={loadHistorialValorInventario}
+            disabled={historialValorLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-p3-red text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors"
+          >
+            {historialValorLoading ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <RefreshCw size={16} />
+            )}
+            Actualizar
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              setHistorialValorLoading(true);
+              try {
+                await guardarSnapshotValorInventario();
+                await loadHistorialValorInventario();
+              } catch (err) {
+                setError(err.message);
+              } finally {
+                setHistorialValorLoading(false);
+              }
+            }}
+            disabled={historialValorLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-60 transition-colors"
+          >
+            <TrendingUp size={16} />
+            Guardar snapshot hoy
+          </button>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+          {fechas.length === 0 ? (
+            <EmptyState
+              message="Aún no hay historial de valor"
+              icon={BarChart3}
+            />
+          ) : (
+            <>
+              <LineChart
+                series={series}
+                valueFormatter={formatCurrencySmart}
+                setTooltip={setTooltip}
+              />
+              <div className="flex flex-wrap gap-2 justify-center mt-4">
+                {[{
+                  label: 'Total',
+                  color: COLORS.red,
+                }, ...uniqueAlmacenes.map((alm, i) => ({
+                  label: alm.nombre_alm || `Almacén ${alm.cve_alm}`,
+                  color: PALETTE[(i + 1) % PALETTE.length],
+                }))].map((item) => {
+                  const visible = Object.prototype.hasOwnProperty.call(historialValorVisibleSeries, item.label)
+                    ? historialValorVisibleSeries[item.label]
+                    : true;
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => toggleSeries(item.label)}
+                      className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg border transition-all ${
+                        visible
+                          ? 'bg-gray-50 border-gray-200 text-gray-700'
+                          : 'bg-white border-gray-200 text-gray-400 opacity-60'
+                      }`}
+                    >
+                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span className="font-medium">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const tabContent = {
     resumen: renderResumen(),
     existencias: renderExistencias(),
@@ -2202,6 +2553,7 @@ export default function DashboardPage() {
     pedidos: renderPedidos(),
     ventas: renderHistorialVentas(),
     'san-antonio': renderSanAntonio(),
+    'valor-inventario': renderValorInventario(),
   };
 
   return (

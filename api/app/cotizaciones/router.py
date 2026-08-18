@@ -234,8 +234,8 @@ def guardar_cotizacion(
     user: dict = Depends(get_current_user),
 ):
     """Guarda una cotización y sus líneas."""
-    logger.info("[guardar_cotizacion] Recibida petición. Usuario=%s", user.get("email"))
-    logger.info("[guardar_cotizacion] Payload: %s", data.model_dump_json())
+    logger.info("[guardar_cotizacion] Recibida peticion. Usuario=%s email=%s", user.get("nombre"), user.get("email"))
+    logger.info("[guardar_cotizacion] Folio=%s Cliente=%s Moneda=%s Lineas=%d", data.folio, data.cliente, data.moneda, len(data.lineas))
     _init_cotizaciones_db()
 
     fecha = datetime.datetime.now()

@@ -125,6 +125,63 @@ export async function obtenerCotizacionPdfUrl(id) {
   return `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/cotizaciones/${id}/pdf`;
 }
 
+export async function descargarCotizacionPdf(id, filename = `cotizacion-${id}.pdf`) {
+  const token = getToken();
+  const url = obtenerCotizacionPdfUrl(id);
+
+  const response = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (response.status === 401) {
+    removeToken();
+    window.location.href = '/login';
+    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
+  }
+
+  if (!response.ok) {
+    throw new Error(`Error ${response.status} al descargar el PDF`);
+  }
+
+  const blob = await response.blob();
+
+  // Si el navegador soporta showSaveFilePicker, permite elegir ubicación
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [
+          {
+            description: 'Archivo PDF',
+            accept: { 'application/pdf': ['.pdf'] },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return { success: true, method: 'save-picker' };
+    } catch (err) {
+      // El usuario canceló el diálogo o falló; caer al fallback
+      if (err.name === 'AbortError') {
+        return { success: false, cancelled: true };
+      }
+      console.warn('[descargarCotizacionPdf] showSaveFilePicker falló, usando fallback:', err);
+    }
+  }
+
+  // Fallback: descarga normal
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
+  return { success: true, method: 'download' };
+}
+
 export async function fetchFacturasCobranza(query = '') {
   return apiFetch(`/api/ventas/facturas-cobranza?${query}`);
 }
@@ -135,6 +192,20 @@ export async function fetchSeguimientoDocumental(query = '') {
 
 export async function fetchMovimientosInventario(query = '') {
   return apiFetch(`/api/inventario/movimientos?${query}`);
+}
+
+export async function guardarSnapshotValorInventario() {
+  return apiFetch('/api/inventario/valor-historico/snapshot', {
+    method: 'POST',
+  });
+}
+
+export async function fetchHistorialValorInventario({ fecha_desde, fecha_hasta } = {}) {
+  const params = new URLSearchParams();
+  if (fecha_desde) params.set('fecha_desde', fecha_desde);
+  if (fecha_hasta) params.set('fecha_hasta', fecha_hasta);
+  const query = params.toString();
+  return apiFetch(`/api/inventario/valor-historico${query ? `?${query}` : ''}`);
 }
 
 export async function fetchSanAntonioOrdenes(query = '') {

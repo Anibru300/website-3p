@@ -10,10 +10,11 @@ $ActionBackend = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-E
 $ActionTunnel = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"G:\Mi unidad\pagina web\3p-website\api\tools\start-tunnel-hidden.ps1`""
 
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $User
+$Trigger.Delay = "PT1M"
 
 $Principal = New-ScheduledTaskPrincipal -UserId $User -RunLevel Highest
 
-$Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable
+$Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable -MultipleInstances IgnoreNew
 
 Register-ScheduledTask -TaskName $TaskBackend -Action $ActionBackend -Trigger $Trigger -Principal $Principal -Settings $Settings -Force
 Register-ScheduledTask -TaskName $TaskTunnel -Action $ActionTunnel -Trigger $Trigger -Principal $Principal -Settings $Settings -Force

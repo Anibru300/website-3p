@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     # Security
     jwt_secret: str = secrets.token_urlsafe(64)
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 480  # 8 horas
+    access_token_expire_minutes: int = 1440  # 24 horas
+    service_token: str = ""
 
     # CORS
     cors_origins: str = "http://localhost:5173,https://3psadecv.com"
