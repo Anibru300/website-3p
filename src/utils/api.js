@@ -29,6 +29,7 @@ export async function apiFetch(endpoint, options = {}) {
   });
 
   if (response.status === 401) {
+    console.error('[apiFetch] 401 en', endpoint, 'status:', response.status, 'headers:', Object.fromEntries(response.headers.entries()));
     removeToken();
     window.location.href = '/login';
     throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
@@ -43,6 +44,7 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   if (!response.ok) {
+    console.error('[apiFetch] Error', response.status, 'en', endpoint, 'respuesta:', data);
     throw new Error(data.detail || `Error ${response.status}`);
   }
 
@@ -102,6 +104,10 @@ export async function fetchPrecioReferencia(codigo, cliente = '') {
   const params = new URLSearchParams({ codigo });
   if (cliente) params.set('cliente', cliente);
   return apiFetch(`/api/cotizaciones/precio-referencia?${params.toString()}`);
+}
+
+export async function fetchVendedoresCotizaciones() {
+  return apiFetch('/api/cotizaciones/vendedores');
 }
 
 export async function guardarCotizacion(data) {

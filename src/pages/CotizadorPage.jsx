@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   fetchHistorialVentasMetadata,
   fetchPrecioReferencia,
+  fetchVendedoresCotizaciones,
   guardarCotizacion,
   obtenerCotizacionPdfUrl,
 } from '../utils/api';
@@ -61,6 +62,8 @@ export default function CotizadorPage() {
   const [codigosOptions, setCodigosOptions] = useState([]);
   const [descripcionesMap, setDescripcionesMap] = useState({});
   const [loadingPrecio, setLoadingPrecio] = useState({});
+  const [vendedoresOptions, setVendedoresOptions] = useState([]);
+  const [vendedor, setVendedor] = useState('');
 
   const [guardando, setGuardando] = useState(false);
   const [cotizacionGuardada, setCotizacionGuardada] = useState(null);
@@ -72,6 +75,20 @@ export default function CotizadorPage() {
       .then((meta) => {
         setClientesOptions(meta.clientes || []);
         setCodigosOptions(meta.codigos || []);
+      })
+      .catch(() => {});
+
+    fetchVendedoresCotizaciones()
+      .then((res) => {
+        const lista = res.vendedores || [];
+        setVendedoresOptions(lista);
+        // Default al usuario logueado si está en la lista
+        const nombreUsuario = user?.nombre || '';
+        if (nombreUsuario && lista.includes(nombreUsuario)) {
+          setVendedor(nombreUsuario);
+        } else if (lista.length > 0) {
+          setVendedor(lista[0]);
+        }
       })
       .catch(() => {});
   }, []);
@@ -221,6 +238,7 @@ export default function CotizadorPage() {
         leyenda_envio: leyendaEnvio,
         con_descuento: conDescuento,
         con_stock_leon: conStockLeon,
+        vendedor,
         lineas: lineas.map((l) => ({
           codigo: l.codigo,
           descripcion: l.descripcion,
@@ -230,10 +248,13 @@ export default function CotizadorPage() {
           descuento_pct: conDescuento ? Number(l.descuento_pct) || 0 : 0,
         })),
       };
+      console.log('[CotizadorPage] Enviando payload:', data);
       const result = await guardarCotizacion(data);
+      console.log('[CotizadorPage] Guardado exitoso:', result);
       setCotizacionGuardada(result);
     } catch (err) {
-      setError(err.message);
+      console.error('[CotizadorPage] Error al guardar:', err);
+      setError(err.message || 'Ocurrió un error al guardar la cotización.');
     } finally {
       setGuardando(false);
     }
@@ -389,6 +410,23 @@ export default function CotizadorPage() {
                   onChange={(e) => setTiempoEntrega(e.target.value)}
                   className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vendedor / Firma
+                </label>
+                <select
+                  value={vendedor}
+                  onChange={(e) => setVendedor(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red"
+                >
+                  <option value="">Seleccionar vendedor...</option>
+                  {vendedoresOptions.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">

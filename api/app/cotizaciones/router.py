@@ -1,11 +1,13 @@
 import datetime
 import json
+import logging
 import sqlite3
 from io import BytesIO
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from openpyxl import load_workbook
 from pydantic import BaseModel, Field
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -21,6 +23,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 from app.auth.dependencies import get_current_user
 from app.config import get_settings
 from app.ventas.router import _get_cached_historial
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/cotizaciones", tags=["cotizaciones"])
 
@@ -58,6 +62,7 @@ def _init_cotizaciones_db():
                 con_stock_leon INTEGER DEFAULT 0,
                 usuario_email TEXT,
                 usuario_nombre TEXT,
+                vendedor TEXT,
                 subtotal REAL DEFAULT 0,
                 iva REAL DEFAULT 0,
                 total REAL DEFAULT 0,
@@ -89,6 +94,8 @@ def _init_cotizaciones_db():
             cur.execute("ALTER TABLE cotizaciones ADD COLUMN con_descuento INTEGER DEFAULT 0")
         if not _column_exists(conn, "cotizaciones", "con_stock_leon"):
             cur.execute("ALTER TABLE cotizaciones ADD COLUMN con_stock_leon INTEGER DEFAULT 0")
+        if not _column_exists(conn, "cotizaciones", "vendedor"):
+            cur.execute("ALTER TABLE cotizaciones ADD COLUMN vendedor TEXT")
         # Eliminar con_envio si existe (ya no se usa)
         conn.commit()
     finally:
@@ -161,6 +168,35 @@ def precio_referencia(
     }
 
 
+@router.get("/vendedores")
+def listar_vendedores(user: dict = Depends(get_current_user)):
+    """Devuelve la lista de vendedores desde la hoja FIRMAS del Excel del cotizador."""
+    settings = get_settings()
+    excel_path = Path("Y:/COTIZACIONES/1. COTIZADOR/2. COTIZADOR 2.0.xlsm")
+    vendedores = []
+    if excel_path.exists():
+        try:
+            wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+            try:
+                if "FIRMAS" in wb.sheetnames:
+                    ws = wb["FIRMAS"]
+                    for row in ws.iter_rows(min_row=2, values_only=True):
+                        nombre = str(row[0]).strip() if row and row[0] is not None else ""
+                        if nombre and nombre.lower() not in ("none", "nan"):
+                            vendedores.append(nombre)
+            finally:
+                wb.close()
+        except Exception as exc:
+            logger.warning("No se pudieron leer vendedores del Excel: %s", exc)
+
+    # Siempre incluir al usuario actual como opción si no está en la lista
+    usuario_nombre = user.get("nombre", "")
+    if usuario_nombre and usuario_nombre not in vendedores:
+        vendedores.insert(0, usuario_nombre)
+
+    return {"vendedores": vendedores}
+
+
 class LineaCotizacionInput(BaseModel):
     codigo: str
     descripcion: str
@@ -180,6 +216,7 @@ class CotizacionInput(BaseModel):
     leyenda_envio: str = ""
     con_descuento: bool = False
     con_stock_leon: bool = False
+    vendedor: str = ""
     lineas: list[LineaCotizacionInput]
 
 
@@ -197,6 +234,8 @@ def guardar_cotizacion(
     user: dict = Depends(get_current_user),
 ):
     """Guarda una cotización y sus líneas."""
+    logger.info("[guardar_cotizacion] Recibida petición. Usuario=%s", user.get("email"))
+    logger.info("[guardar_cotizacion] Payload: %s", data.model_dump_json())
     _init_cotizaciones_db()
 
     fecha = datetime.datetime.now()
@@ -226,8 +265,8 @@ def guardar_cotizacion(
             """
             INSERT INTO cotizaciones
             (folio, cliente, atencion, moneda, condiciones, tiempo_entrega, leyenda_envio,
-             con_descuento, con_stock_leon, usuario_email, usuario_nombre, subtotal, iva, total, fecha)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             con_descuento, con_stock_leon, usuario_email, usuario_nombre, vendedor, subtotal, iva, total, fecha)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 folio,
@@ -241,6 +280,7 @@ def guardar_cotizacion(
                 1 if data.con_stock_leon else 0,
                 user.get("email", ""),
                 user.get("nombre", ""),
+                data.vendedor.strip(),
                 subtotal,
                 iva,
                 total,
@@ -381,7 +421,7 @@ def generar_pdf_cotizacion(
     info_data = [
         ["Folio:", cot["folio"], "Fecha:", cot["fecha"][:10]],
         ["Cliente:", cot["cliente"], "Moneda:", moneda_label],
-        ["Atención:", cot["atencion"] or "—", "Vendedor:", cot["usuario_nombre"] or "—"],
+        ["Atención:", cot["atencion"] or "—", "Vendedor:", cot["vendedor"] or cot["usuario_nombre"] or "—"],
     ]
     info_table = Table(info_data, colWidths=[80, 200, 80, 120])
     info_table.setStyle(
@@ -455,8 +495,9 @@ def generar_pdf_cotizacion(
     elements.append(Spacer(1, 30))
 
     # Firma
+    firma_nombre = cot["vendedor"] or cot["usuario_nombre"] or "—"
     elements.append(Paragraph("Atentamente,", styles["Normal"]))
-    elements.append(Paragraph(f"<b>{cot['usuario_nombre'] or '—'}</b>", styles["Normal"]))
+    elements.append(Paragraph(f"<b>{firma_nombre}</b>", styles["Normal"]))
 
     doc.build(elements)
     buffer.seek(0)
