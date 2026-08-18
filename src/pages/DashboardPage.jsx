@@ -1306,6 +1306,18 @@ export default function DashboardPage() {
     }));
   }, [vales]);
 
+  const pedidosFiltrados = useMemo(() => {
+    return pedidos.filter((p) => {
+      if (pedidosEstadoFiltro && (p.estado || 'Sin estado') !== pedidosEstadoFiltro) return false;
+      if (!dashboardFechaDesde && !dashboardFechaHasta) return true;
+      const fecha = p.fecha ? p.fecha.slice(0, 10) : '';
+      if (!fecha) return false;
+      if (dashboardFechaDesde && fecha < dashboardFechaDesde) return false;
+      if (dashboardFechaHasta && fecha > dashboardFechaHasta) return false;
+      return true;
+    });
+  }, [pedidos, pedidosEstadoFiltro, dashboardFechaDesde, dashboardFechaHasta]);
+
   const pedidosResumen = useMemo(() => {
     const total = pedidosFiltrados.length;
     const monto = pedidosFiltrados.reduce((sum, p) => sum + (Number(p.saldo_pendiente) || 0), 0);
@@ -1332,18 +1344,6 @@ export default function DashboardPage() {
         color: PALETTE[i % PALETTE.length],
       }));
   }, [existencias, topExistenciasCount]);
-
-  const pedidosFiltrados = useMemo(() => {
-    return pedidos.filter((p) => {
-      if (pedidosEstadoFiltro && (p.estado || 'Sin estado') !== pedidosEstadoFiltro) return false;
-      if (!dashboardFechaDesde && !dashboardFechaHasta) return true;
-      const fecha = p.fecha ? p.fecha.slice(0, 10) : '';
-      if (!fecha) return false;
-      if (dashboardFechaDesde && fecha < dashboardFechaDesde) return false;
-      if (dashboardFechaHasta && fecha > dashboardFechaHasta) return false;
-      return true;
-    });
-  }, [pedidos, pedidosEstadoFiltro, dashboardFechaDesde, dashboardFechaHasta]);
 
   const mejoresClientes = useMemo(() => {
     const porCliente = {};
