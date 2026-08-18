@@ -180,7 +180,7 @@ function Tooltip({ tooltip }) {
   );
 }
 
-function PieChart({ data, valueFormatter = (v) => v, setTooltip }) {
+function PieChart({ data, valueFormatter = (v) => v, setTooltip, onItemClick }) {
   const total = data.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
   if (total <= 0) {
     return <EmptyState message="Sin datos para gráfica" icon={PieChartIcon} />;
@@ -227,6 +227,7 @@ function PieChart({ data, valueFormatter = (v) => v, setTooltip }) {
             setTooltip((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null))
           }
           onMouseLeave={() => setTooltip(null)}
+          onClick={() => onItemClick?.(slice)}
         />
       ))}
       <circle cx={cx} cy={cy} r={22} fill="white" />
@@ -243,7 +244,7 @@ function PieChart({ data, valueFormatter = (v) => v, setTooltip }) {
   );
 }
 
-function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
+function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip, onItemClick }) {
   if (!data || data.length === 0) {
     return <EmptyState message="Sin datos para gráfica" icon={BarChart3} />;
   }
@@ -292,6 +293,7 @@ function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
                 setTooltip((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null))
               }
               onMouseLeave={() => setTooltip(null)}
+              onClick={() => onItemClick?.(d)}
             />
             <text
               x={labelW + Math.max(w, 2) + 6}
@@ -307,7 +309,7 @@ function HorizontalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
   );
 }
 
-function VerticalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
+function VerticalBarChart({ data, valueFormatter = (v) => v, setTooltip, onItemClick }) {
   if (!data || data.length === 0) {
     return <EmptyState message="Sin datos para gráfica" icon={BarChart3} />;
   }
@@ -366,6 +368,7 @@ function VerticalBarChart({ data, valueFormatter = (v) => v, setTooltip }) {
                 setTooltip((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null))
               }
               onMouseLeave={() => setTooltip(null)}
+              onClick={() => onItemClick?.(d)}
             />
             <text
               x={x + barW / 2}
@@ -974,6 +977,14 @@ export default function DashboardPage() {
   const [existenciasFiltro, setExistenciasFiltro] = useState('con'); // 'con' | 'sin' | 'todos'
   const [existenciasLoading, setExistenciasLoading] = useState(false);
 
+  // Filtros interactivos para graficas del dashboard
+  const [dashboardFechaDesde, setDashboardFechaDesde] = useState('');
+  const [dashboardFechaHasta, setDashboardFechaHasta] = useState('');
+  const [topExistenciasCount, setTopExistenciasCount] = useState(8);
+  const [topClientesCount, setTopClientesCount] = useState(8);
+  const [pedidosEstadoFiltro, setPedidosEstadoFiltro] = useState('');
+  const [graficaValesResponsable, setGraficaValesResponsable] = useState('');
+
   const almacenesOptions = useMemo(() => {
     const set = new Set();
     allVales.forEach((v) => {
@@ -1148,6 +1159,23 @@ export default function DashboardPage() {
     loadAll();
   }, [loadAll]);
 
+  // Recargar vales filtrados para graficas del resumen cuando cambien los filtros de vales
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const data = await fetchVales(valesQuery);
+        if (!cancelled) setAllVales(data.data || []);
+      } catch {
+        // ignorar errores silenciosos para no interrumpir la UI
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [valesQuery]);
+
   useEffect(() => {
     if (activeTab === 'existencias') {
       loadExistencias(buildExistenciasQuery(existenciasOffset));
@@ -1231,9 +1259,15 @@ export default function DashboardPage() {
   };
 
   const valesResumen = useMemo(() => {
-    const totalPiezas = allVales.reduce((sum, v) => sum + (Number(v.cantidad) || 0), 0);
-    const porPersona = RESPONSABLES.filter((r) => r.id).map((r) => {
-      const value = allVales
+    const filtrados = graficaValesResponsable
+      ? allVales.filter((v) => classifyResponsable(v.entregado_a) === graficaValesResponsable)
+      : allVales;
+    const totalPiezas = filtrados.reduce((sum, v) => sum + (Number(v.cantidad) || 0), 0);
+    const responsables = graficaValesResponsable
+      ? RESPONSABLES.filter((r) => r.id === graficaValesResponsable)
+      : RESPONSABLES.filter((r) => r.id);
+    const porPersona = responsables.map((r) => {
+      const value = filtrados
         .filter((v) => classifyResponsable(v.entregado_a) === r.id)
         .reduce((sum, v) => sum + (Number(v.cantidad) || 0), 0);
       return {
@@ -1242,8 +1276,8 @@ export default function DashboardPage() {
         color: colorHexForResponsable(r.id),
       };
     });
-    return { totalPiezas, totalVales: allVales.length, porPersona };
-  }, [allVales]);
+    return { totalPiezas, totalVales: filtrados.length, porPersona };
+  }, [allVales, graficaValesResponsable]);
 
   const valesGlobal = useMemo(() => {
     const agrupado = {};
@@ -1273,10 +1307,10 @@ export default function DashboardPage() {
   }, [vales]);
 
   const pedidosResumen = useMemo(() => {
-    const total = pedidos.length;
-    const monto = pedidos.reduce((sum, p) => sum + (Number(p.saldo_pendiente) || 0), 0);
+    const total = pedidosFiltrados.length;
+    const monto = pedidosFiltrados.reduce((sum, p) => sum + (Number(p.saldo_pendiente) || 0), 0);
     const porEstado = {};
-    pedidos.forEach((p) => {
+    pedidosFiltrados.forEach((p) => {
       const estado = p.estado || 'Sin estado';
       porEstado[estado] = (porEstado[estado] || 0) + 1;
     });
@@ -1285,48 +1319,47 @@ export default function DashboardPage() {
       value,
       color: PALETTE[i % PALETTE.length],
     }));
-    const porCliente = {};
-    pedidos.forEach((p) => {
-      const cliente = p.cliente || 'Sin cliente';
-      porCliente[cliente] = (porCliente[cliente] || 0) + (Number(p.saldo_pendiente) || 0);
-    });
-    const topClientes = Object.entries(porCliente)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([label, value], i) => ({
-        label,
-        value,
-        color: PALETTE[i % PALETTE.length],
-      }));
-    return { total, monto, porEstado: estadosData, topClientes };
-  }, [pedidos]);
+    return { total, monto, porEstado: estadosData };
+  }, [pedidosFiltrados]);
 
   const topExistencias = useMemo(() => {
     return [...existencias]
       .sort((a, b) => (Number(b.existencia_total) || 0) - (Number(a.existencia_total) || 0))
-      .slice(0, 8)
+      .slice(0, topExistenciasCount)
       .map((item, i) => ({
         label: `${item.codigo || ''} - ${item.descripcion || ''}`.trim(),
         value: Number(item.existencia_total) || 0,
         color: PALETTE[i % PALETTE.length],
       }));
-  }, [existencias]);
+  }, [existencias, topExistenciasCount]);
+
+  const pedidosFiltrados = useMemo(() => {
+    return pedidos.filter((p) => {
+      if (pedidosEstadoFiltro && (p.estado || 'Sin estado') !== pedidosEstadoFiltro) return false;
+      if (!dashboardFechaDesde && !dashboardFechaHasta) return true;
+      const fecha = p.fecha ? p.fecha.slice(0, 10) : '';
+      if (!fecha) return false;
+      if (dashboardFechaDesde && fecha < dashboardFechaDesde) return false;
+      if (dashboardFechaHasta && fecha > dashboardFechaHasta) return false;
+      return true;
+    });
+  }, [pedidos, pedidosEstadoFiltro, dashboardFechaDesde, dashboardFechaHasta]);
 
   const mejoresClientes = useMemo(() => {
     const porCliente = {};
-    pedidos.forEach((p) => {
+    pedidosFiltrados.forEach((p) => {
       const cliente = p.cliente || 'Sin cliente';
       porCliente[cliente] = (porCliente[cliente] || 0) + (Number(p.saldo_pendiente) || 0);
     });
     return Object.entries(porCliente)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
+      .slice(0, topClientesCount)
       .map(([label, value], i) => ({
         label,
         value,
         color: PALETTE[i % PALETTE.length],
       }));
-  }, [pedidos]);
+  }, [pedidosFiltrados, topClientesCount]);
 
   const existenciasPageInfo = useMemo(() => {
     const page = Math.floor(existenciasOffset / EXISTENCIAS_PAGE_SIZE) + 1;
@@ -1356,6 +1389,32 @@ export default function DashboardPage() {
     () => existencias.reduce((sum, item) => sum + (Number(item.existencia_total) || 0), 0),
     [existencias]
   );
+
+  const handleChartItemClick = (chart, item) => {
+    if (!item) return;
+    if (chart === 'vales-persona') {
+      const responsable = RESPONSABLES.find((r) => r.id && r.shortLabel === item.label);
+      if (responsable) {
+        setGraficaValesResponsable(responsable.id);
+        setActiveTab('vales');
+        setValesResponsable(responsable.id);
+      }
+    } else if (chart === 'existencias-top') {
+      const codigo = String(item.label).split(' - ')[0];
+      if (codigo) {
+        setExistenciasSearch(codigo);
+        setActiveTab('existencias');
+      }
+    } else if (chart === 'clientes-top') {
+      const cliente = item.label;
+      if (cliente) {
+        setHistorialCliente(cliente);
+        setActiveTab('ventas');
+      }
+    } else if (chart === 'pedidos-estado') {
+      setPedidosEstadoFiltro(item.label);
+    }
+  };
 
   const renderResumen = () => (
     <div className="space-y-8">
@@ -1412,30 +1471,118 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Filtros globales del dashboard */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5">
+        <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <Filter size={16} className="text-p3-red" />
+              Filtros de periodo
+            </h3>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 mb-1">Desde</label>
+                <input
+                  type="date"
+                  value={dashboardFechaDesde}
+                  onChange={(e) => setDashboardFechaDesde(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-p3-red focus:border-p3-red"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 mb-1">Hasta</label>
+                <input
+                  type="date"
+                  value={dashboardFechaHasta}
+                  onChange={(e) => setDashboardFechaHasta(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-p3-red focus:border-p3-red"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setDashboardFechaDesde('');
+                setDashboardFechaHasta('');
+                setPedidosEstadoFiltro('');
+                setGraficaValesResponsable('');
+                setTopExistenciasCount(8);
+                setTopClientesCount(8);
+              }}
+              className="px-4 py-2 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Gráficas principales */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-          <SectionHeader title="Material en vales por persona" icon={Users} />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <Users className="text-p3-red" size={24} />
+              <h3 className="text-xl font-bold text-gray-800">Material en vales por persona</h3>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {RESPONSABLES.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => setGraficaValesResponsable(r.id)}
+                  className={`px-2 py-1 text-xs rounded-lg border transition-colors ${
+                    graficaValesResponsable === r.id
+                      ? `${r.activeBg} text-white border-transparent`
+                      : `bg-white text-gray-600 ${r.border} ${r.hover}`
+                  }`}
+                >
+                  {r.shortLabel}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             <PieChart
               data={valesResumen.porPersona}
               valueFormatter={formatNumber}
               setTooltip={setTooltip}
+              onItemClick={(item) => handleChartItemClick('vales-persona', item)}
             />
             <ChartLegend items={valesResumen.porPersona} valueFormatter={formatNumber} />
           </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-          <SectionHeader
-            title="Top productos en existencia"
-            count={topExistencias.length}
-            icon={Package}
-          />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <Package className="text-p3-red" size={24} />
+              <h3 className="text-xl font-bold text-gray-800">Top productos en existencia</h3>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                {topExistencias.length} registros
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {[5, 10, 20, 50].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setTopExistenciasCount(n)}
+                  className={`px-2 py-1 text-xs rounded-lg border transition-colors ${
+                    topExistenciasCount === n
+                      ? 'bg-p3-red text-white border-p3-red'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  Top {n}
+                </button>
+              ))}
+            </div>
+          </div>
           <HorizontalBarChart
             data={topExistencias}
             valueFormatter={formatNumber}
             setTooltip={setTooltip}
+            onItemClick={(item) => handleChartItemClick('existencias-top', item)}
           />
           <ChartLegend items={topExistencias.slice(0, 5)} valueFormatter={formatNumber} />
         </div>
@@ -1443,25 +1590,63 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-          <SectionHeader
-            title="Mejores clientes"
-            count={mejoresClientes.length}
-            icon={Users}
-          />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <Users className="text-p3-red" size={24} />
+              <h3 className="text-xl font-bold text-gray-800">Mejores clientes</h3>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                {mejoresClientes.length} registros
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {[5, 10, 20].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setTopClientesCount(n)}
+                  className={`px-2 py-1 text-xs rounded-lg border transition-colors ${
+                    topClientesCount === n
+                      ? 'bg-p3-red text-white border-p3-red'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  Top {n}
+                </button>
+              ))}
+            </div>
+          </div>
           <HorizontalBarChart
             data={mejoresClientes}
             valueFormatter={formatCurrency}
             setTooltip={setTooltip}
+            onItemClick={(item) => handleChartItemClick('clientes-top', item)}
           />
           <ChartLegend items={mejoresClientes.slice(0, 5)} valueFormatter={formatCurrency} />
         </div>
 
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-          <SectionHeader
-            title="Pedidos por estado"
-            count={pedidosResumen.total}
-            icon={ClipboardList}
-          />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <ClipboardList className="text-p3-red" size={24} />
+              <h3 className="text-xl font-bold text-gray-800">Pedidos por estado</h3>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                {pedidosResumen.total} registros
+              </span>
+            </div>
+            <select
+              value={pedidosEstadoFiltro}
+              onChange={(e) => setPedidosEstadoFiltro(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red"
+            >
+              <option value="">Todos los estados</option>
+              {Array.from(new Set(pedidos.map((p) => p.estado || 'Sin estado')))
+                .sort()
+                .map((estado) => (
+                  <option key={estado} value={estado}>
+                    {estado}
+                  </option>
+                ))}
+            </select>
+          </div>
           {pedidosResumen.porEstado.length === 0 ? (
             <EmptyState message="Sin pedidos por estado" icon={ShoppingCart} />
           ) : (
@@ -1486,6 +1671,7 @@ export default function DashboardPage() {
                   data={pedidosResumen.porEstado}
                   valueFormatter={(v) => v}
                   setTooltip={setTooltip}
+                  onItemClick={(item) => handleChartItemClick('pedidos-estado', item)}
                 />
               </div>
             </>
