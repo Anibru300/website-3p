@@ -1,3 +1,39 @@
+# Reporte de Sesión - 18 de agosto de 2026
+## Proyecto: 3P S.A. de C.V. Website (https://3psadecv.com)
+
+---
+
+## 0. Resumen de lo realizado hoy
+
+### a) Verificación tras reinicio de computadora
+El usuario reinició la computadora para validar que las tareas programadas del portal se levantaran solas.
+
+**Estado verificado:**
+- `3P-Website-Backend` ejecutó a las 15:28 con resultado `0`; proceso `uvicorn` activo.
+- `3P-Website-Tunnel` ejecutó a las 15:28 con resultado `0`; proceso `cloudflared` activo.
+- `3P-Inventario-Snapshot-Diario` ejecutó a las 15:29 con resultado `0`.
+- API pública responde: `https://api.3psadecv.com/health` → `200 {"status":"ok"}`.
+- Snapshot del día guardado: 15 registros, valor total ~$21,042,810 MXN.
+
+### b) Corrección de error en el portal
+El portal en producción arrojaba:
+
+```
+Uncaught ReferenceError: Cannot access 'gt' before initialization
+```
+
+**Causa:** error de zona muerta temporal (TDZ) en `src/pages/DashboardPage.jsx`. El `useMemo` de `pedidosResumen` usaba `pedidosFiltrados`, pero esta variable se declaraba *después*.
+
+**Corrección:** se movió la declaración de `pedidosFiltrados` antes de `pedidosResumen`.
+
+**Archivo modificado:** `src/pages/DashboardPage.jsx`.
+
+**Deploy:**
+- Commit: `fffc46b fix(dashboard): corrige TDZ al usar pedidosFiltrados antes de declararlo`
+- Deploy a GitHub Pages exitoso; el sitio ya sirve el nuevo bundle `index-ZF2QTkrl.js`.
+
+---
+
 # Reporte de Sesión - 8 de agosto de 2026
 ## Proyecto: 3P S.A. de C.V. Website (https://3psadecv.com)
 
