@@ -17,8 +17,9 @@ from reportlab.platypus import (
     TableStyle,
     Paragraph,
     Spacer,
+    Image,
 )
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from app.auth.dependencies import get_current_user
 from app.config import get_settings
@@ -386,7 +387,7 @@ def generar_pdf_cotizacion(
     cotizacion_id: int,
     user: dict = Depends(get_current_user),
 ):
-    """Genera el PDF de una cotización."""
+    """Genera el PDF de una cotización con el formato corporativo de 3P."""
     _init_cotizaciones_db()
     conn = sqlite3.connect(str(_cotizaciones_db_path()))
     conn.row_factory = sqlite3.Row
@@ -403,13 +404,14 @@ def generar_pdf_cotizacion(
         conn.close()
 
     buffer = BytesIO()
+    margin = 21.6  # 0.3 pulgadas en puntos
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
-        rightMargin=40,
-        leftMargin=40,
-        topMargin=40,
-        bottomMargin=40,
+        rightMargin=margin,
+        leftMargin=margin,
+        topMargin=margin,
+        bottomMargin=margin,
     )
 
     styles = getSampleStyleSheet()
@@ -417,35 +419,94 @@ def generar_pdf_cotizacion(
 
     moneda = cot["moneda"]
     moneda_label = "USD" if moneda == "USD" else "MXN"
+    ancho_util = letter[0] - 2 * margin
 
-    # Título
-    elements.append(Paragraph("<b>COTIZACIÓN</b>", styles["Title"]))
-    elements.append(Spacer(1, 12))
-
-    # Datos generales
-    info_data = [
-        ["Folio:", cot["folio"], "Fecha:", cot["fecha"][:10]],
-        ["Cliente:", cot["cliente"], "Moneda:", moneda_label],
-        ["Atención:", cot["atencion"] or "—", "Vendedor:", cot["vendedor"] or cot["usuario_nombre"] or "—"],
+    # Fecha con formato largo en español
+    try:
+        fecha_dt = datetime.datetime.fromisoformat(cot["fecha"])
+    except Exception:
+        fecha_dt = datetime.datetime.now()
+    meses = [
+        "enero", "febrero", "marzo", "abril", "mayo", "junio",
+        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
     ]
-    info_table = Table(info_data, colWidths=[80, 200, 80, 120])
-    info_table.setStyle(
+    dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+    fecha_larga = f"{dias[fecha_dt.weekday()]}, {fecha_dt.day} de {meses[fecha_dt.month - 1]} de {fecha_dt.year}"
+
+    assets_dir = Path(__file__).parent / "assets"
+    logo_path = assets_dir / "logo.png"
+
+    # Encabezado con logo dentro de un recuadro
+    logo_img = Image(str(logo_path), width=ancho_util - 12, height=60)
+    logo_img.hAlign = "CENTER"
+    header_data = [[logo_img]]
+    header_table = Table(header_data, colWidths=[ancho_util], rowHeights=[54])
+    header_table.setStyle(
         TableStyle([
-            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BOX", (0, 0), (-1, -1), 1.5, colors.black),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ])
     )
-    elements.append(info_table)
-    elements.append(Spacer(1, 20))
+    elements.append(header_table)
+    elements.append(Spacer(1, 10))
+
+    # Título
+    elements.append(Paragraph("<font size='9'>FORMATO</font>", ParagraphStyle(name="Formato", alignment=1, fontSize=9)))
+    elements.append(Paragraph("<font size='18'><b>C O T I Z A C I Ó N</b></font>", ParagraphStyle(name="Titulo", alignment=1, fontSize=18, spaceAfter=10)))
+
+    # Folio y fecha
+    folio_data = [
+        ["", "FOLIO:", Paragraph(f"<b>{cot['folio']}</b>", styles["Normal"]), "", Paragraph(f"<b>{fecha_larga}</b>", styles["Normal"])],
+    ]
+    folio_table = Table(folio_data, colWidths=[ancho_util * 0.25, 45, ancho_util * 0.30, 10, ancho_util * 0.40])
+    folio_table.setStyle(
+        TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (2, 0), (2, 0), colors.HexColor("#E5E5E5")),
+            ("BOX", (2, 0), (2, 0), 1, colors.black),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ])
+    )
+    elements.append(folio_table)
+    elements.append(Spacer(1, 12))
+
+    # Cliente y Atención
+    cliente_data = [
+        ["Cliente:", Paragraph(f"<b>{cot['cliente']}</b>", styles["Normal"])],
+        ["Atención a:", Paragraph(f"<b>{cot['atencion'] or ''}</b>", styles["Normal"])],
+    ]
+    cliente_table = Table(cliente_data, colWidths=[70, ancho_util - 70])
+    cliente_table.setStyle(
+        TableStyle([
+            ("ALIGN", (0, 0), (0, -1), "LEFT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (1, 0), (1, -1), colors.HexColor("#E5E5E5")),
+            ("BOX", (1, 0), (1, -1), 1, colors.black),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ])
+    )
+    elements.append(cliente_table)
+    elements.append(Spacer(1, 14))
+
+    # Presente
+    elements.append(Paragraph("<font size='14'><b>P r e s e n t e</b></font>", ParagraphStyle(name="Presente", alignment=1, fontSize=14, spaceAfter=4)))
+    elements.append(Paragraph("Sírvase encontrar a continuación la cotización que usted amablemente nos solicitó.", ParagraphStyle(name="TextoPresente", alignment=1, fontSize=10, spaceAfter=10)))
 
     # Tabla de líneas
     mostrar_stock_leon = bool(cot["con_stock_leon"])
-    header = ["Código", "Cantidad", "Descripción", "P. Unitario", "Desc %"]
+    header = ["Código", "Cantidad", "Descripción", f"Precio Unitario {moneda_label}", f"TOTAL {moneda_label}"]
     if mostrar_stock_leon:
-        header.append("Stock León")
-    header.append("Total")
+        header.insert(3, "Stock León")
+    if cot["con_descuento"]:
+        header.insert(5, "Desc %")
 
     table_data = [header]
     for l in lineas:
@@ -453,69 +514,117 @@ def generar_pdf_cotizacion(
             l["codigo"] or "—",
             f"{l['cantidad']:.0f}",
             Paragraph(l["descripcion"] or "—", styles["Normal"]),
-            f"${l['precio_unitario']:,.2f}",
-            f"{l['descuento_pct']:.0f}%",
         ]
         if mostrar_stock_leon:
             row.append(str(int(l["stock_leon"])))
+        row.append(f"${l['precio_unitario']:,.2f}")
+        if cot["con_descuento"]:
+            row.append(f"{l['descuento_pct']:.0f}%")
         row.append(f"${l['total_linea']:,.2f}")
         table_data.append(row)
 
-    col_widths = [80, 50, 200, 70, 50]
-    if mostrar_stock_leon:
-        col_widths.append(60)
-    col_widths.append(70)
+    # Ajustar anchos según combinación de columnas visibles
+    if mostrar_stock_leon and cot["con_descuento"]:
+        # Código, Cantidad, Descripción, Stock León, Precio Unitario, Desc %, Total
+        col_widths = [70, 45, ancho_util - 475, 70, 80, 55, 80]
+    elif mostrar_stock_leon:
+        # Código, Cantidad, Descripción, Stock León, Precio Unitario, Total
+        col_widths = [75, 50, ancho_util - 385, 70, 85, 90]
+    elif cot["con_descuento"]:
+        # Código, Cantidad, Descripción, Precio Unitario, Desc %, Total
+        col_widths = [80, 55, ancho_util - 360, 90, 60, 90]
+    else:
+        # Código, Cantidad, Descripción, Precio Unitario, Total
+        col_widths = [80, 55, ancho_util - 335, 90, 110]
 
-    lineas_table = Table(table_data, colWidths=col_widths)
+    lineas_table = Table(table_data, colWidths=col_widths, repeatRows=1)
     lineas_table.setStyle(
         TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1E3A8A")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.white),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, -1), 9),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOX", (0, 0), (-1, -1), 1.5, colors.black),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
         ])
     )
     elements.append(lineas_table)
-    elements.append(Spacer(1, 12))
+    elements.append(Spacer(1, 10))
 
     # Totales
     totales_data = [
-        ["", "", "Subtotal:", f"${cot['subtotal']:,.2f} {moneda_label}"],
-        ["", "", "IVA 16%:", f"${cot['iva']:,.2f} {moneda_label}"],
-        ["", "", "Total:", f"${cot['total']:,.2f} {moneda_label}"],
+        ["", f"SUBTOTAL {moneda_label}", f"${cot['subtotal']:,.2f}"],
+        ["", f"IVA 16%", f"${cot['iva']:,.2f}"],
+        ["", f"TOTAL {moneda_label}", f"${cot['total']:,.2f}"],
     ]
-    totales_table = Table(totales_data, colWidths=[80, 200, 120, 120])
+    totales_table = Table(totales_data, colWidths=[ancho_util - 210, 110, 100])
     totales_table.setStyle(
         TableStyle([
-            ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
-            ("FONTNAME", (3, 2), (3, 2), "Helvetica-Bold"),
-            ("ALIGN", (2, 0), (-1, -1), "RIGHT"),
+            ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+            ("FONTNAME", (2, 2), (2, 2), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
         ])
     )
     elements.append(totales_table)
-    elements.append(Spacer(1, 20))
+    elements.append(Spacer(1, 14))
 
-    # Condiciones
-    elements.append(Paragraph(f"<b>Condiciones de pago:</b> {cot['condiciones']}", styles["Normal"]))
-    elements.append(Paragraph(f"<b>Tiempo de entrega:</b> {cot['tiempo_entrega']}", styles["Normal"]))
+    # Notas / condiciones
+    notas_style = ParagraphStyle(name="Notas", fontSize=10, leading=14, spaceAfter=4)
+    elements.append(Paragraph("<u>Incluye Asistencia Técnica</u>", notas_style))
+    elements.append(Paragraph("<b>Estos precios son L.A.B. Su Granja</b>", notas_style))
+    elements.append(Paragraph(f"<b>Plazo de Entrega:</b> {cot['tiempo_entrega']}", notas_style))
+    elements.append(Paragraph(f"<b>Condiciones de Pago:</b> {cot['condiciones']}", notas_style))
+    elements.append(Paragraph("<b>Vigencia de cotización:</b> 10 días.", notas_style))
+    elements.append(Paragraph("<b>No incluye instalación mecánica, ni eléctrica.</b>", notas_style))
     if cot["leyenda_envio"]:
-        elements.append(Paragraph(f"<b>Envío:</b> {cot['leyenda_envio']}", styles["Normal"]))
+        elements.append(Paragraph(f"<b>Envío:</b> {cot['leyenda_envio']}", notas_style))
     if cot["con_descuento"]:
-        elements.append(Paragraph("<b>Descuento aplicado por línea.</b>", styles["Normal"]))
-    if cot["con_stock_leon"]:
-        elements.append(Paragraph("<b>Con stock en León.</b>", styles["Normal"]))
-    elements.append(Spacer(1, 30))
+        elements.append(Paragraph("<b>Descuento aplicado por línea.</b>", notas_style))
+    elements.append(Spacer(1, 20))
 
     # Firma
     firma_nombre = cot["vendedor"] or cot["usuario_nombre"] or "—"
-    elements.append(Paragraph("Atentamente,", styles["Normal"]))
-    elements.append(Paragraph(f"<b>{firma_nombre}</b>", styles["Normal"]))
+    firma_path = _firma_path_para_vendedor(firma_nombre)
+
+    firma_data = [
+        [Paragraph("<b>Atentamente</b>", ParagraphStyle(name="Atentamente", alignment=1, fontSize=11))],
+    ]
+    if firma_path and firma_path.exists():
+        firma_img = Image(str(firma_path), width=80, height=50)
+        firma_img.hAlign = "CENTER"
+        firma_data.append([firma_img])
+    else:
+        firma_data.append([Spacer(1, 36)])
+    firma_data.append([Paragraph(f"<b>{firma_nombre}</b>", ParagraphStyle(name="NombreFirma", alignment=1, fontSize=10))])
+
+    firma_table = Table(firma_data, colWidths=[ancho_util])
+    firma_table.setStyle(
+        TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#E5E5E5")),
+            ("BOX", (0, -1), (-1, -1), 1, colors.black),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ])
+    )
+    elements.append(firma_table)
+    elements.append(Spacer(1, 14))
+
+    # Pie de página
+    footer_text = (
+        "Industrial del Norte No. 201 Col. Industrial del Norte  TELS.: (477) 774-83-23 Y 774-83-26 C.P. 37200 León, Gto., México<br/>"
+        "e-mail: ventas@3psadecv.com"
+    )
+    elements.append(Paragraph(footer_text, ParagraphStyle(name="Footer", alignment=1, fontSize=8, leading=12)))
 
     doc.build(elements)
     buffer.seek(0)
@@ -527,3 +636,14 @@ def generar_pdf_cotizacion(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={cot['folio']}.pdf"},
     )
+
+
+def _firma_path_para_vendedor(nombre: str) -> Optional[Path]:
+    assets_dir = Path(__file__).parent / "assets"
+    mapping = {
+        "america ruiz": assets_dir / "firma_america_ruiz.png",
+        "carlos urbina": assets_dir / "firma_carlos_urbina.png",
+        "cynthia hernandez": assets_dir / "firma_cynthia_hernandez.png",
+    }
+    clave = str(nombre).strip().lower()
+    return mapping.get(clave)
