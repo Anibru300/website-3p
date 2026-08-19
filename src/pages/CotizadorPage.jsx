@@ -167,7 +167,6 @@ export default function CotizadorPage() {
   );
   const [leyendaEnvio, setLeyendaEnvio] = useState('');
   const [conDescuento, setConDescuento] = useState(false);
-  const [conStockLeon, setConStockLeon] = useState(false);
   const [folio, setFolio] = useState('');
   const [lineas, setLineas] = useState([]);
 
@@ -241,7 +240,7 @@ export default function CotizadorPage() {
         cantidad: 1,
         precio_unitario: 0,
         descuento_pct: 0,
-        stock_leon: false,
+        stock_leon: 0,
       },
     ]);
   };
@@ -351,7 +350,7 @@ export default function CotizadorPage() {
         tiempo_entrega: tiempoEntrega,
         leyenda_envio: leyendaEnvio,
         con_descuento: conDescuento,
-        con_stock_leon: conStockLeon,
+        con_stock_leon: true,
         vendedor,
         lineas: lineas.map((l) => ({
           codigo: l.codigo,
@@ -360,7 +359,7 @@ export default function CotizadorPage() {
           cantidad: Number(l.cantidad) || 0,
           precio_unitario: Number(l.precio_unitario) || 0,
           descuento_pct: conDescuento ? Number(l.descuento_pct) || 0 : 0,
-          stock_leon: conStockLeon ? Boolean(l.stock_leon) : false,
+          stock_leon: Number(l.stock_leon) || 0,
         })),
       };
       console.log('[CotizadorPage] Enviando payload:', data);
@@ -561,17 +560,6 @@ export default function CotizadorPage() {
                 >
                   {conDescuento ? 'Con descuento' : 'Sin descuento'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setConStockLeon((v) => !v)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                    conStockLeon
-                      ? 'bg-p3-red text-white border-p3-red'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {conStockLeon ? 'Con stock en León' : 'Sin stock en León'}
-                </button>
               </div>
             </div>
           </div>
@@ -605,9 +593,7 @@ export default function CotizadorPage() {
                       {conDescuento && (
                         <th className="px-2 py-2 text-right font-medium w-24">Desc %</th>
                       )}
-                      {conStockLeon && (
-                        <th className="px-2 py-2 text-center font-medium w-28">Stock León</th>
-                      )}
+                      <th className="px-2 py-2 text-center font-medium w-28">Stock León</th>
                       <th className="px-2 py-2 text-right font-medium w-32">Total</th>
                       <th className="px-2 py-2 w-10"></th>
                     </tr>
@@ -683,16 +669,16 @@ export default function CotizadorPage() {
                             />
                           </td>
                         )}
-                        {conStockLeon && (
-                          <td className="px-2 py-2 align-top text-center">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(l.stock_leon)}
-                              onChange={(e) => actualizarLinea(l.id, 'stock_leon', e.target.checked)}
-                              className="w-5 h-5 text-p3-red border-gray-300 rounded focus:ring-p3-red"
-                            />
-                          </td>
-                        )}
+                        <td className="px-2 py-2 align-top">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={l.stock_leon}
+                            onChange={(e) => actualizarLinea(l.id, 'stock_leon', e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs text-right"
+                          />
+                        </td>
                         <td className="px-2 py-2 align-top text-right font-medium text-gray-700">
                           {formatCurrency(l.total, moneda)}
                         </td>

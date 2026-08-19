@@ -207,7 +207,7 @@ class LineaCotizacionInput(BaseModel):
     cantidad: float = Field(default=1, ge=0)
     precio_unitario: float = Field(default=0, ge=0)
     descuento_pct: float = Field(default=0, ge=0, le=100)
-    stock_leon: bool = False
+    stock_leon: int = 0
 
 
 class CotizacionInput(BaseModel):
@@ -311,7 +311,7 @@ def guardar_cotizacion(
                     linea["descuento_pct"],
                     linea["precio_con_descuento"],
                     linea["total_linea"],
-                    1 if linea.get("stock_leon") else 0,
+                    int(linea.get("stock_leon", 0)),
                 ),
             )
 
@@ -457,7 +457,7 @@ def generar_pdf_cotizacion(
             f"{l['descuento_pct']:.0f}%",
         ]
         if mostrar_stock_leon:
-            row.append("Sí" if l["stock_leon"] else "No")
+            row.append(str(int(l["stock_leon"])))
         row.append(f"${l['total_linea']:,.2f}")
         table_data.append(row)
 
