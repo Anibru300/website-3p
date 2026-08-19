@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   descargarCotizacionPdf,
@@ -40,6 +40,119 @@ function formatCurrency(value, moneda = 'USD') {
     style: 'currency',
     currency: moneda,
   }).format(num);
+}
+
+function SearchableSelect({
+  value,
+  onChange,
+  options,
+  placeholder = 'Buscar...',
+  emptyMessage = 'Sin coincidencias',
+  className = '',
+  id,
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      setQuery(value ? String(value) : '');
+    }
+  }, [open, value]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((opt) => String(opt).toLowerCase().includes(q));
+  }, [options, query]);
+
+  const handleSelect = (opt) => {
+    onChange(opt);
+    setQuery(String(opt));
+    setOpen(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      setOpen(false);
+      inputRef.current?.blur();
+    }
+  };
+
+  return (
+    <div className={`relative ${className}`} ref={wrapperRef} id={id}>
+      <input
+        ref={inputRef}
+        type="text"
+        value={open ? query : value ? String(value) : ''}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          if (!e.target.value) {
+            onChange('');
+          }
+        }}
+        onFocus={() => {
+          setQuery(value ? String(value) : '');
+          setOpen(true);
+        }}
+        placeholder={placeholder}
+        className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red pr-8"
+        autoComplete="off"
+        onKeyDown={handleKeyDown}
+      />
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((v) => !v);
+          inputRef.current?.focus();
+        }}
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+        tabIndex={-1}
+      >
+        <svg
+          className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+          {filtered.length === 0 ? (
+            <div className="px-4 py-2 text-sm text-gray-500">{emptyMessage}</div>
+          ) : (
+            filtered.map((opt) => (
+              <button
+                key={String(opt)}
+                type="button"
+                onClick={() => handleSelect(opt)}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-red-50 ${
+                  String(opt) === String(value) ? 'bg-red-50 text-p3-red font-medium' : 'text-gray-700'
+                }`}
+              >
+                {opt}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function CotizadorPage() {
@@ -128,6 +241,7 @@ export default function CotizadorPage() {
         cantidad: 1,
         precio_unitario: 0,
         descuento_pct: 0,
+        stock_leon: false,
       },
     ]);
   };
@@ -246,6 +360,7 @@ export default function CotizadorPage() {
           cantidad: Number(l.cantidad) || 0,
           precio_unitario: Number(l.precio_unitario) || 0,
           descuento_pct: conDescuento ? Number(l.descuento_pct) || 0 : 0,
+          stock_leon: conStockLeon ? Boolean(l.stock_leon) : false,
         })),
       };
       console.log('[CotizadorPage] Enviando payload:', data);
@@ -359,18 +474,13 @@ export default function CotizadorPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
-                <select
+                <SearchableSelect
                   value={cliente}
-                  onChange={(e) => setCliente(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red"
-                >
-                  <option value="">Seleccionar cliente...</option>
-                  {clientesOptions.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setCliente}
+                  options={clientesOptions}
+                  placeholder="Buscar cliente..."
+                  emptyMessage="No se encontraron clientes"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Atención a</label>
@@ -384,33 +494,25 @@ export default function CotizadorPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
-                <select
+                <SearchableSelect
                   value={moneda}
-                  onChange={(e) => setMoneda(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red"
-                >
-                  {MONEDAS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setMoneda}
+                  options={MONEDAS.map((m) => m.value)}
+                  placeholder="Buscar moneda..."
+                  emptyMessage="No se encontraron monedas"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Condiciones de pago
                 </label>
-                <select
+                <SearchableSelect
                   value={condiciones}
-                  onChange={(e) => setCondiciones(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red"
-                >
-                  {CONDICIONES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setCondiciones}
+                  options={CONDICIONES}
+                  placeholder="Buscar condición..."
+                  emptyMessage="No se encontraron condiciones"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -427,18 +529,13 @@ export default function CotizadorPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Vendedor / Firma
                 </label>
-                <select
+                <SearchableSelect
                   value={vendedor}
-                  onChange={(e) => setVendedor(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red"
-                >
-                  <option value="">Seleccionar vendedor...</option>
-                  {vendedoresOptions.map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setVendedor}
+                  options={vendedoresOptions}
+                  placeholder="Buscar vendedor..."
+                  emptyMessage="No se encontraron vendedores"
+                />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -508,6 +605,9 @@ export default function CotizadorPage() {
                       {conDescuento && (
                         <th className="px-2 py-2 text-right font-medium w-24">Desc %</th>
                       )}
+                      {conStockLeon && (
+                        <th className="px-2 py-2 text-center font-medium w-28">Stock León</th>
+                      )}
                       <th className="px-2 py-2 text-right font-medium w-32">Total</th>
                       <th className="px-2 py-2 w-10"></th>
                     </tr>
@@ -517,18 +617,14 @@ export default function CotizadorPage() {
                       <tr key={l.id} className="border-t border-gray-100">
                         <td className="px-2 py-2 align-top">
                           <div className="relative">
-                            <select
+                            <SearchableSelect
                               value={l.codigo}
-                              onChange={(e) => handleCodigoChange(l.id, e.target.value)}
-                              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs"
-                            >
-                              <option value="">Seleccionar...</option>
-                              {codigosOptions.map((c) => (
-                                <option key={c} value={c}>
-                                  {c}
-                                </option>
-                              ))}
-                            </select>
+                              onChange={(val) => handleCodigoChange(l.id, val)}
+                              options={codigosOptions}
+                              placeholder="Buscar código..."
+                              emptyMessage="No se encontraron códigos"
+                              className="text-xs"
+                            />
                             {loadingPrecio[l.id] && (
                               <div className="absolute right-6 top-1/2 -translate-y-1/2">
                                 <div className="w-3 h-3 border border-p3-red border-t-transparent rounded-full animate-spin"></div>
@@ -584,6 +680,16 @@ export default function CotizadorPage() {
                               value={l.descuento_pct}
                               onChange={(e) => actualizarLinea(l.id, 'descuento_pct', e.target.value)}
                               className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs text-right"
+                            />
+                          </td>
+                        )}
+                        {conStockLeon && (
+                          <td className="px-2 py-2 align-top text-center">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(l.stock_leon)}
+                              onChange={(e) => actualizarLinea(l.id, 'stock_leon', e.target.checked)}
+                              className="w-5 h-5 text-p3-red border-gray-300 rounded focus:ring-p3-red"
                             />
                           </td>
                         )}

@@ -121,7 +121,7 @@ export async function listarCotizaciones(query = '') {
   return apiFetch(`/api/cotizaciones?${query}`);
 }
 
-export async function obtenerCotizacionPdfUrl(id) {
+export function obtenerCotizacionPdfUrl(id) {
   return `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/cotizaciones/${id}/pdf`;
 }
 

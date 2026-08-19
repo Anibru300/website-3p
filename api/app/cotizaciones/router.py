@@ -83,6 +83,7 @@ def _init_cotizaciones_db():
                 descuento_pct REAL DEFAULT 0,
                 precio_con_descuento REAL DEFAULT 0,
                 total_linea REAL DEFAULT 0,
+                stock_leon INTEGER DEFAULT 0,
                 FOREIGN KEY (cotizacion_id) REFERENCES cotizaciones(id) ON DELETE CASCADE
             )
             """
@@ -96,6 +97,8 @@ def _init_cotizaciones_db():
             cur.execute("ALTER TABLE cotizaciones ADD COLUMN con_stock_leon INTEGER DEFAULT 0")
         if not _column_exists(conn, "cotizaciones", "vendedor"):
             cur.execute("ALTER TABLE cotizaciones ADD COLUMN vendedor TEXT")
+        if not _column_exists(conn, "cotizacion_lineas", "stock_leon"):
+            cur.execute("ALTER TABLE cotizacion_lineas ADD COLUMN stock_leon INTEGER DEFAULT 0")
         # Eliminar con_envio si existe (ya no se usa)
         conn.commit()
     finally:
@@ -204,6 +207,7 @@ class LineaCotizacionInput(BaseModel):
     cantidad: float = Field(default=1, ge=0)
     precio_unitario: float = Field(default=0, ge=0)
     descuento_pct: float = Field(default=0, ge=0, le=100)
+    stock_leon: bool = False
 
 
 class CotizacionInput(BaseModel):
@@ -294,8 +298,8 @@ def guardar_cotizacion(
                 """
                 INSERT INTO cotizacion_lineas
                 (cotizacion_id, codigo, descripcion, almacen, cantidad, precio_unitario,
-                 descuento_pct, precio_con_descuento, total_linea)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 descuento_pct, precio_con_descuento, total_linea, stock_leon)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     cotizacion_id,
@@ -307,6 +311,7 @@ def guardar_cotizacion(
                     linea["descuento_pct"],
                     linea["precio_con_descuento"],
                     linea["total_linea"],
+                    1 if linea.get("stock_leon") else 0,
                 ),
             )
 
@@ -436,19 +441,32 @@ def generar_pdf_cotizacion(
     elements.append(Spacer(1, 20))
 
     # Tabla de líneas
-    header = ["Código", "Cantidad", "Descripción", "P. Unitario", "Desc %", "Total"]
+    mostrar_stock_leon = bool(cot["con_stock_leon"])
+    header = ["Código", "Cantidad", "Descripción", "P. Unitario", "Desc %"]
+    if mostrar_stock_leon:
+        header.append("Stock León")
+    header.append("Total")
+
     table_data = [header]
     for l in lineas:
-        table_data.append([
+        row = [
             l["codigo"] or "—",
             f"{l['cantidad']:.0f}",
             Paragraph(l["descripcion"] or "—", styles["Normal"]),
             f"${l['precio_unitario']:,.2f}",
             f"{l['descuento_pct']:.0f}%",
-            f"${l['total_linea']:,.2f}",
-        ])
+        ]
+        if mostrar_stock_leon:
+            row.append("Sí" if l["stock_leon"] else "No")
+        row.append(f"${l['total_linea']:,.2f}")
+        table_data.append(row)
 
-    lineas_table = Table(table_data, colWidths=[80, 50, 200, 70, 50, 70])
+    col_widths = [80, 50, 200, 70, 50]
+    if mostrar_stock_leon:
+        col_widths.append(60)
+    col_widths.append(70)
+
+    lineas_table = Table(table_data, colWidths=col_widths)
     lineas_table.setStyle(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1E3A8A")),
