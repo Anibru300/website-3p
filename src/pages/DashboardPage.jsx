@@ -166,8 +166,16 @@ function SearchableSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [coords, setCoords] = useState(null);
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
+
+  const updateCoords = () => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setCoords({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
+    }
+  };
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -180,10 +188,30 @@ function SearchableSelect({
   }, []);
 
   useEffect(() => {
+    function handleScroll() {
+      if (open) setOpen(false);
+    }
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener('scroll', handleScroll, { capture: true });
+  }, [open]);
+
+  useEffect(() => {
     if (!open) {
       setQuery(value ? String(value) : '');
+      setCoords(null);
+    } else {
+      updateCoords();
     }
   }, [open, value]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleResize() {
+      updateCoords();
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [open]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -204,6 +232,12 @@ function SearchableSelect({
     }
   };
 
+  const openDropdown = () => {
+    setQuery(value ? String(value) : '');
+    updateCoords();
+    setOpen(true);
+  };
+
   return (
     <div className={`relative ${className}`} ref={wrapperRef} id={id}>
       <input
@@ -212,15 +246,12 @@ function SearchableSelect({
         value={open ? query : value ? String(value) : ''}
         onChange={(e) => {
           setQuery(e.target.value);
-          setOpen(true);
+          openDropdown();
           if (!e.target.value) {
             onChange('');
           }
         }}
-        onFocus={() => {
-          setQuery(value ? String(value) : '');
-          setOpen(true);
-        }}
+        onFocus={openDropdown}
         placeholder={placeholder}
         className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red pr-8"
         autoComplete="off"
@@ -229,8 +260,15 @@ function SearchableSelect({
       <button
         type="button"
         onClick={() => {
-          setOpen((v) => !v);
-          inputRef.current?.focus();
+          setOpen((v) => {
+            const next = !v;
+            if (next) {
+              setQuery(value ? String(value) : '');
+              updateCoords();
+              inputRef.current?.focus();
+            }
+            return next;
+          });
         }}
         className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
         tabIndex={-1}
@@ -244,8 +282,11 @@ function SearchableSelect({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+      {open && coords && (
+        <div
+          className="fixed z-[100] mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto"
+          style={{ top: coords.top, left: coords.left, width: coords.width }}
+        >
           {filtered.length === 0 ? (
             <div className="px-4 py-2 text-sm text-gray-500">{emptyMessage}</div>
           ) : (

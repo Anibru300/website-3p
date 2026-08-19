@@ -53,8 +53,16 @@ function SearchableSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [coords, setCoords] = useState(null);
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
+
+  const updateCoords = () => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setCoords({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
+    }
+  };
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -67,10 +75,30 @@ function SearchableSelect({
   }, []);
 
   useEffect(() => {
+    function handleScroll() {
+      if (open) setOpen(false);
+    }
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener('scroll', handleScroll, { capture: true });
+  }, [open]);
+
+  useEffect(() => {
     if (!open) {
       setQuery(value ? String(value) : '');
+      setCoords(null);
+    } else {
+      updateCoords();
     }
   }, [open, value]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleResize() {
+      updateCoords();
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [open]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -91,6 +119,12 @@ function SearchableSelect({
     }
   };
 
+  const openDropdown = () => {
+    setQuery(value ? String(value) : '');
+    updateCoords();
+    setOpen(true);
+  };
+
   return (
     <div className={`relative ${className}`} ref={wrapperRef} id={id}>
       <input
@@ -99,15 +133,12 @@ function SearchableSelect({
         value={open ? query : value ? String(value) : ''}
         onChange={(e) => {
           setQuery(e.target.value);
-          setOpen(true);
+          openDropdown();
           if (!e.target.value) {
             onChange('');
           }
         }}
-        onFocus={() => {
-          setQuery(value ? String(value) : '');
-          setOpen(true);
-        }}
+        onFocus={openDropdown}
         placeholder={placeholder}
         className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red pr-8"
         autoComplete="off"
@@ -116,8 +147,15 @@ function SearchableSelect({
       <button
         type="button"
         onClick={() => {
-          setOpen((v) => !v);
-          inputRef.current?.focus();
+          setOpen((v) => {
+            const next = !v;
+            if (next) {
+              setQuery(value ? String(value) : '');
+              updateCoords();
+              inputRef.current?.focus();
+            }
+            return next;
+          });
         }}
         className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
         tabIndex={-1}
@@ -131,8 +169,11 @@ function SearchableSelect({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+      {open && coords && (
+        <div
+          className="fixed z-[100] mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto"
+          style={{ top: coords.top, left: coords.left, width: coords.width }}
+        >
           {filtered.length === 0 ? (
             <div className="px-4 py-2 text-sm text-gray-500">{emptyMessage}</div>
           ) : (
@@ -167,6 +208,7 @@ export default function CotizadorPage() {
   );
   const [leyendaEnvio, setLeyendaEnvio] = useState('');
   const [conDescuento, setConDescuento] = useState(false);
+  const [conStockLeon, setConStockLeon] = useState(false);
   const [folio, setFolio] = useState('');
   const [lineas, setLineas] = useState([]);
 
@@ -350,7 +392,7 @@ export default function CotizadorPage() {
         tiempo_entrega: tiempoEntrega,
         leyenda_envio: leyendaEnvio,
         con_descuento: conDescuento,
-        con_stock_leon: true,
+        con_stock_leon: conStockLeon,
         vendedor,
         lineas: lineas.map((l) => ({
           codigo: l.codigo,
@@ -560,6 +602,17 @@ export default function CotizadorPage() {
                 >
                   {conDescuento ? 'Con descuento' : 'Sin descuento'}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setConStockLeon((v) => !v)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    conStockLeon
+                      ? 'bg-p3-red text-white border-p3-red'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {conStockLeon ? 'Con stock en León' : 'Sin stock en León'}
+                </button>
               </div>
             </div>
           </div>
@@ -593,7 +646,9 @@ export default function CotizadorPage() {
                       {conDescuento && (
                         <th className="px-2 py-2 text-right font-medium w-24">Desc %</th>
                       )}
-                      <th className="px-2 py-2 text-center font-medium w-28">Stock León</th>
+                      {conStockLeon && (
+                        <th className="px-2 py-2 text-center font-medium w-28">Stock León</th>
+                      )}
                       <th className="px-2 py-2 text-right font-medium w-32">Total</th>
                       <th className="px-2 py-2 w-10"></th>
                     </tr>
@@ -669,16 +724,18 @@ export default function CotizadorPage() {
                             />
                           </td>
                         )}
-                        <td className="px-2 py-2 align-top">
-                          <input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={l.stock_leon}
-                            onChange={(e) => actualizarLinea(l.id, 'stock_leon', e.target.value)}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs text-right"
-                          />
-                        </td>
+                        {conStockLeon && (
+                          <td className="px-2 py-2 align-top">
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={l.stock_leon}
+                              onChange={(e) => actualizarLinea(l.id, 'stock_leon', e.target.value)}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs text-right"
+                            />
+                          </td>
+                        )}
                         <td className="px-2 py-2 align-top text-right font-medium text-gray-700">
                           {formatCurrency(l.total, moneda)}
                         </td>
