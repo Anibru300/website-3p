@@ -230,6 +230,10 @@ export async function fetchProductoFotoBlobUrl(codigo) {
     throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
   }
 
+  if (response.status === 204) {
+    return null;
+  }
+
   if (!response.ok) {
     throw new Error(`Error ${response.status}`);
   }

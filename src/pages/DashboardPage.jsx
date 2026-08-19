@@ -786,7 +786,11 @@ function useProductoFoto(codigo) {
       try {
         objectUrl = await fetchProductoFotoBlobUrl(codigo);
         if (!cancelled) {
-          setUrl(objectUrl);
+          if (objectUrl) {
+            setUrl(objectUrl);
+          } else {
+            setError(true);
+          }
         }
       } catch {
         if (!cancelled) {

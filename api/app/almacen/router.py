@@ -3,7 +3,7 @@ import mimetypes
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
 
@@ -468,11 +468,11 @@ def foto_producto(codigo: str, user: dict = Depends(get_current_user)):
     fotos = _get_fotos_map()
     ruta = fotos.get(codigo.strip())
     if not ruta:
-        raise HTTPException(status_code=404, detail="Foto no encontrada")
+        return Response(status_code=204)
 
     path = Path(ruta)
     if not path.exists():
-        raise HTTPException(status_code=404, detail="Foto no encontrada")
+        return Response(status_code=204)
 
     content_type, _ = mimetypes.guess_type(str(path))
     if not content_type:
