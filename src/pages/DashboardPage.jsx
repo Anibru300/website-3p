@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchDashboardResumen,
@@ -153,6 +153,119 @@ function colorHexForResponsable(id) {
     default:
       return COLORS.amber;
   }
+}
+
+function SearchableSelect({
+  value,
+  onChange,
+  options,
+  placeholder = 'Buscar...',
+  emptyMessage = 'Sin coincidencias',
+  className = '',
+  id,
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      setQuery(value ? String(value) : '');
+    }
+  }, [open, value]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((opt) => String(opt).toLowerCase().includes(q));
+  }, [options, query]);
+
+  const handleSelect = (opt) => {
+    onChange(opt);
+    setQuery(String(opt));
+    setOpen(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      setOpen(false);
+      inputRef.current?.blur();
+    }
+  };
+
+  return (
+    <div className={`relative ${className}`} ref={wrapperRef} id={id}>
+      <input
+        ref={inputRef}
+        type="text"
+        value={open ? query : value ? String(value) : ''}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          if (!e.target.value) {
+            onChange('');
+          }
+        }}
+        onFocus={() => {
+          setQuery(value ? String(value) : '');
+          setOpen(true);
+        }}
+        placeholder={placeholder}
+        className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red pr-8"
+        autoComplete="off"
+        onKeyDown={handleKeyDown}
+      />
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((v) => !v);
+          inputRef.current?.focus();
+        }}
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+        tabIndex={-1}
+      >
+        <svg
+          className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+          {filtered.length === 0 ? (
+            <div className="px-4 py-2 text-sm text-gray-500">{emptyMessage}</div>
+          ) : (
+            filtered.map((opt) => (
+              <button
+                key={String(opt)}
+                type="button"
+                onClick={() => handleSelect(opt)}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-red-50 ${
+                  String(opt) === String(value) ? 'bg-red-50 text-p3-red font-medium' : 'text-gray-700'
+                }`}
+              >
+                {opt}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function EmptyState({ message = 'Sin datos', icon = Inbox }) {
@@ -972,6 +1085,7 @@ export default function DashboardPage() {
   const [valesFechaDesde, setValesFechaDesde] = useState('');
   const [valesFechaHasta, setValesFechaHasta] = useState('');
   const [valesAlmacen, setValesAlmacen] = useState('');
+  const [valesBusqueda, setValesBusqueda] = useState('');
   const [valesModo, setValesModo] = useState('desglose'); // 'desglose' | 'global'
   const [valeSeleccionado, setValeSeleccionado] = useState(null);
   const [pedidosQuery] = useState('limit=500');
@@ -1108,8 +1222,9 @@ export default function DashboardPage() {
     if (valesFechaDesde) params.set('fecha_desde', valesFechaDesde);
     if (valesFechaHasta) params.set('fecha_hasta', valesFechaHasta);
     if (valesAlmacen) params.set('almacen', valesAlmacen);
+    if (valesBusqueda.trim()) params.set('busqueda', valesBusqueda.trim());
     setValesQuery(params.toString());
-  }, [valesResponsable, valesFechaDesde, valesFechaHasta, valesAlmacen]);
+  }, [valesResponsable, valesFechaDesde, valesFechaHasta, valesAlmacen, valesBusqueda]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -2100,12 +2215,26 @@ export default function DashboardPage() {
               ))}
             </select>
           </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Código / descripción</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="text"
+                placeholder="Buscar..."
+                value={valesBusqueda}
+                onChange={(e) => setValesBusqueda(e.target.value)}
+                className="min-w-[14rem] pl-9 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+              />
+            </div>
+          </div>
           <button
             onClick={() => {
               setValesFechaDesde('');
               setValesFechaHasta('');
               setValesAlmacen('');
               setValesResponsable('');
+              setValesBusqueda('');
             }}
             className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
           >
@@ -2340,35 +2469,25 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          <div className="relative min-w-[12rem]">
-            <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <select
+          <div className="min-w-[12rem]">
+            <SearchableSelect
               value={historialCliente}
-              onChange={(e) => setHistorialCliente(e.target.value)}
-              className="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow appearance-none"
-            >
-              <option value="">Todos los clientes</option>
-              {historialClientesOptions.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+              onChange={setHistorialCliente}
+              options={historialClientesOptions}
+              placeholder="Todos los clientes"
+              emptyMessage="No se encontraron clientes"
+              className="w-full"
+            />
           </div>
-          <div className="relative min-w-[10rem]">
-            <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <select
+          <div className="min-w-[10rem]">
+            <SearchableSelect
               value={historialCodigo}
-              onChange={(e) => setHistorialCodigo(e.target.value)}
-              className="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow appearance-none"
-            >
-              <option value="">Todos los códigos</option>
-              {historialCodigosOptions.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+              onChange={setHistorialCodigo}
+              options={historialCodigosOptions}
+              placeholder="Todos los códigos"
+              emptyMessage="No se encontraron códigos"
+              className="w-full"
+            />
           </div>
           <div className="relative min-w-[8rem]">
             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
