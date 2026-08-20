@@ -61,6 +61,7 @@ function SearchableSelect({
   emptyMessage = 'Sin coincidencias',
   className = '',
   id,
+  allowFreeText = false,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -68,11 +69,36 @@ function SearchableSelect({
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
 
-  const updateCoords = () => {
-    if (inputRef.current) {
-      const rect = inputRef.current.getBoundingClientRect();
-      setCoords({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
+  const computeCoords = () => {
+    if (!inputRef.current) return null;
+    const rect = inputRef.current.getBoundingClientRect();
+    const margin = 8;
+    const spaceBelow = window.innerHeight - rect.bottom - margin;
+    const spaceAbove = rect.top - margin;
+    const minHeight = 120;
+    const preferredMaxHeight = 260;
+
+    let placement = 'bottom';
+    let maxHeight = Math.min(preferredMaxHeight, Math.max(spaceBelow, minHeight));
+
+    if (spaceBelow < minHeight && spaceAbove > spaceBelow) {
+      placement = 'top';
+      maxHeight = Math.min(preferredMaxHeight, Math.max(spaceAbove, minHeight));
     }
+
+    return {
+      top: placement === 'bottom'
+        ? rect.bottom
+        : rect.top - maxHeight,
+      left: rect.left,
+      width: rect.width,
+      placement,
+      maxHeight,
+    };
+  };
+
+  const updateCoords = () => {
+    setCoords(computeCoords());
   };
 
   useEffect(() => {
@@ -99,6 +125,8 @@ function SearchableSelect({
       setCoords(null);
     } else {
       updateCoords();
+      // Al abrir, si no hay búsqueda activa, mostramos el valor actual.
+      setQuery((q) => q || (value ? String(value) : ''));
     }
   }, [open, value]);
 
@@ -131,25 +159,35 @@ function SearchableSelect({
   };
 
   const openDropdown = () => {
-    setQuery(value ? String(value) : '');
     updateCoords();
     setOpen(true);
   };
+
+  const displayValue = open ? query : value ? String(value) : '';
 
   return (
     <div className={`relative ${className}`} ref={wrapperRef} id={id}>
       <input
         ref={inputRef}
         type="text"
-        value={open ? query : value ? String(value) : ''}
+        value={displayValue}
         onChange={(e) => {
-          setQuery(e.target.value);
+          const val = e.target.value;
+          setQuery(val);
           openDropdown();
-          if (!e.target.value) {
+          if (allowFreeText) {
+            onChange(val);
+          } else if (!val) {
             onChange('');
           }
         }}
         onFocus={openDropdown}
+        onBlur={() => {
+          // Al perder foco, si permitimos texto libre y hay algo escrito,
+          // lo conservamos como valor. El click fuera cierra el dropdown
+          // en el efecto de mousedown, por lo que aquí no hacemos nada
+          // para no interferir con la selección de opciones.
+        }}
         placeholder={placeholder}
         className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red pr-8"
         autoComplete="off"
@@ -182,11 +220,20 @@ function SearchableSelect({
       </button>
       {open && coords && (
         <div
-          className="fixed z-[100] mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto"
-          style={{ top: coords.top, left: coords.left, width: coords.width }}
+          className="fixed z-[100] bg-white border border-gray-200 rounded-xl shadow-lg overflow-auto"
+          style={{
+            top: coords.top,
+            left: coords.left,
+            width: coords.width,
+            maxHeight: coords.maxHeight,
+            marginTop: coords.placement === 'bottom' ? '4px' : '0',
+            marginBottom: coords.placement === 'top' ? '4px' : '0',
+          }}
         >
           {filtered.length === 0 ? (
-            <div className="px-4 py-2 text-sm text-gray-500">{emptyMessage}</div>
+            <div className="px-4 py-2 text-sm text-gray-500">
+              {allowFreeText ? 'Presiona Enter o Tab para usar este texto' : emptyMessage}
+            </div>
           ) : (
             filtered.map((opt) => (
               <button
@@ -446,16 +493,22 @@ export default function CotizadorPage() {
     [cliente]
   );
 
+  const codigoTimeoutsRef = useRef({});
+
   const handleCodigoChange = (lineaId, codigo) => {
-    actualizarLinea(lineaId, 'codigo', codigo);
-    if (descripcionesMap[codigo]) {
-      actualizarLinea(lineaId, 'descripcion', descripcionesMap[codigo]);
+    const codigoLimpio = String(codigo || '').trim();
+    actualizarLinea(lineaId, 'codigo', codigoLimpio);
+    if (descripcionesMap[codigoLimpio]) {
+      actualizarLinea(lineaId, 'descripcion', descripcionesMap[codigoLimpio]);
     }
     // debounce para precio
-    const t = setTimeout(() => {
-      cargarPrecioReferencia(lineaId, codigo);
-    }, 300);
-    return () => clearTimeout(t);
+    if (codigoTimeoutsRef.current[lineaId]) {
+      clearTimeout(codigoTimeoutsRef.current[lineaId]);
+    }
+    codigoTimeoutsRef.current[lineaId] = setTimeout(() => {
+      cargarPrecioReferencia(lineaId, codigoLimpio);
+      delete codigoTimeoutsRef.current[lineaId];
+    }, 400);
   };
 
   const lineasCalculadas = useMemo(() => {
@@ -624,6 +677,7 @@ export default function CotizadorPage() {
                   options={clientesOptions}
                   placeholder="Buscar cliente..."
                   emptyMessage="No se encontraron clientes"
+                  allowFreeText
                 />
               </div>
               <div>
@@ -656,6 +710,7 @@ export default function CotizadorPage() {
                   options={CONDICIONES}
                   placeholder="Buscar condición..."
                   emptyMessage="No se encontraron condiciones"
+                  allowFreeText
                 />
               </div>
               <div>
@@ -679,6 +734,7 @@ export default function CotizadorPage() {
                   options={vendedoresOptions}
                   placeholder="Buscar vendedor..."
                   emptyMessage="No se encontraron vendedores"
+                  allowFreeText
                 />
               </div>
               <div className="md:col-span-2">
@@ -804,6 +860,7 @@ export default function CotizadorPage() {
                               placeholder="Buscar código..."
                               emptyMessage="No se encontraron códigos"
                               className="text-xs"
+                              allowFreeText
                             />
                             {loadingPrecio[l.id] && (
                               <div className="absolute right-6 top-1/2 -translate-y-1/2">
