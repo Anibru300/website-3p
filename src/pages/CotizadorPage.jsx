@@ -588,6 +588,14 @@ export default function CotizadorPage() {
       const result = await guardarCotizacion(data);
       console.log('[CotizadorPage] Guardado exitoso:', result);
       setCotizacionGuardada(result);
+      // Descargar PDF automáticamente al guardar
+      try {
+        const filename = `${result.folio || `cotizacion-${result.id}`}.pdf`;
+        await descargarCotizacionPdf(result.id, filename);
+      } catch (pdfErr) {
+        console.error('[CotizadorPage] Error al descargar PDF tras guardar:', pdfErr);
+        setError('Cotización guardada, pero no se pudo descargar el PDF automáticamente.');
+      }
     } catch (err) {
       console.error('[CotizadorPage] Error al guardar:', err);
       setError(err.message || 'Ocurrió un error al guardar la cotización.');
