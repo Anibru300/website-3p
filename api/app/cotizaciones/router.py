@@ -437,10 +437,12 @@ def generar_pdf_cotizacion(
     logo_path = assets_dir / "logo.png"
 
     # Encabezado con logo dentro de un recuadro
-    logo_img = Image(str(logo_path), width=ancho_util - 12, height=60)
+    logo_ancho = ancho_util - 36
+    logo_alto = logo_ancho * 240 / 1600
+    logo_img = Image(str(logo_path), width=logo_ancho, height=logo_alto)
     logo_img.hAlign = "CENTER"
     header_data = [[logo_img]]
-    header_table = Table(header_data, colWidths=[ancho_util], rowHeights=[54])
+    header_table = Table(header_data, colWidths=[ancho_util], rowHeights=[logo_alto + 16])
     header_table.setStyle(
         TableStyle([
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
@@ -459,11 +461,12 @@ def generar_pdf_cotizacion(
     elements.append(Paragraph("<font size='9'>FORMATO</font>", ParagraphStyle(name="Formato", alignment=1, fontSize=9)))
     elements.append(Paragraph("<font size='18'><b>C O T I Z A C I Ó N</b></font>", ParagraphStyle(name="Titulo", alignment=1, fontSize=18, spaceAfter=10)))
 
-    # Folio y fecha
+    # Folio y fecha (centrado: label + recuadro gris del folio, fecha a la derecha)
+    fecha_style = ParagraphStyle(name="FechaLarga", fontSize=9, leading=11)
     folio_data = [
-        ["", "FOLIO:", Paragraph(f"<b>{cot['folio']}</b>", styles["Normal"]), "", Paragraph(f"<b>{fecha_larga}</b>", styles["Normal"])],
+        ["", "FOLIO:", Paragraph(f"<b>{cot['folio']}</b>", styles["Normal"]), "", Paragraph(f"<b>{fecha_larga}</b>", fecha_style)],
     ]
-    folio_table = Table(folio_data, colWidths=[ancho_util * 0.25, 45, ancho_util * 0.30, 10, ancho_util * 0.40])
+    folio_table = Table(folio_data, colWidths=[ancho_util - 370, 45, 150, 15, 160])
     folio_table.setStyle(
         TableStyle([
             ("ALIGN", (0, 0), (-1, -1), "LEFT"),
@@ -476,7 +479,7 @@ def generar_pdf_cotizacion(
     elements.append(folio_table)
     elements.append(Spacer(1, 12))
 
-    # Cliente y Atención
+    # Cliente y Atención (cada uno en su propio recuadro gris)
     cliente_data = [
         ["Cliente:", Paragraph(f"<b>{cot['cliente']}</b>", styles["Normal"])],
         ["Atención a:", Paragraph(f"<b>{cot['atencion'] or ''}</b>", styles["Normal"])],
@@ -486,8 +489,10 @@ def generar_pdf_cotizacion(
         TableStyle([
             ("ALIGN", (0, 0), (0, -1), "LEFT"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("BACKGROUND", (1, 0), (1, -1), colors.HexColor("#E5E5E5")),
-            ("BOX", (1, 0), (1, -1), 1, colors.black),
+            ("BACKGROUND", (1, 0), (1, 0), colors.HexColor("#E5E5E5")),
+            ("BOX", (1, 0), (1, 0), 1, colors.black),
+            ("BACKGROUND", (1, 1), (1, 1), colors.HexColor("#E5E5E5")),
+            ("BOX", (1, 1), (1, 1), 1, colors.black),
             ("FONTSIZE", (0, 0), (-1, -1), 10),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ("TOPPADDING", (0, 0), (-1, -1), 4),
