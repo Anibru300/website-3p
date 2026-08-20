@@ -80,6 +80,14 @@ export async function fetchExistencias(query = '') {
   return apiFetch(`/api/almacen/existencias?${query}`);
 }
 
+export async function fetchExistenciasPorCodigos(codigos = []) {
+  if (!codigos || codigos.length === 0) return { data: {} };
+  return apiFetch('/api/almacen/existencias-por-codigos', {
+    method: 'POST',
+    body: JSON.stringify({ codigos }),
+  });
+}
+
 export async function fetchSubalmacenes() {
   return apiFetch('/api/almacen/subalmacenes');
 }
@@ -217,6 +225,10 @@ export function getProductoFotoUrl(codigo) {
 }
 
 export async function fetchProductoFotoBlobUrl(codigo) {
+  if (!codigo || String(codigo).trim() === '') {
+    return null;
+  }
+
   const url = getProductoFotoUrl(codigo);
   const token = getToken();
 
@@ -230,7 +242,9 @@ export async function fetchProductoFotoBlobUrl(codigo) {
     throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
   }
 
-  if (response.status === 204) {
+  // 204 = sin foto registrada; 404 = endpoint/producto no encontrado.
+  // En ambos casos tratamos como "sin foto" para no mostrar error al usuario.
+  if (response.status === 204 || response.status === 404) {
     return null;
   }
 

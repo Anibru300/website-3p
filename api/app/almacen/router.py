@@ -3,7 +3,9 @@ import mimetypes
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from typing import List
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
 
@@ -237,6 +239,43 @@ def existencias(
         })
 
     return {"data": data, "total": total}
+
+
+@router.post("/existencias-por-codigos")
+def existencias_por_codigos(
+    codigos: List[str] = Body(..., embed=True),
+    user: dict = Depends(get_current_user),
+):
+    """Devuelve existencias totales y material en vales para una lista de códigos."""
+    if not codigos:
+        return {"data": {}}
+
+    material_en_vales = _get_material_en_vales_by_code()
+
+    sql = """
+        SELECT cve_art AS codigo, COALESCE(SUM(exist), 0) AS existencia_total
+        FROM sae_existencias
+        WHERE cve_art = ANY(%(codigos)s)
+        GROUP BY cve_art
+    """
+
+    with postgres_cursor() as cur:
+        cur.execute(sql, {"codigos": list(set(c.strip() for c in codigos if c and str(c).strip()))})
+        rows = cur.fetchall()
+
+    data = {}
+    for row in rows:
+        row_dict = dict(row)
+        codigo = row_dict["codigo"]
+        existencia_total = float(row_dict["existencia_total"] or 0)
+        mat_vales = float(material_en_vales.get(codigo, 0))
+        data[codigo] = {
+            "existencia_total": existencia_total,
+            "material_en_vales": mat_vales,
+            "existencia_almacen": existencia_total - mat_vales,
+        }
+
+    return {"data": data}
 
 
 def _to_date(value):

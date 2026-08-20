@@ -53,5 +53,8 @@ api/.env
 api/tools/.cloudflared/
 api/tools/cloudflared.exe
 
+# Local SQLite databases
+data/
+
 
 

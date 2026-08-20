@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   descargarCotizacionPdf,
+  fetchExistenciasPorCodigos,
   fetchHistorialVentasMetadata,
   fetchPrecioReferencia,
+  fetchProductoFotoBlobUrl,
   fetchVendedoresCotizaciones,
   guardarCotizacion,
 } from '../utils/api';
@@ -11,11 +13,13 @@ import {
   ArrowLeft,
   Calculator,
   Download,
+  Image as ImageIcon,
   Package,
   Plus,
   Save,
   Trash2,
   User,
+  X,
 } from 'lucide-react';
 
 const MONEDAS = [
@@ -40,6 +44,13 @@ function formatCurrency(value, moneda = 'USD') {
     style: 'currency',
     currency: moneda,
   }).format(num);
+}
+
+function formatNumber(value) {
+  if (value == null) return '—';
+  const num = Number(value);
+  if (Number.isNaN(num)) return value;
+  return new Intl.NumberFormat('es-MX').format(num);
 }
 
 function SearchableSelect({
@@ -215,7 +226,13 @@ export default function CotizadorPage() {
   const [clientesOptions, setClientesOptions] = useState([]);
   const [codigosOptions, setCodigosOptions] = useState([]);
   const [descripcionesMap, setDescripcionesMap] = useState({});
+  const [existenciasMap, setExistenciasMap] = useState({});
+  const [loadingExistencias, setLoadingExistencias] = useState(false);
   const [loadingPrecio, setLoadingPrecio] = useState({});
+  const [fotosMap, setFotosMap] = useState({});
+  const [loadingFotos, setLoadingFotos] = useState({});
+  const [fotoModal, setFotoModal] = useState({ open: false, url: null, codigo: '' });
+  const createdFotoUrlsRef = useRef(new Set());
   const [vendedoresOptions, setVendedoresOptions] = useState([]);
   const [vendedor, setVendedor] = useState('');
 
@@ -270,6 +287,92 @@ export default function CotizadorPage() {
     };
     cargarDescripciones();
   }, [codigosOptions]);
+
+  // Precargar existencias y material en vales para los códigos del historial
+  useEffect(() => {
+    if (codigosOptions.length === 0) return;
+    const cargarExistencias = async () => {
+      setLoadingExistencias(true);
+      try {
+        const res = await fetchExistenciasPorCodigos(codigosOptions.slice(0, 500));
+        setExistenciasMap(res.data || {});
+      } catch {
+        // ignorar
+      } finally {
+        setLoadingExistencias(false);
+      }
+    };
+    cargarExistencias();
+  }, [codigosOptions]);
+
+  // Cargar fotos de producto para los códigos seleccionados en las líneas
+  useEffect(() => {
+    const codigos = [...new Set(lineas.map((l) => l.codigo).filter(Boolean))];
+
+    setFotosMap((prev) => {
+      const next = {};
+      for (const c of codigos) {
+        if (prev[c]) next[c] = prev[c];
+      }
+      // Revocar URLs de códigos que ya no están en ninguna línea
+      Object.entries(prev).forEach(([c, url]) => {
+        if (url && !next[c]) {
+          URL.revokeObjectURL(url);
+          createdFotoUrlsRef.current.delete(url);
+        }
+      });
+      return next;
+    });
+
+    const faltantes = codigos.filter(
+      (c) => !fotosMap[c] && !loadingFotos[c]
+    );
+    if (faltantes.length === 0) return;
+
+    const cargarFotos = async () => {
+      setLoadingFotos((prev) => {
+        const next = { ...prev };
+        for (const c of faltantes) next[c] = true;
+        return next;
+      });
+      const resultados = await Promise.allSettled(
+        faltantes.map(async (codigo) => {
+          try {
+            const url = await fetchProductoFotoBlobUrl(codigo);
+            return { codigo, url };
+          } catch {
+            return { codigo, url: null };
+          }
+        })
+      );
+      setFotosMap((prev) => {
+        const next = { ...prev };
+        for (const r of resultados) {
+          if (r.status === 'fulfilled' && r.value.url) {
+            next[r.value.codigo] = r.value.url;
+            createdFotoUrlsRef.current.add(r.value.url);
+          }
+        }
+        return next;
+      });
+      setLoadingFotos((prev) => {
+        const next = { ...prev };
+        for (const c of faltantes) next[c] = false;
+        return next;
+      });
+    };
+
+    cargarFotos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineas]);
+
+  // Limpiar object URLs de fotos al desmontar el componente
+  useEffect(() => {
+    return () => {
+      createdFotoUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      createdFotoUrlsRef.current.clear();
+    };
+  }, []);
 
   const agregarLinea = () => {
     setLineas((prev) => [
@@ -634,13 +737,16 @@ export default function CotizadorPage() {
             </div>
 
             <div className="overflow-x-auto -mx-5 sm:-mx-6">
-              <div className="min-w-[900px] px-5 sm:px-6">
+              <div className="min-w-[1100px] px-5 sm:px-6">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 text-gray-600">
+                      <th className="px-2 py-2 text-center font-medium w-12">Foto</th>
                       <th className="px-2 py-2 text-left font-medium">Código</th>
                       <th className="px-2 py-2 text-left font-medium">Descripción</th>
                       <th className="px-2 py-2 text-left font-medium">Almacén</th>
+                      <th className="px-2 py-2 text-right font-medium w-24">Existencia</th>
+                      <th className="px-2 py-2 text-right font-medium w-24">En vales</th>
                       <th className="px-2 py-2 text-right font-medium w-24">Cantidad</th>
                       <th className="px-2 py-2 text-right font-medium w-32">P. Unitario</th>
                       {conDescuento && (
@@ -656,6 +762,39 @@ export default function CotizadorPage() {
                   <tbody>
                     {lineasCalculadas.map((l) => (
                       <tr key={l.id} className="border-t border-gray-100">
+                        <td className="px-2 py-2 align-top text-center">
+                          {loadingFotos[l.codigo] ? (
+                            <div className="w-7 h-7 mx-auto flex items-center justify-center">
+                              <div className="w-3.5 h-3.5 border border-p3-red border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                          ) : fotosMap[l.codigo] ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFotoModal({
+                                  open: true,
+                                  url: fotosMap[l.codigo],
+                                  codigo: l.codigo,
+                                })
+                              }
+                              className="w-8 h-8 mx-auto rounded border border-gray-200 overflow-hidden hover:border-p3-red focus:outline-none focus:ring-2 focus:ring-p3-red"
+                              title={`Ver foto de ${l.codigo}`}
+                            >
+                              <img
+                                src={fotosMap[l.codigo]}
+                                alt={l.codigo}
+                                className="w-full h-full object-contain"
+                              />
+                            </button>
+                          ) : (
+                            <div
+                              className="w-7 h-7 mx-auto flex items-center justify-center text-gray-300"
+                              title="Sin foto disponible"
+                            >
+                              <ImageIcon size={16} />
+                            </div>
+                          )}
+                        </td>
                         <td className="px-2 py-2 align-top">
                           <div className="relative">
                             <SearchableSelect
@@ -690,6 +829,20 @@ export default function CotizadorPage() {
                             className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs"
                             placeholder="Almacén"
                           />
+                        </td>
+                        <td className="px-2 py-2 align-top text-right">
+                          <span className="text-xs text-gray-700">
+                            {loadingExistencias && !existenciasMap[l.codigo]
+                              ? '...'
+                              : formatNumber((existenciasMap[l.codigo]?.existencia_total ?? 0))}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 align-top text-right">
+                          <span className="text-xs text-gray-700">
+                            {loadingExistencias && !existenciasMap[l.codigo]
+                              ? '...'
+                              : formatNumber((existenciasMap[l.codigo]?.material_en_vales ?? 0))}
+                          </span>
                         </td>
                         <td className="px-2 py-2 align-top">
                           <input
@@ -792,6 +945,35 @@ export default function CotizadorPage() {
           </p>
         </div>
       </main>
+
+      {/* Modal de foto de producto */}
+      {fotoModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setFotoModal({ open: false, url: null, codigo: '' })}
+        >
+          <div
+            className="relative max-w-3xl max-h-[90vh] bg-white rounded-xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setFotoModal({ open: false, url: null, codigo: '' })}
+              className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full text-gray-700 hover:text-p3-red shadow-sm z-10"
+            >
+              <X size={20} />
+            </button>
+            <img
+              src={fotoModal.url}
+              alt={fotoModal.codigo}
+              className="max-w-full max-h-[80vh] object-contain"
+            />
+            <p className="text-center text-sm text-gray-700 py-2 font-medium bg-white">
+              {fotoModal.codigo}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

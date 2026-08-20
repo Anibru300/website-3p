@@ -34,12 +34,6 @@ $apps = @(
         WaitSeconds = 2
     },
     @{
-        Name = "Aspel-SAE 9.0"
-        Path = "C:\Program Files (x86)\Aspel\Aspel-SAE 9.0\SAEWIN90.exe"
-        Arguments = $null
-        WaitSeconds = 0
-    },
-    @{
         Name = "iVMS-4200 3.12.1.5 Client"
         Path = "C:\Program Files (x86)\iVMS-4200 Site\iVMS-4200 Client\Client\iVMS-4200.Framework.C.exe"
         Arguments = $null
