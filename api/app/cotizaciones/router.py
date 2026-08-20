@@ -21,6 +21,7 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
+from app.almacen.router import _get_fotos_map
 from app.auth.dependencies import get_current_user
 from app.config import get_settings
 from app.ventas.router import _get_cached_historial
@@ -61,6 +62,7 @@ def _init_cotizaciones_db():
                 leyenda_envio TEXT,
                 con_descuento INTEGER DEFAULT 0,
                 con_stock_leon INTEGER DEFAULT 0,
+                con_fotos INTEGER DEFAULT 0,
                 usuario_email TEXT,
                 usuario_nombre TEXT,
                 vendedor TEXT,
@@ -100,6 +102,8 @@ def _init_cotizaciones_db():
             cur.execute("ALTER TABLE cotizaciones ADD COLUMN vendedor TEXT")
         if not _column_exists(conn, "cotizacion_lineas", "stock_leon"):
             cur.execute("ALTER TABLE cotizacion_lineas ADD COLUMN stock_leon INTEGER DEFAULT 0")
+        if not _column_exists(conn, "cotizaciones", "con_fotos"):
+            cur.execute("ALTER TABLE cotizaciones ADD COLUMN con_fotos INTEGER DEFAULT 0")
         # Eliminar con_envio si existe (ya no se usa)
         conn.commit()
     finally:
@@ -221,6 +225,7 @@ class CotizacionInput(BaseModel):
     leyenda_envio: str = ""
     con_descuento: bool = False
     con_stock_leon: bool = False
+    con_fotos: bool = False
     vendedor: str = ""
     lineas: list[LineaCotizacionInput]
 
@@ -270,8 +275,8 @@ def guardar_cotizacion(
             """
             INSERT INTO cotizaciones
             (folio, cliente, atencion, moneda, condiciones, tiempo_entrega, leyenda_envio,
-             con_descuento, con_stock_leon, usuario_email, usuario_nombre, vendedor, subtotal, iva, total, fecha)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             con_descuento, con_stock_leon, con_fotos, usuario_email, usuario_nombre, vendedor, subtotal, iva, total, fecha)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 folio,
@@ -283,6 +288,7 @@ def guardar_cotizacion(
                 data.leyenda_envio.strip(),
                 1 if data.con_descuento else 0,
                 1 if data.con_stock_leon else 0,
+                1 if data.con_fotos else 0,
                 user.get("email", ""),
                 user.get("nombre", ""),
                 data.vendedor.strip(),
@@ -507,19 +513,41 @@ def generar_pdf_cotizacion(
 
     # Tabla de líneas
     mostrar_stock_leon = bool(cot["con_stock_leon"])
+    mostrar_fotos = bool(cot.get("con_fotos"))
+    fotos = _get_fotos_map() if mostrar_fotos else {}
+    foto_width = 60
+    foto_height = 45
+
+    def _foto_cell(codigo):
+        ruta = fotos.get(str(codigo).strip())
+        if not ruta:
+            return "—"
+        path = Path(ruta)
+        if not path.exists():
+            return "—"
+        try:
+            return Image(str(path), width=foto_width, height=foto_height)
+        except Exception:
+            return "—"
+
     header = ["Código", "Cantidad", "Descripción", f"Precio Unitario {moneda_label}", f"TOTAL {moneda_label}"]
+    if mostrar_fotos:
+        header.insert(0, "Foto")
     if mostrar_stock_leon:
-        header.insert(3, "Stock León")
+        header.insert(3 + (1 if mostrar_fotos else 0), "Stock León")
     if cot["con_descuento"]:
-        header.insert(5, "Desc %")
+        header.insert(5 + (1 if mostrar_fotos else 0), "Desc %")
 
     table_data = [header]
     for l in lineas:
-        row = [
+        row = []
+        if mostrar_fotos:
+            row.append(_foto_cell(l["codigo"]))
+        row.extend([
             l["codigo"] or "—",
             f"{l['cantidad']:.0f}",
             Paragraph(l["descripcion"] or "—", styles["Normal"]),
-        ]
+        ])
         if mostrar_stock_leon:
             row.append(str(int(l["stock_leon"])))
         row.append(f"${l['precio_unitario']:,.2f}")
@@ -529,18 +557,21 @@ def generar_pdf_cotizacion(
         table_data.append(row)
 
     # Ajustar anchos según combinación de columnas visibles
+    base_foto = foto_width if mostrar_fotos else 0
     if mostrar_stock_leon and cot["con_descuento"]:
-        # Código, Cantidad, Descripción, Stock León, Precio Unitario, Desc %, Total
-        col_widths = [70, 45, ancho_util - 475, 70, 80, 55, 80]
+        # Foto?, Código, Cantidad, Descripción, Stock León, Precio Unitario, Desc %, Total
+        col_widths = [70, 45, ancho_util - 475 - base_foto, 70, 80, 55, 80]
     elif mostrar_stock_leon:
-        # Código, Cantidad, Descripción, Stock León, Precio Unitario, Total
-        col_widths = [75, 50, ancho_util - 385, 70, 85, 90]
+        # Foto?, Código, Cantidad, Descripción, Stock León, Precio Unitario, Total
+        col_widths = [75, 50, ancho_util - 385 - base_foto, 70, 85, 90]
     elif cot["con_descuento"]:
-        # Código, Cantidad, Descripción, Precio Unitario, Desc %, Total
-        col_widths = [80, 55, ancho_util - 360, 90, 60, 90]
+        # Foto?, Código, Cantidad, Descripción, Precio Unitario, Desc %, Total
+        col_widths = [80, 55, ancho_util - 360 - base_foto, 90, 60, 90]
     else:
-        # Código, Cantidad, Descripción, Precio Unitario, Total
-        col_widths = [80, 55, ancho_util - 335, 90, 110]
+        # Foto?, Código, Cantidad, Descripción, Precio Unitario, Total
+        col_widths = [80, 55, ancho_util - 335 - base_foto, 90, 110]
+    if mostrar_fotos:
+        col_widths.insert(0, foto_width)
 
     lineas_table = Table(table_data, colWidths=col_widths, repeatRows=1)
     lineas_table.setStyle(

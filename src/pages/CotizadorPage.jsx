@@ -267,6 +267,7 @@ export default function CotizadorPage() {
   const [leyendaEnvio, setLeyendaEnvio] = useState('');
   const [conDescuento, setConDescuento] = useState(false);
   const [conStockLeon, setConStockLeon] = useState(false);
+  const [conFotos, setConFotos] = useState(false);
   const [folio, setFolio] = useState('');
   const [lineas, setLineas] = useState([]);
 
@@ -351,6 +352,28 @@ export default function CotizadorPage() {
     };
     cargarExistencias();
   }, [codigosOptions]);
+
+  // Cargar existencias para códigos que se agregan manualmente en las líneas
+  useEffect(() => {
+    const codigos = [...new Set(lineas.map((l) => l.codigo).filter(Boolean))];
+    if (codigos.length === 0) return;
+    const faltantes = codigos.filter((c) => !existenciasMap[c]);
+    if (faltantes.length === 0) return;
+
+    const cargarExistenciasLineas = async () => {
+      setLoadingExistencias(true);
+      try {
+        const res = await fetchExistenciasPorCodigos(faltantes);
+        setExistenciasMap((prev) => ({ ...prev, ...(res.data || {}) }));
+      } catch {
+        // ignorar
+      } finally {
+        setLoadingExistencias(false);
+      }
+    };
+    cargarExistenciasLineas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineas]);
 
   // Cargar fotos de producto para los códigos seleccionados en las líneas
   useEffect(() => {
@@ -549,6 +572,7 @@ export default function CotizadorPage() {
         leyenda_envio: leyendaEnvio,
         con_descuento: conDescuento,
         con_stock_leon: conStockLeon,
+        con_fotos: conFotos,
         vendedor,
         lineas: lineas.map((l) => ({
           codigo: l.codigo,
@@ -625,7 +649,7 @@ export default function CotizadorPage() {
       </header>
 
       <main className="w-full px-4 lg:px-8 py-6">
-        <div className="mx-auto max-w-6xl space-y-6">
+        <div className="mx-auto max-w-[95%] space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-start gap-3">
               <span className="font-medium">{error}</span>
@@ -728,14 +752,19 @@ export default function CotizadorPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Vendedor / Firma
                 </label>
-                <SearchableSelect
+                <input
+                  type="text"
+                  list="vendedores-list"
                   value={vendedor}
-                  onChange={setVendedor}
-                  options={vendedoresOptions}
-                  placeholder="Buscar vendedor..."
-                  emptyMessage="No se encontraron vendedores"
-                  allowFreeText
+                  onChange={(e) => setVendedor(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red"
+                  placeholder="Nombre del vendedor o firma"
                 />
+                <datalist id="vendedores-list">
+                  {vendedoresOptions.map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -772,6 +801,17 @@ export default function CotizadorPage() {
                 >
                   {conStockLeon ? 'Con stock en León' : 'Sin stock en León'}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setConFotos((v) => !v)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    conFotos
+                      ? 'bg-p3-red text-white border-p3-red'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {conFotos ? 'Con fotos en cotización' : 'Sin fotos en cotización'}
+                </button>
               </div>
             </div>
           </div>
@@ -793,14 +833,14 @@ export default function CotizadorPage() {
             </div>
 
             <div className="overflow-x-auto -mx-5 sm:-mx-6">
-              <div className="min-w-[1100px] px-5 sm:px-6">
+              <div className="min-w-[1400px] px-5 sm:px-6">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 text-gray-600">
-                      <th className="px-2 py-2 text-center font-medium w-12">Foto</th>
-                      <th className="px-2 py-2 text-left font-medium">Código</th>
-                      <th className="px-2 py-2 text-left font-medium">Descripción</th>
-                      <th className="px-2 py-2 text-left font-medium">Almacén</th>
+                      <th className="px-2 py-2 text-center font-medium w-20">Foto</th>
+                      <th className="px-2 py-2 text-left font-medium w-48">Código</th>
+                      <th className="px-2 py-2 text-left font-medium min-w-[360px]">Descripción</th>
+                      <th className="px-2 py-2 text-left font-medium w-32">Almacén</th>
                       <th className="px-2 py-2 text-right font-medium w-24">Existencia</th>
                       <th className="px-2 py-2 text-right font-medium w-24">En vales</th>
                       <th className="px-2 py-2 text-right font-medium w-24">Cantidad</th>
@@ -820,8 +860,8 @@ export default function CotizadorPage() {
                       <tr key={l.id} className="border-t border-gray-100">
                         <td className="px-2 py-2 align-top text-center">
                           {loadingFotos[l.codigo] ? (
-                            <div className="w-7 h-7 mx-auto flex items-center justify-center">
-                              <div className="w-3.5 h-3.5 border border-p3-red border-t-transparent rounded-full animate-spin"></div>
+                            <div className="w-10 h-10 mx-auto flex items-center justify-center">
+                              <div className="w-5 h-5 border border-p3-red border-t-transparent rounded-full animate-spin"></div>
                             </div>
                           ) : fotosMap[l.codigo] ? (
                             <button
@@ -833,7 +873,7 @@ export default function CotizadorPage() {
                                   codigo: l.codigo,
                                 })
                               }
-                              className="w-8 h-8 mx-auto rounded border border-gray-200 overflow-hidden hover:border-p3-red focus:outline-none focus:ring-2 focus:ring-p3-red"
+                              className="w-12 h-12 mx-auto rounded border border-gray-200 overflow-hidden hover:border-p3-red focus:outline-none focus:ring-2 focus:ring-p3-red"
                               title={`Ver foto de ${l.codigo}`}
                             >
                               <img
@@ -844,10 +884,10 @@ export default function CotizadorPage() {
                             </button>
                           ) : (
                             <div
-                              className="w-7 h-7 mx-auto flex items-center justify-center text-gray-300"
+                              className="w-10 h-10 mx-auto flex items-center justify-center text-gray-300"
                               title="Sin foto disponible"
                             >
-                              <ImageIcon size={16} />
+                              <ImageIcon size={20} />
                             </div>
                           )}
                         </td>
@@ -869,12 +909,12 @@ export default function CotizadorPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-2 py-2 align-top">
+                        <td className="px-2 py-2 align-top min-w-[360px]">
                           <input
                             type="text"
                             value={l.descripcion}
                             onChange={(e) => actualizarLinea(l.id, 'descripcion', e.target.value)}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-sm"
                             placeholder="Descripción"
                           />
                         </td>
