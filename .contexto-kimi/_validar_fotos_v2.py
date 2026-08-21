@@ -1,6 +1,6 @@
 import os
 
-IMG_DIR = r"G:\Mi unidad\pagina web\3p-website\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\02-imagenes_procesadas"
+IMG_DIR = r"C:\Projects\PAGINA WEB 3P\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\02-imagenes_procesadas"
 
 BEST_PHOTO = {
     "14337":   "REGULADOR_DE_ALTURA_14337_CHORE_TIME_vista1_sin_fondo.png",

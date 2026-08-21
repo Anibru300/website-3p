@@ -29,7 +29,7 @@ def crear_imagen_publicacion():
         draw.line([(0, y), (WIDTH, y)], fill=(r, g, b))
     
     # Cargar logo si existe
-    logo_path = r"G:\Mi unidad\pagina web\3p-website\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\logo_3p_rgba.png"
+    logo_path = r"C:\Projects\PAGINA WEB 3P\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\logo_3p_rgba.png"
     if os.path.exists(logo_path):
         logo = Image.open(logo_path)
         # Redimensionar logo
@@ -106,7 +106,7 @@ def crear_imagen_publicacion():
     draw.text((x, cta_box_y + 12), cta_text, font=font_cta, fill=BLANCO)
     
     # Guardar imagen
-    output_path = r"G:\Mi unidad\pagina web\3p-website\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\catalogo_mejorado_v2\imagen_facebook_catalogo.jpg"
+    output_path = r"C:\Projects\PAGINA WEB 3P\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\catalogo_mejorado_v2\imagen_facebook_catalogo.jpg"
     img.save(output_path, quality=95)
     print(f"[OK] Imagen creada: {output_path}")
     print(f"[DIM] Dimensiones: {WIDTH}x{HEIGHT}px (optimizado para Facebook)")
@@ -130,7 +130,7 @@ def crear_imagen_stories():
         draw.line([(0, y), (WIDTH, y)], fill=(r, g, b))
     
     # Cargar logo
-    logo_path = r"G:\Mi unidad\pagina web\3p-website\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\logo_3p_rgba.png"
+    logo_path = r"C:\Projects\PAGINA WEB 3P\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\logo_3p_rgba.png"
     if os.path.exists(logo_path):
         logo = Image.open(logo_path)
         logo_width = 300
@@ -214,7 +214,7 @@ def crear_imagen_stories():
     draw.text((x, 1750), web_text, font=font_normal, fill=BLANCO)
     
     # Guardar
-    output_path = r"G:\Mi unidad\pagina web\3p-website\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\catalogo_mejorado_v2\imagen_stories_catalogo.jpg"
+    output_path = r"C:\Projects\PAGINA WEB 3P\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\catalogo_mejorado_v2\imagen_stories_catalogo.jpg"
     img.save(output_path, quality=95)
     print(f"[OK] Imagen Stories creada: {output_path}")
     print(f"[DIM] Dimensiones: {WIDTH}x{HEIGHT}px (optimizado para Instagram/Facebook Stories)")

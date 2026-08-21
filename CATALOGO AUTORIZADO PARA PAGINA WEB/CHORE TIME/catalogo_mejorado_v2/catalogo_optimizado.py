@@ -14,9 +14,9 @@ from PIL import Image
 import qrcode
 import io
 
-OUTPUT_PDF = r"G:\Mi unidad\pagina web\3p-website\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\catalogo_mejorado_v2\Catalogo_Chore_Time_Optimizado_v2.pdf"
-IMAGENES_DIR = r"G:\Mi unidad\pagina web\3p-website\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\02-imagenes_procesadas"
-LOGO_PATH = r"G:\Mi unidad\pagina web\3p-website\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\logo_3p_rgba.png"
+OUTPUT_PDF = r"C:\Projects\PAGINA WEB 3P\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\catalogo_mejorado_v2\Catalogo_Chore_Time_Optimizado_v2.pdf"
+IMAGENES_DIR = r"C:\Projects\PAGINA WEB 3P\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\02-imagenes_procesadas"
+LOGO_PATH = r"C:\Projects\PAGINA WEB 3P\CATALOGO AUTORIZADO PARA PAGINA WEB\CHORE TIME\logo_3p_rgba.png"
 PAGE_SIZE = 1080
 
 COLORES = {
