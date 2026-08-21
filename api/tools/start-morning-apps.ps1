@@ -1,8 +1,8 @@
-# Abre las aplicaciones de trabajo de la mañana para 3P.
-# Se ejecuta automáticamente al inicio de sesión mediante la tarea programada "3P-Morning-Apps".
+﻿# Abre las aplicaciones de trabajo de la maÃ±ana para 3P.
+# Se ejecuta automÃ¡ticamente al inicio de sesiÃ³n mediante la tarea programada "3P-Morning-Apps".
 
 $ErrorActionPreference = "Continue"
-$LogFile = "G:\Mi unidad\pagina web\3p-website\api\logs\morning-apps.log"
+$LogFile = "C:\Projects\PAGINA WEB 3P\api\logs\morning-apps.log"
 
 function Write-Log {
     param([string]$Message, [string]$Level = "INFO")
@@ -53,10 +53,10 @@ foreach ($app in $apps) {
             $daySpanish = switch ($app.OnlyOnDayOfWeek) {
                 'Monday'    { 'lunes' }
                 'Tuesday'   { 'martes' }
-                'Wednesday' { 'miércoles' }
+                'Wednesday' { 'miÃ©rcoles' }
                 'Thursday'  { 'jueves' }
                 'Friday'    { 'viernes' }
-                'Saturday'  { 'sábado' }
+                'Saturday'  { 'sÃ¡bado' }
                 'Sunday'    { 'domingo' }
                 default     { $app.OnlyOnDayOfWeek }
             }
@@ -70,7 +70,7 @@ foreach ($app in $apps) {
         }
         else {
             if (-not (Test-Path $app.Path)) {
-                Write-Log "No se encontró $($app.Name): $($app.Path)" "WARN"
+                Write-Log "No se encontrÃ³ $($app.Name): $($app.Path)" "WARN"
                 continue
             }
             $startArgs = @{

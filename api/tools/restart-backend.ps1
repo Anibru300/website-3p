@@ -1,4 +1,4 @@
-# Reinicia el backend de 3P
+﻿# Reinicia el backend de 3P
 $ErrorActionPreference = "Stop"
 
 Write-Host "Buscando proceso uvicorn..." -ForegroundColor Cyan
@@ -8,10 +8,10 @@ if ($uvicorn) {
     Stop-Process -Id $uvicorn.Id -Force
     Start-Sleep -Seconds 3
 } else {
-    Write-Host "No se encontró proceso uvicorn corriendo." -ForegroundColor Gray
+    Write-Host "No se encontrÃ³ proceso uvicorn corriendo." -ForegroundColor Gray
 }
 
-$BaseDir = "G:\Mi unidad\pagina web\3p-website\api"
+$BaseDir = "C:\Projects\PAGINA WEB 3P\api"
 $LogDir = "$BaseDir\logs"
 $LogFile = "$LogDir\backend.log"
 $ErrFile = "$LogDir\backend.err"

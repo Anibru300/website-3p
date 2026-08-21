@@ -1,4 +1,4 @@
-# Reinicia el túnel de Cloudflare
+﻿# Reinicia el tÃºnel de Cloudflare
 $ErrorActionPreference = "Stop"
 
 Write-Host "Buscando proceso cloudflared..." -ForegroundColor Cyan
@@ -8,10 +8,10 @@ if ($cloudflared) {
     Stop-Process -Id $cloudflared.Id -Force
     Start-Sleep -Seconds 3
 } else {
-    Write-Host "No se encontró proceso cloudflared corriendo." -ForegroundColor Gray
+    Write-Host "No se encontrÃ³ proceso cloudflared corriendo." -ForegroundColor Gray
 }
 
-$ScriptDir = "G:\Mi unidad\pagina web\3p-website\api\tools"
+$ScriptDir = "C:\Projects\PAGINA WEB 3P\api\tools"
 $Cloudflared = "$ScriptDir\cloudflared.exe"
 $ConfigPath = "$ScriptDir\.cloudflared\config.yml"
 $TokenPath = "$ScriptDir\.cloudflared\token.txt"
@@ -38,11 +38,11 @@ if (Test-Path $TokenPath) {
     $arguments += "--config"
     $arguments += $ConfigPath
 } else {
-    Write-Host "ERROR: No se encontró token ni config del túnel." -ForegroundColor Red
+    Write-Host "ERROR: No se encontrÃ³ token ni config del tÃºnel." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "Iniciando túnel..." -ForegroundColor Cyan
+Write-Host "Iniciando tÃºnel..." -ForegroundColor Cyan
 Start-Process -FilePath $Cloudflared `
     -ArgumentList $arguments `
     -WorkingDirectory $ScriptDir `
@@ -50,4 +50,4 @@ Start-Process -FilePath $Cloudflared `
     -RedirectStandardOutput $LogFile `
     -RedirectStandardError $ErrFile
 
-Write-Host "Túnel iniciado." -ForegroundColor Green
+Write-Host "TÃºnel iniciado." -ForegroundColor Green

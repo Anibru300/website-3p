@@ -1,7 +1,7 @@
-# Inicia el backend de 3P en segundo plano y guarda logs.
-# Uso: Task Scheduler al inicio de sesión.
+﻿# Inicia el backend de 3P en segundo plano y guarda logs.
+# Uso: Task Scheduler al inicio de sesiÃ³n.
 
-$BaseDir = "G:\Mi unidad\pagina web\3p-website\api"
+$BaseDir = "C:\Projects\PAGINA WEB 3P\api"
 $LogDir = "$BaseDir\logs"
 $StartupLog = "$LogDir\startup-backend.log"
 $LogFile = "$LogDir\backend.log"
@@ -17,10 +17,10 @@ if (!(Test-Path $LogDir)) {
     New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 }
 
-# Evitar múltiples instancias
+# Evitar mÃºltiples instancias
 $existing = Get-Process | Where-Object { $_.Name -like "*uvicorn*" }
 if ($existing) {
-    Write-StartupLog "uvicorn ya está corriendo (PID $($existing.Id)). Se omite inicio."
+    Write-StartupLog "uvicorn ya estÃ¡ corriendo (PID $($existing.Id)). Se omite inicio."
     exit 0
 }
 

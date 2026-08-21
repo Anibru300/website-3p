@@ -1,7 +1,7 @@
-# Inicia el túnel de Cloudflare en segundo plano y guarda logs.
-# Uso: Task Scheduler al inicio de sesión.
+﻿# Inicia el tÃºnel de Cloudflare en segundo plano y guarda logs.
+# Uso: Task Scheduler al inicio de sesiÃ³n.
 
-$ScriptDir = "G:\Mi unidad\pagina web\3p-website\api\tools"
+$ScriptDir = "C:\Projects\PAGINA WEB 3P\api\tools"
 $Cloudflared = "$ScriptDir\cloudflared.exe"
 $ConfigPath = "$ScriptDir\.cloudflared\config.yml"
 $TokenPath = "$ScriptDir\.cloudflared\token.txt"
@@ -34,32 +34,32 @@ if (!(Test-Path $Cloudflared)) {
     }
 }
 
-# Verificar archivo de configuración
+# Verificar archivo de configuraciÃ³n
 if (!(Test-Path $ConfigPath)) {
-    Write-StartupLog "ERROR: No se encontró $ConfigPath. Ejecuta primero: api\tools\setup-cloudflare-tunnel.ps1"
+    Write-StartupLog "ERROR: No se encontrÃ³ $ConfigPath. Ejecuta primero: api\tools\setup-cloudflare-tunnel.ps1"
     exit 1
 }
 
-# Evitar múltiples instancias
+# Evitar mÃºltiples instancias
 $existing = Get-Process | Where-Object { $_.Name -like "*cloudflared*" }
 if ($existing) {
-    Write-StartupLog "cloudflared ya está corriendo (PID $($existing.Id)). Se omite inicio."
+    Write-StartupLog "cloudflared ya estÃ¡ corriendo (PID $($existing.Id)). Se omite inicio."
     exit 0
 }
 
-# Iniciar túnel en segundo plano
+# Iniciar tÃºnel en segundo plano
 $arguments = @("tunnel", "run")
 if (Test-Path $TokenPath) {
     $token = Get-Content $TokenPath -Raw
     $arguments += "--token"
     $arguments += $token.Trim()
-    Write-StartupLog "Iniciando túnel con token..."
+    Write-StartupLog "Iniciando tÃºnel con token..."
 } elseif (Test-Path $ConfigPath) {
     $arguments += "--config"
     $arguments += $ConfigPath
-    Write-StartupLog "Iniciando túnel con config: $ConfigPath"
+    Write-StartupLog "Iniciando tÃºnel con config: $ConfigPath"
 } else {
-    Write-StartupLog "ERROR: No se encontró token ni config del túnel."
+    Write-StartupLog "ERROR: No se encontrÃ³ token ni config del tÃºnel."
     exit 1
 }
 
@@ -70,8 +70,8 @@ try {
         -WindowStyle Hidden `
         -RedirectStandardOutput $LogFile `
         -RedirectStandardError $ErrFile
-    Write-StartupLog "Túnel iniciado. Logs en $LogFile"
+    Write-StartupLog "TÃºnel iniciado. Logs en $LogFile"
 } catch {
-    Write-StartupLog "ERROR al iniciar túnel: $_"
+    Write-StartupLog "ERROR al iniciar tÃºnel: $_"
     exit 1
 }

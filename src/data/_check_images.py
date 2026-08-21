@@ -1,9 +1,9 @@
-import os, re
+﻿import os, re
 
-base = r'G:\Mi unidad\pagina web\3p-website\public\images\catalogo\chore-time'
+base = r'C:\Projects\PAGINA WEB 3P\public\images\catalogo\chore-time'
 existing = set(os.listdir(base))
 
-js_path = r'G:\Mi unidad\pagina web\3p-website\src\data\choreTimeProducts.js'
+js_path = r'C:\Projects\PAGINA WEB 3P\src\data\choreTimeProducts.js'
 with open(js_path, 'r', encoding='utf-8') as f:
     content = f.read()
 

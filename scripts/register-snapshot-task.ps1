@@ -1,10 +1,10 @@
-# Registra la tarea programada del snapshot de inventario.
+﻿# Registra la tarea programada del snapshot de inventario.
 # Ejecutar como el usuario que va a correr la tarea (no necesita Administrador).
 
 $ErrorActionPreference = "Stop"
 
 $TaskName = "3P-Inventario-Snapshot-Diario"
-$ScriptPath = "G:\Mi unidad\pagina web\3p-website\scripts\inventario-snapshot-daily.ps1"
+$ScriptPath = "C:\Projects\PAGINA WEB 3P\scripts\inventario-snapshot-daily.ps1"
 $User = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
 $Action = New-ScheduledTaskAction `

@@ -1,4 +1,4 @@
-# Script de Publicacion Automatica Completa - 3P Website
+﻿# Script de Publicacion Automatica Completa - 3P Website
 # Este script hace TODO automaticamente: crea repo, sube codigo, configura GitHub Pages y publica
 
 param(
@@ -40,7 +40,7 @@ Write-Header "PUBLICADOR AUTOMATICO - 3P WEBSITE"
 # ============================================
 Write-Header "PASO 0: Verificando Proyecto"
 
-$projectPath = "C:\Users\Importaciones-3P\Desktop\pagina web\3p-website"
+$projectPath = "C:\Projects\PAGINA WEB 3P"
 Set-Location $projectPath
 
 $requiredFiles = @("package.json", "vite.config.js", "index.html")

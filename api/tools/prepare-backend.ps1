@@ -1,11 +1,11 @@
-# Script de preparacion del backend del portal 3P
+﻿# Script de preparacion del backend del portal 3P
 # Lee credenciales de PostgreSQL desde C:\Projects\CJ_Assistant\.env
-# y configura G:\Mi unidad\pagina web\3p-website\api\.env
+# y configura C:\Projects\PAGINA WEB 3P\api\.env
 
 $ErrorActionPreference = "Stop"
 
 $sourceEnv = "C:\Projects\CJ_Assistant\.env"
-$targetEnv = "G:\Mi unidad\pagina web\3p-website\api\.env"
+$targetEnv = "C:\Projects\PAGINA WEB 3P\api\.env"
 $apiDir = Split-Path -Parent $targetEnv
 
 Write-Host "==============================================" -ForegroundColor Cyan

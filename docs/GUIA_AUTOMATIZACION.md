@@ -1,19 +1,19 @@
-# 🤖 Guía de Automatización Completa
+﻿# ðŸ¤– GuÃ­a de AutomatizaciÃ³n Completa
 
-## ¿Qué se configuró?
+## Â¿QuÃ© se configurÃ³?
 
 ### 1. **GitHub CLI (gh)**
-- Se instaló automáticamente usando Winget
+- Se instalÃ³ automÃ¡ticamente usando Winget
 - Permite crear repositorios y gestionar GitHub desde la terminal
 
-### 2. **Scripts de Automatización**
+### 2. **Scripts de AutomatizaciÃ³n**
 
-| Archivo | Función |
+| Archivo | FunciÃ³n |
 |---------|---------|
 | `PUBLICAR_AUTOMATICO.ps1` | Script principal de PowerShell que hace TODO |
-| `PUBLICAR_3P_WEBSITE.bat` | Acceso directo fácil (doble clic) |
+| `PUBLICAR_3P_WEBSITE.bat` | Acceso directo fÃ¡cil (doble clic) |
 
-### 3. **Configuración del Proyecto**
+### 3. **ConfiguraciÃ³n del Proyecto**
 
 #### `package.json`
 ```json
@@ -36,32 +36,32 @@ export default defineConfig({
 
 ---
 
-## ¿Qué hace el script automático?
+## Â¿QuÃ© hace el script automÃ¡tico?
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  PASO 0: Verificar que el proyecto existe                   │
-│  PASO 1: Verificar GitHub CLI instalado                     │
-│  PASO 2: Verificar/Realizar login en GitHub                 │
-│  PASO 3: Crear repositorio en GitHub (si no existe)         │
-│  PASO 4: Configurar Git y subir código                      │
-│  PASO 5: Compilar el proyecto (npm run build)               │
-│  PASO 6: Publicar en GitHub Pages (npm run deploy)          │
-│  PASO 7: Configurar GitHub Pages en el repositorio          │
-└─────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  PASO 0: Verificar que el proyecto existe                   â”‚
+â”‚  PASO 1: Verificar GitHub CLI instalado                     â”‚
+â”‚  PASO 2: Verificar/Realizar login en GitHub                 â”‚
+â”‚  PASO 3: Crear repositorio en GitHub (si no existe)         â”‚
+â”‚  PASO 4: Configurar Git y subir cÃ³digo                      â”‚
+â”‚  PASO 5: Compilar el proyecto (npm run build)               â”‚
+â”‚  PASO 6: Publicar en GitHub Pages (npm run deploy)          â”‚
+â”‚  PASO 7: Configurar GitHub Pages en el repositorio          â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
 
-## 🚀 Cómo usar (Método Fácil)
+## ðŸš€ CÃ³mo usar (MÃ©todo FÃ¡cil)
 
-### Opción 1: Doble clic (Recomendado)
+### OpciÃ³n 1: Doble clic (Recomendado)
 1. Abre la carpeta: `C:\Users\Importaciones-3P\Desktop\pagina web\`
 2. Haz **doble clic** en: `PUBLICAR_3P_WEBSITE.bat`
 3. Sigue las instrucciones en pantalla
-4. ¡Listo!
+4. Â¡Listo!
 
-### Opción 2: PowerShell
+### OpciÃ³n 2: PowerShell
 1. Abre PowerShell
 2. Ejecuta:
 ```powershell
@@ -71,41 +71,41 @@ cd "C:\Users\Importaciones-3P\Desktop\pagina web"
 
 ---
 
-## 🔐 Autenticación (Primera vez)
+## ðŸ” AutenticaciÃ³n (Primera vez)
 
 La primera vez que ejecutes el script:
 
-1. Se abrirá tu navegador
-2. Inicia sesión en GitHub (si no lo has hecho)
+1. Se abrirÃ¡ tu navegador
+2. Inicia sesiÃ³n en GitHub (si no lo has hecho)
 3. Haz clic en "Authorize github"
-4. Copia el código que aparece
-5. Pégalo en la terminal cuando te lo pida
+4. Copia el cÃ³digo que aparece
+5. PÃ©galo en la terminal cuando te lo pida
 6. Presiona ENTER
 
-**Esto solo se hace una vez.** Después el script funcionará automáticamente.
+**Esto solo se hace una vez.** DespuÃ©s el script funcionarÃ¡ automÃ¡ticamente.
 
 ---
 
-## 📋 Requisitos Previos
+## ðŸ“‹ Requisitos Previos
 
-Para que funcione la automatización completa necesitas:
+Para que funcione la automatizaciÃ³n completa necesitas:
 
-| Requisito | Estado | Descripción |
+| Requisito | Estado | DescripciÃ³n |
 |-----------|--------|-------------|
-| Cuenta GitHub | ✅ | Usuario: Anibru300 |
-| Git instalado | ✅ | Ya estaba configurado |
-| GitHub CLI | ✅ | Se instaló automáticamente |
-| Node.js/npm | ✅ | Ya estaba instalado |
-| Conexión a internet | Requerido | Para subir a GitHub |
+| Cuenta GitHub | âœ… | Usuario: Anibru300 |
+| Git instalado | âœ… | Ya estaba configurado |
+| GitHub CLI | âœ… | Se instalÃ³ automÃ¡ticamente |
+| Node.js/npm | âœ… | Ya estaba instalado |
+| ConexiÃ³n a internet | Requerido | Para subir a GitHub |
 
 ---
 
-## 🔄 Flujo de Trabajo Futuro
+## ðŸ”„ Flujo de Trabajo Futuro
 
-Después de la primera publicación, para actualizar el sitio:
+DespuÃ©s de la primera publicaciÃ³n, para actualizar el sitio:
 
 ```powershell
-cd "C:\Users\Importaciones-3P\Desktop\pagina web\3p-website"
+cd "C:\Projects\PAGINA WEB 3P"
 npm run deploy
 ```
 
@@ -118,7 +118,7 @@ npm run deploy
 
 ---
 
-## 🛠️ Solución de Problemas
+## ðŸ› ï¸ SoluciÃ³n de Problemas
 
 ### "No se puede ejecutar scripts de PowerShell"
 ```powershell
@@ -130,7 +130,7 @@ Cierra y vuelve a abrir PowerShell (para recargar el PATH)
 
 ### "Error al crear repositorio"
 - Verifica que no exista ya: https://github.com/Anibru300/website-3p
-- Si existe, el script lo usará automáticamente
+- Si existe, el script lo usarÃ¡ automÃ¡ticamente
 
 ### "El sitio no se ve bien"
 Verifica en `vite.config.js` que tenga:
@@ -140,41 +140,41 @@ base: '/website-3p/',
 
 ---
 
-## 🌐 URLs Importantes
+## ðŸŒ URLs Importantes
 
-| Descripción | URL |
+| DescripciÃ³n | URL |
 |-------------|-----|
 | **Tu Sitio Web** | https://Anibru300.github.io/website-3p/ |
 | **Repositorio** | https://github.com/Anibru300/website-3p |
-| **Configuración Pages** | https://github.com/Anibru300/website-3p/settings/pages |
+| **ConfiguraciÃ³n Pages** | https://github.com/Anibru300/website-3p/settings/pages |
 
 ---
 
-## 📞 Resumen de Archivos
+## ðŸ“ž Resumen de Archivos
 
 ```
 C:\Users\Importaciones-3P\Desktop\pagina web\
-│
-├── PUBLICAR_3P_WEBSITE.bat          ← Ejecuta esto (doble clic)
-├── PUBLICAR_AUTOMATICO.ps1          ← Script principal
-├── GUIA_AUTOMATIZACION.md           ← Esta guía
-│
-└── 3p-website\                      ← Proyecto
-    ├── package.json                 ← Configurado para deploy
-    ├── vite.config.js               ← Configurado para GitHub Pages
-    ├── deploy-to-github.ps1         ← Script alternativo
-    └── ...
+â”‚
+â”œâ”€â”€ PUBLICAR_3P_WEBSITE.bat          â† Ejecuta esto (doble clic)
+â”œâ”€â”€ PUBLICAR_AUTOMATICO.ps1          â† Script principal
+â”œâ”€â”€ GUIA_AUTOMATIZACION.md           â† Esta guÃ­a
+â”‚
+â””â”€â”€ 3p-website\                      â† Proyecto
+    â”œâ”€â”€ package.json                 â† Configurado para deploy
+    â”œâ”€â”€ vite.config.js               â† Configurado para GitHub Pages
+    â”œâ”€â”€ deploy-to-github.ps1         â† Script alternativo
+    â””â”€â”€ ...
 ```
 
 ---
 
-## ✅ Checklist antes de ejecutar
+## âœ… Checklist antes de ejecutar
 
 - [ ] Tienes cuenta en GitHub (Anibru300)
-- [ ] Estás conectado a internet
-- [ ] Los archivos del proyecto están en `C:\Users\Importaciones-3P\Desktop\pagina web\3p-website\`
-- [ ] Tienes 5-10 minutos libres (tiempo de instalación + deploy)
+- [ ] EstÃ¡s conectado a internet
+- [ ] Los archivos del proyecto estÃ¡n en `C:\Projects\PAGINA WEB 3P\`
+- [ ] Tienes 5-10 minutos libres (tiempo de instalaciÃ³n + deploy)
 
 ---
 
-**¡Todo está listo! Solo ejecuta `PUBLICAR_3P_WEBSITE.bat` y sigue las instrucciones.** 🚀
+**Â¡Todo estÃ¡ listo! Solo ejecuta `PUBLICAR_3P_WEBSITE.bat` y sigue las instrucciones.** ðŸš€

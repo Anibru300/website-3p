@@ -1,10 +1,10 @@
-# Script de Publicacion Rapida - Sin interaccion manual
+﻿# Script de Publicacion Rapida - Sin interaccion manual
 param(
     [string]$GitHubUsername = "Anibru300",
     [string]$RepoName = "website-3p"
 )
 
-$projectPath = "C:\Users\Importaciones-3P\Desktop\pagina web\3p-website"
+$projectPath = "C:\Projects\PAGINA WEB 3P"
 Set-Location $projectPath
 
 Write-Host "========================================" -ForegroundColor Cyan

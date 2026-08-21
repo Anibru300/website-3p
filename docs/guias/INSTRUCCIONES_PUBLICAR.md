@@ -1,26 +1,26 @@
-# 🚀 Instrucciones para Publicar 3P Website en GitHub
+﻿# ðŸš€ Instrucciones para Publicar 3P Website en GitHub
 
-## 📋 RESUMEN RÁPIDO
+## ðŸ“‹ RESUMEN RÃPIDO
 
-Tu proyecto está listo en:
+Tu proyecto estÃ¡ listo en:
 ```
-C:\Users\Importaciones-3P\Desktop\pagina web\3p-website\
+C:\Projects\PAGINA WEB 3P\
 ```
 
-Tu sitio se publicará en:
+Tu sitio se publicarÃ¡ en:
 ```
 https://Anibru300.github.io/website-3p/
 ```
 
 ---
 
-## OPCIÓN 1: Usar el Script Automático (Recomendado)
+## OPCIÃ“N 1: Usar el Script AutomÃ¡tico (Recomendado)
 
 1. **Abre PowerShell** como Administrador
 
 2. **Navega a la carpeta del proyecto:**
 ```powershell
-cd "C:\Users\Importaciones-3P\Desktop\pagina web\3p-website"
+cd "C:\Projects\PAGINA WEB 3P"
 ```
 
 3. **Ejecuta el script:**
@@ -28,11 +28,11 @@ cd "C:\Users\Importaciones-3P\Desktop\pagina web\3p-website"
 .\deploy-to-github.ps1
 ```
 
-4. **Si el repositorio no existe**, el script te dará instrucciones para crearlo en GitHub.
+4. **Si el repositorio no existe**, el script te darÃ¡ instrucciones para crearlo en GitHub.
 
 ---
 
-## OPCIÓN 2: Comandos Manuales
+## OPCIÃ“N 2: Comandos Manuales
 
 ### Paso 1: Crear Repositorio en GitHub
 
@@ -43,17 +43,17 @@ cd "C:\Users\Importaciones-3P\Desktop\pagina web\3p-website"
 5. **NO** marques "Initialize this repository with a README"
 6. Haz clic en **Create repository**
 
-### Paso 2: Subir el Código
+### Paso 2: Subir el CÃ³digo
 
 En PowerShell, ejecuta:
 
 ```powershell
-cd "C:\Users\Importaciones-3P\Desktop\pagina web\3p-website"
+cd "C:\Projects\PAGINA WEB 3P"
 
 # Configurar remote
 git remote add origin https://github.com/Anibru300/website-3p.git
 
-# Subir código
+# Subir cÃ³digo
 git branch -M main
 git push -u origin main
 ```
@@ -68,28 +68,28 @@ npm run deploy
 
 1. Ve a: https://github.com/Anibru300/website-3p/settings/pages
 2. En **Source** selecciona: `Deploy from a branch`
-3. En **Branch** selecciona: `gh-pages` → `/ (root)`
+3. En **Branch** selecciona: `gh-pages` â†’ `/ (root)`
 4. Haz clic en **Save**
 
 ### Paso 5: Ver tu Sitio
 
-Después de 2-5 minutos, visita:
+DespuÃ©s de 2-5 minutos, visita:
 ```
 https://Anibru300.github.io/website-3p/
 ```
 
 ---
 
-## 📝 Para Actualizar el Sitio en el Futuro
+## ðŸ“ Para Actualizar el Sitio en el Futuro
 
 Cada vez que hagas cambios:
 
 ```powershell
-cd "C:\Users\Importaciones-3P\Desktop\pagina web\3p-website"
+cd "C:\Projects\PAGINA WEB 3P"
 
 # Guardar cambios
 git add .
-git commit -m "Descripción de cambios"
+git commit -m "DescripciÃ³n de cambios"
 git push
 
 # Publicar
@@ -98,7 +98,7 @@ npm run deploy
 
 ---
 
-## ❓ Solución de Problemas
+## â“ SoluciÃ³n de Problemas
 
 ### Error: "No se puede cargar el archivo deploy-to-github.ps1"
 
@@ -114,7 +114,7 @@ git remote remove origin
 git remote add origin https://github.com/Anibru300/website-3p.git
 ```
 
-### El sitio no se ve bien (sin estilos o imágenes)
+### El sitio no se ve bien (sin estilos o imÃ¡genes)
 
 Verifica que en `vite.config.js` tengas:
 ```javascript
@@ -128,13 +128,13 @@ Y en `package.json`:
 
 ---
 
-## 📞 Contacto y Soporte
+## ðŸ“ž Contacto y Soporte
 
 - **GitHub:** https://github.com/Anibru300
-- **Proyecto:** https://github.com/Anibru300/website-3p (después de crearlo)
+- **Proyecto:** https://github.com/Anibru300/website-3p (despuÃ©s de crearlo)
 
 ---
 
-## 🎉 ¡Listo!
+## ðŸŽ‰ Â¡Listo!
 
-Tu sitio web profesional de 3P S.A. DE C.V. estará en línea pronto.
+Tu sitio web profesional de 3P S.A. DE C.V. estarÃ¡ en lÃ­nea pronto.

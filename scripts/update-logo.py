@@ -1,7 +1,7 @@
-from PIL import Image
+﻿from PIL import Image
 from pathlib import Path
 
-BASE = Path(r"G:\Mi unidad\pagina web\3p-website")
+BASE = Path(r"C:\Projects\PAGINA WEB 3P")
 SRC = BASE / "images" / "LOGO 3P.png"
 
 img = Image.open(SRC).convert("RGBA")
@@ -12,18 +12,18 @@ header_h = int(img.height * (header_w / img.width))
 header = img.resize((header_w, header_h), Image.LANCZOS)
 header.save(BASE / "public" / "images" / "logo-3p-header.png", "PNG")
 
-# 2. Logo principal para hero/about/login (alta resolución)
+# 2. Logo principal para hero/about/login (alta resoluciÃ³n)
 login_w = 1152
 login = img.resize((login_w, int(img.height * (login_w / img.width))), Image.LANCZOS)
 login.save(BASE / "public" / "images" / "logo-3p-login.png", "PNG")
 
-# 3. Logo raíz (usado en schema.org y fallback)
+# 3. Logo raÃ­z (usado en schema.org y fallback)
 img.save(BASE / "logo.png", "PNG")
 
 # 4. Favicon/iconos cuadrados con fondo blanco y logo centrado
 def make_square_icon(src_img, size, padding_factor=0.1):
     """Crea un icono cuadrado con el logo completo centrado y padding."""
-    # Calcular tamaño del logo dentro del canvas respetando padding
+    # Calcular tamaÃ±o del logo dentro del canvas respetando padding
     canvas = size
     available = int(canvas * (1 - 2 * padding_factor))
     # Escalar logo manteniendo aspecto
