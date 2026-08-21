@@ -230,12 +230,32 @@ class CotizacionInput(BaseModel):
     lineas: list[LineaCotizacionInput]
 
 
-def _generar_folio(cliente: str, fecha: datetime.datetime | None = None) -> str:
-    """Genera folio al estilo del Excel: CLIENTE YYMMDD."""
+def _generar_folio(cliente: str, fecha: datetime.datetime | None = None, folio_base: str | None = None) -> str:
+    """Genera folio al estilo del Excel: CLIENTE YYMMDD.
+
+    Si folio_base se proporciona y ya existe, agrega un sufijo numérico (-2, -3, ...)
+    hasta encontrar uno disponible.
+    """
     if fecha is None:
         fecha = datetime.datetime.now()
-    cliente_limpio = str(cliente).strip().upper()
-    return f"{cliente_limpio} {fecha.strftime('%y%m%d')}"
+
+    if folio_base:
+        base = folio_base.strip().upper()
+    else:
+        cliente_limpio = str(cliente).strip().upper()
+        base = f"{cliente_limpio} {fecha.strftime('%y%m%d')}"
+
+    conn = sqlite3.connect(str(_cotizaciones_db_path()))
+    try:
+        cur = conn.cursor()
+        for i in range(1, 1000):
+            folio = base if i == 1 else f"{base}-{i}"
+            cur.execute("SELECT 1 FROM cotizaciones WHERE folio = ?", (folio,))
+            if not cur.fetchone():
+                return folio
+        return f"{base}-{int(fecha.timestamp())}"
+    finally:
+        conn.close()
 
 
 @router.post("")
@@ -250,7 +270,7 @@ def guardar_cotizacion(
 
     fecha = datetime.datetime.now()
     fecha_str = fecha.isoformat()
-    folio = data.folio.strip() if data.folio.strip() else _generar_folio(data.cliente, fecha)
+    folio = _generar_folio(data.cliente, fecha, data.folio.strip() or None)
 
     # Calcular totales
     subtotal = 0.0
@@ -409,6 +429,9 @@ def generar_pdf_cotizacion(
     finally:
         conn.close()
 
+    cot = dict(cot)
+    lineas = [dict(l) for l in lineas]
+
     buffer = BytesIO()
     margin = 21.6  # 0.3 pulgadas en puntos
     doc = SimpleDocTemplate(
@@ -442,30 +465,30 @@ def generar_pdf_cotizacion(
     assets_dir = Path(__file__).parent / "assets"
     logo_path = assets_dir / "logo.png"
 
-    # Encabezado con logo dentro de un recuadro
-    logo_ancho = ancho_util - 36
+    # Encabezado con logo dentro de un recuadro (logo más pequeño para ahorrar espacio)
+    logo_ancho = (ancho_util - 36) * 0.55
     logo_alto = logo_ancho * 240 / 1600
     logo_img = Image(str(logo_path), width=logo_ancho, height=logo_alto)
     logo_img.hAlign = "CENTER"
     header_data = [[logo_img]]
-    header_table = Table(header_data, colWidths=[ancho_util], rowHeights=[logo_alto + 16])
+    header_table = Table(header_data, colWidths=[ancho_util], rowHeights=[logo_alto + 12])
     header_table.setStyle(
         TableStyle([
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("BOX", (0, 0), (-1, -1), 1.5, colors.black),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ])
     )
     elements.append(header_table)
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 6))
 
     # Título
     elements.append(Paragraph("<font size='9'>FORMATO</font>", ParagraphStyle(name="Formato", alignment=1, fontSize=9)))
-    elements.append(Paragraph("<font size='18'><b>C O T I Z A C I Ó N</b></font>", ParagraphStyle(name="Titulo", alignment=1, fontSize=18, spaceAfter=10)))
+    elements.append(Paragraph("<font size='18'><b>C O T I Z A C I Ó N</b></font>", ParagraphStyle(name="Titulo", alignment=1, fontSize=18, spaceAfter=6)))
 
     # Folio y fecha (centrado: label + recuadro gris del folio, fecha a la derecha)
     fecha_style = ParagraphStyle(name="FechaLarga", fontSize=9, leading=11)
@@ -483,7 +506,7 @@ def generar_pdf_cotizacion(
         ])
     )
     elements.append(folio_table)
-    elements.append(Spacer(1, 12))
+    elements.append(Spacer(1, 8))
 
     # Cliente y Atención (cada uno en su propio recuadro gris)
     cliente_data = [
@@ -500,16 +523,16 @@ def generar_pdf_cotizacion(
             ("BACKGROUND", (1, 1), (1, 1), colors.HexColor("#E5E5E5")),
             ("BOX", (1, 1), (1, 1), 1, colors.black),
             ("FONTSIZE", (0, 0), (-1, -1), 10),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
         ])
     )
     elements.append(cliente_table)
-    elements.append(Spacer(1, 14))
+    elements.append(Spacer(1, 10))
 
     # Presente
     elements.append(Paragraph("<font size='14'><b>P r e s e n t e</b></font>", ParagraphStyle(name="Presente", alignment=1, fontSize=14, spaceAfter=4)))
-    elements.append(Paragraph("Sírvase encontrar a continuación la cotización que usted amablemente nos solicitó.", ParagraphStyle(name="TextoPresente", alignment=1, fontSize=10, spaceAfter=10)))
+    elements.append(Paragraph("Sírvase encontrar a continuación la cotización que usted amablemente nos solicitó.", ParagraphStyle(name="TextoPresente", alignment=1, fontSize=10, spaceAfter=6)))
 
     # Tabla de líneas
     mostrar_stock_leon = bool(cot["con_stock_leon"])
@@ -584,12 +607,12 @@ def generar_pdf_cotizacion(
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("BOX", (0, 0), (-1, -1), 1.5, colors.black),
             ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
         ])
     )
     elements.append(lineas_table)
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 8))
 
     # Totales
     totales_data = [
@@ -605,15 +628,15 @@ def generar_pdf_cotizacion(
             ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
             ("FONTNAME", (2, 2), (2, 2), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, -1), 10),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
         ])
     )
     elements.append(totales_table)
-    elements.append(Spacer(1, 14))
+    elements.append(Spacer(1, 10))
 
     # Notas / condiciones
-    notas_style = ParagraphStyle(name="Notas", fontSize=10, leading=14, spaceAfter=4)
+    notas_style = ParagraphStyle(name="Notas", fontSize=9, leading=12, spaceAfter=2)
     elements.append(Paragraph("<u>Incluye Asistencia Técnica</u>", notas_style))
     elements.append(Paragraph("<b>Estos precios son L.A.B. Su Granja</b>", notas_style))
     elements.append(Paragraph(f"<b>Plazo de Entrega:</b> {cot['tiempo_entrega']}", notas_style))
@@ -624,7 +647,7 @@ def generar_pdf_cotizacion(
         elements.append(Paragraph(f"<b>Envío:</b> {cot['leyenda_envio']}", notas_style))
     if cot["con_descuento"]:
         elements.append(Paragraph("<b>Descuento aplicado por línea.</b>", notas_style))
-    elements.append(Spacer(1, 20))
+    elements.append(Spacer(1, 14))
 
     # Firma
     firma_nombre = cot["vendedor"] or cot["usuario_nombre"] or "—"

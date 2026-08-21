@@ -1013,6 +1013,13 @@ export default function CotizadorPage() {
               </div>
             </div>
 
+            {lineas.length >= 4 && (
+              <div className="mt-4 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg text-sm">
+                Si agregas más productos o descripciones muy largas, el PDF podría exportarse en
+                más de una hoja.
+              </div>
+            )}
+
             {/* Totales */}
             <div className="mt-6 flex flex-col items-end gap-2">
               <div className="flex justify-between w-full sm:w-72 text-sm">
