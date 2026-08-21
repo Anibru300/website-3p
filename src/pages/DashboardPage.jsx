@@ -1462,7 +1462,8 @@ export default function DashboardPage() {
     if (value == null) return '—';
     const num = Number(value);
     if (Number.isNaN(num)) return value;
-    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: moneda }).format(num);
+    const monedaCode = typeof moneda === 'string' ? moneda : (moneda?.moneda || 'MXN');
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: monedaCode }).format(num);
   };
 
   const formatNumber = (value) => {
@@ -1483,9 +1484,10 @@ export default function DashboardPage() {
     if (value == null) return '—';
     const num = Number(value);
     if (Number.isNaN(num)) return value;
+    const monedaCode = typeof moneda === 'string' ? moneda : (moneda?.moneda || 'MXN');
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: moneda,
+      currency: monedaCode,
       notation: 'compact',
       maximumFractionDigits: 1,
     }).format(num);
