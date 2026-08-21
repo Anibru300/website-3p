@@ -1,11 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, X, ArrowRight, Package } from 'lucide-react';
-// import { choreTimeProducts } from '../../data/choreTimeProducts';
+import { choreTimeProducts } from '../../data/choreTimeProducts';
 
 const ProductSearch = ({ onClose }) => {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -14,23 +12,31 @@ const ProductSearch = ({ onClose }) => {
     }
   }, []);
 
-  useEffect(() => {
-    if (query.length >= 2) {
-      const searchTerm = query.toLowerCase().trim();
-      // Búsqueda de productos desactivada temporalmente
-      const filtered = []; // choreTimeProducts.filter(p => { ... });
-      setResults(filtered.slice(0, 8));
-      setIsOpen(true);
-    } else {
-      setResults([]);
-      setIsOpen(false);
-    }
+  const results = useMemo(() => {
+    if (query.length < 2) return [];
+    const searchTerm = query.toLowerCase().trim();
+    const filtered = choreTimeProducts.filter((p) => {
+      const campos = [
+        p.codigo || '',
+        p.nombre || '',
+        p.specs || '',
+      ].join(' ').toLowerCase();
+      return campos.includes(searchTerm);
+    });
+    return filtered.slice(0, 8);
   }, [query]);
 
+  const showResults = query.length >= 2;
+
+  const navigateTo = (url) => {
+    window.history.pushState({ path: url }, '', url);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
   const handleSelect = (product) => {
-    window.location.href = `/marcas/chore-time?producto=${product.codigo}`;
+    const url = `/marcas/chore-time?producto=${encodeURIComponent(product.codigo)}`;
+    navigateTo(url);
     setQuery('');
-    setIsOpen(false);
     if (onClose) onClose();
   };
 
@@ -57,7 +63,7 @@ const ProductSearch = ({ onClose }) => {
         />
         {query && (
           <button
-            onClick={() => { setQuery(''); setResults([]); setIsOpen(false); }}
+            onClick={() => { setQuery(''); }}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
             <X size={18} />
@@ -66,7 +72,7 @@ const ProductSearch = ({ onClose }) => {
       </div>
 
       {/* Results Dropdown */}
-      {isOpen && results.length > 0 && (
+      {showResults && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 max-h-[60vh] overflow-y-auto z-50">
           <div className="p-3 bg-gray-50 dark:bg-gray-700/50 border-b dark:border-gray-700">
             <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -121,7 +127,7 @@ const ProductSearch = ({ onClose }) => {
         </div>
       )}
 
-      {isOpen && query.length >= 2 && results.length === 0 && (
+      {showResults && results.length === 0 && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 text-center z-50">
           <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-600 dark:text-gray-400">No se encontraron productos</p>

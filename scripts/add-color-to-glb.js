@@ -122,7 +122,7 @@ async function addColorToGLB() {
       
       // Aplicar a todas las mallas
       const meshes = document.getRoot().listMeshes();
-      meshes.forEach((mesh, meshIndex) => {
+      meshes.forEach((mesh) => {
         mesh.listPrimitives().forEach(primitive => {
           primitive.setMaterial(material);
         });

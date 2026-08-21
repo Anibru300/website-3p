@@ -21,10 +21,9 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-from app.almacen.router import _get_fotos_map
 from app.auth.dependencies import get_current_user
 from app.config import get_settings
-from app.ventas.router import _get_cached_historial
+from app.services.excel import _get_cached_historial, _get_fotos_map
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +179,7 @@ def precio_referencia(
 def listar_vendedores(user: dict = Depends(get_current_user)):
     """Devuelve la lista de vendedores desde la hoja FIRMAS del Excel del cotizador."""
     settings = get_settings()
-    excel_path = Path("Y:/COTIZACIONES/1. COTIZADOR/2. COTIZADOR 2.0.xlsm")
+    excel_path = Path(settings.cotizador_vendedores_excel_path)
     vendedores = []
     if excel_path.exists():
         try:
@@ -242,7 +241,7 @@ def _generar_folio(cliente: str, fecha: datetime.datetime | None = None, folio_b
     if folio_base:
         base = folio_base.strip().upper()
     else:
-        cliente_limpio = str(cliente).strip().upper()
+        cliente_limpio = str(cliente).strip().upper().split()[0]
         base = f"{cliente_limpio} {fecha.strftime('%y%m%d')}"
 
     conn = sqlite3.connect(str(_cotizaciones_db_path()))
@@ -468,9 +467,12 @@ def generar_pdf_cotizacion(
     # Encabezado con logo dentro de un recuadro (logo más pequeño para ahorrar espacio)
     logo_ancho = (ancho_util - 36) * 0.55
     logo_alto = logo_ancho * 240 / 1600
-    logo_img = Image(str(logo_path), width=logo_ancho, height=logo_alto)
-    logo_img.hAlign = "CENTER"
-    header_data = [[logo_img]]
+    if logo_path.exists():
+        logo_img = Image(str(logo_path), width=logo_ancho, height=logo_alto)
+        logo_img.hAlign = "CENTER"
+        header_data = [[logo_img]]
+    else:
+        header_data = [[Paragraph("3P S.A. DE C.V.", styles["Title"])]]
     header_table = Table(header_data, colWidths=[ancho_util], rowHeights=[logo_alto + 12])
     header_table.setStyle(
         TableStyle([
@@ -490,12 +492,12 @@ def generar_pdf_cotizacion(
     elements.append(Paragraph("<font size='9'>FORMATO</font>", ParagraphStyle(name="Formato", alignment=1, fontSize=9)))
     elements.append(Paragraph("<font size='18'><b>C O T I Z A C I Ó N</b></font>", ParagraphStyle(name="Titulo", alignment=1, fontSize=18, spaceAfter=6)))
 
-    # Folio y fecha (centrado: label + recuadro gris del folio, fecha a la derecha)
+    # Folio y fecha (folio alineado a la izquierda, fecha a la derecha)
     fecha_style = ParagraphStyle(name="FechaLarga", fontSize=9, leading=11)
     folio_data = [
-        ["", "FOLIO:", Paragraph(f"<b>{cot['folio']}</b>", styles["Normal"]), "", Paragraph(f"<b>{fecha_larga}</b>", fecha_style)],
+        ["FOLIO:", Paragraph(f"<b>{cot['folio']}</b>", styles["Normal"]), "", Paragraph(f"<b>{fecha_larga}</b>", fecha_style)],
     ]
-    folio_table = Table(folio_data, colWidths=[ancho_util - 370, 45, 150, 15, 160])
+    folio_table = Table(folio_data, colWidths=[45, 150, ancho_util - 355, 160])
     folio_table.setStyle(
         TableStyle([
             ("ALIGN", (0, 0), (-1, -1), "LEFT"),
@@ -638,13 +640,12 @@ def generar_pdf_cotizacion(
     # Notas / condiciones
     notas_style = ParagraphStyle(name="Notas", fontSize=9, leading=12, spaceAfter=2)
     elements.append(Paragraph("<u>Incluye Asistencia Técnica</u>", notas_style))
-    elements.append(Paragraph("<b>Estos precios son L.A.B. Su Granja</b>", notas_style))
+    if cot["leyenda_envio"]:
+        elements.append(Paragraph(f"<b>Envío:</b> {cot['leyenda_envio']}", notas_style))
     elements.append(Paragraph(f"<b>Plazo de Entrega:</b> {cot['tiempo_entrega']}", notas_style))
     elements.append(Paragraph(f"<b>Condiciones de Pago:</b> {cot['condiciones']}", notas_style))
     elements.append(Paragraph("<b>Vigencia de cotización:</b> 10 días.", notas_style))
     elements.append(Paragraph("<b>No incluye instalación mecánica, ni eléctrica.</b>", notas_style))
-    if cot["leyenda_envio"]:
-        elements.append(Paragraph(f"<b>Envío:</b> {cot['leyenda_envio']}", notas_style))
     if cot["con_descuento"]:
         elements.append(Paragraph("<b>Descuento aplicado por línea.</b>", notas_style))
     elements.append(Spacer(1, 14))

@@ -4,24 +4,33 @@ from pathlib import Path
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2.pool import ThreadedConnectionPool
 
 from app.config import get_settings
 
+_pool = None
 
-def get_postgres_connection():
-    settings = get_settings()
-    return psycopg2.connect(
-        host=settings.postgres_host,
-        port=settings.postgres_port,
-        dbname=settings.postgres_db,
-        user=settings.postgres_user,
-        password=settings.postgres_password,
-    )
+
+def _get_pool() -> ThreadedConnectionPool:
+    global _pool
+    if _pool is None:
+        settings = get_settings()
+        _pool = ThreadedConnectionPool(
+            minconn=1,
+            maxconn=10,
+            host=settings.postgres_host,
+            port=settings.postgres_port,
+            dbname=settings.postgres_db,
+            user=settings.postgres_user,
+            password=settings.postgres_password,
+        )
+    return _pool
 
 
 @contextmanager
 def postgres_cursor(cursor_factory=RealDictCursor):
-    conn = get_postgres_connection()
+    pool = _get_pool()
+    conn = pool.getconn()
     try:
         cur = conn.cursor(cursor_factory=cursor_factory)
         yield cur
@@ -30,7 +39,8 @@ def postgres_cursor(cursor_factory=RealDictCursor):
         conn.rollback()
         raise
     finally:
-        conn.close()
+        cur.close()
+        pool.putconn(conn)
 
 
 # ---------------------------------------------------------------------------

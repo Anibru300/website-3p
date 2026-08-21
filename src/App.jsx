@@ -80,7 +80,7 @@ function App() {
   } else if (segments[0] === 'marcas') {
     const brandId = segments[1];
     if (brandId === 'chore-time') {
-      // Chore-Time oculto temporalmente - redirigir a home
+      // Chore-Time no es distribuidor autorizado; no publicar
       content = <HomePage />;
     } else if (brandId === 'ms-schippers') {
       content = <MsSchippersPage />;

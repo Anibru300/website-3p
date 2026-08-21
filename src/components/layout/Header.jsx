@@ -1,15 +1,11 @@
 import { useState } from 'react';
-import { Menu, X, Phone, Mail, ChevronRight, Globe, Search, LogIn } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
+import { Menu, X, Phone, Mail, ChevronRight, Globe, LogIn } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useLocation } from '../../hooks/useBrowserLocation';
-import ProductSearch from '../product/ProductSearch';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
   
-  const { isDark } = useTheme();
   const { language, toggleLanguage, t } = useLanguage();
   const location = useLocation();
 
@@ -143,13 +139,6 @@ const Header = () => {
 
             {/* Acciones */}
             <div className="hidden lg:flex items-center gap-3">
-              <button 
-                onClick={() => setShowSearch(!showSearch)}
-                className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
-                title="Buscar productos"
-              >
-                <Search size={18} />
-              </button>
               <button onClick={toggleLanguage} className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all font-semibold text-sm">
                 <Globe size={16} className="mr-1" />
                 {language.toUpperCase()}
@@ -173,25 +162,11 @@ const Header = () => {
 
             {/* Mobile menu button */}
             <div className="flex items-center gap-2 lg:hidden">
-              <button 
-                onClick={() => setShowSearch(!showSearch)}
-                className="p-2 text-gray-700 dark:text-gray-300 hover:text-p3-red transition-colors"
-                title="Buscar"
-              >
-                <Search size={22} />
-              </button>
               <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-700 dark:text-gray-300 hover:text-p3-red transition-colors">
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
             </div>
           </div>
-          
-          {/* Product Search Panel */}
-          {showSearch && (
-            <div className="pb-4 border-t dark:border-gray-700 pt-4">
-              <ProductSearch onClose={() => setShowSearch(false)} />
-            </div>
-          )}
         </div>
 
         {/* Mobile menu */}

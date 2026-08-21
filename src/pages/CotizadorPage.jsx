@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
-  descargarCotizacionPdf,
   fetchExistenciasPorCodigos,
   fetchHistorialVentasMetadata,
   fetchPrecioReferencia,
   fetchProductoFotoBlobUrl,
   fetchVendedoresCotizaciones,
   guardarCotizacion,
+  verCotizacionPdf,
 } from '../utils/api';
 import {
   ArrowLeft,
   Calculator,
-  Download,
+  Eye,
   Image as ImageIcon,
   Package,
   Plus,
@@ -53,6 +53,17 @@ function formatNumber(value) {
   return new Intl.NumberFormat('es-MX').format(num);
 }
 
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 function SearchableSelect({
   value,
   onChange,
@@ -64,10 +75,12 @@ function SearchableSelect({
   allowFreeText = false,
 }) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(value ? String(value) : '');
   const [coords, setCoords] = useState(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
+  const itemsRef = useRef([]);
 
   const computeCoords = () => {
     if (!inputRef.current) return null;
@@ -97,47 +110,52 @@ function SearchableSelect({
     };
   };
 
-  const updateCoords = () => {
+  const openDropdown = () => {
+    setQuery(value ? String(value) : '');
+    setHighlightedIndex(-1);
     setCoords(computeCoords());
+    setOpen(true);
   };
+
+  const closeDropdown = useCallback(() => {
+    setOpen(false);
+    setQuery(value ? String(value) : '');
+    setCoords(null);
+    setHighlightedIndex(-1);
+  }, [value]);
 
   useEffect(() => {
     function handleClickOutside(e) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-        setOpen(false);
+        closeDropdown();
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [closeDropdown, value]);
 
   useEffect(() => {
     function handleScroll() {
-      if (open) setOpen(false);
+      if (open) closeDropdown();
     }
     window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
     return () => window.removeEventListener('scroll', handleScroll, { capture: true });
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) {
-      setQuery(value ? String(value) : '');
-      setCoords(null);
-    } else {
-      updateCoords();
-      // Al abrir, si no hay búsqueda activa, mostramos el valor actual.
-      setQuery((q) => q || (value ? String(value) : ''));
-    }
-  }, [open, value]);
+  }, [closeDropdown, open, value]);
 
   useEffect(() => {
     if (!open) return;
     function handleResize() {
-      updateCoords();
+      setCoords(computeCoords());
     }
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [open]);
+
+  useEffect(() => {
+    if (highlightedIndex >= 0 && itemsRef.current[highlightedIndex]) {
+      itemsRef.current[highlightedIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIndex]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -149,18 +167,35 @@ function SearchableSelect({
     onChange(opt);
     setQuery(String(opt));
     setOpen(false);
+    setCoords(null);
+    setHighlightedIndex(-1);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      setOpen(false);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!open) {
+        openDropdown();
+        setHighlightedIndex(0);
+      } else {
+        setHighlightedIndex((prev) => Math.min(prev + 1, filtered.length - 1));
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (open) {
+        setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (open && highlightedIndex >= 0 && highlightedIndex < filtered.length) {
+        handleSelect(filtered[highlightedIndex]);
+      } else if (allowFreeText && query) {
+        handleSelect(query);
+      }
+    } else if (e.key === 'Escape') {
+      closeDropdown();
       inputRef.current?.blur();
     }
-  };
-
-  const openDropdown = () => {
-    updateCoords();
-    setOpen(true);
   };
 
   const displayValue = open ? query : value ? String(value) : '';
@@ -174,7 +209,8 @@ function SearchableSelect({
         onChange={(e) => {
           const val = e.target.value;
           setQuery(val);
-          openDropdown();
+          setHighlightedIndex(-1);
+          if (!open) openDropdown();
           if (allowFreeText) {
             onChange(val);
           } else if (!val) {
@@ -182,12 +218,6 @@ function SearchableSelect({
           }
         }}
         onFocus={openDropdown}
-        onBlur={() => {
-          // Al perder foco, si permitimos texto libre y hay algo escrito,
-          // lo conservamos como valor. El click fuera cierra el dropdown
-          // en el efecto de mousedown, por lo que aquí no hacemos nada
-          // para no interferir con la selección de opciones.
-        }}
         placeholder={placeholder}
         className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red pr-8"
         autoComplete="off"
@@ -196,15 +226,12 @@ function SearchableSelect({
       <button
         type="button"
         onClick={() => {
-          setOpen((v) => {
-            const next = !v;
-            if (next) {
-              setQuery(value ? String(value) : '');
-              updateCoords();
-              inputRef.current?.focus();
-            }
-            return next;
-          });
+          if (open) {
+            closeDropdown();
+          } else {
+            openDropdown();
+            inputRef.current?.focus();
+          }
         }}
         className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
         tabIndex={-1}
@@ -235,14 +262,15 @@ function SearchableSelect({
               {allowFreeText ? 'Presiona Enter o Tab para usar este texto' : emptyMessage}
             </div>
           ) : (
-            filtered.map((opt) => (
+            filtered.map((opt, idx) => (
               <button
                 key={String(opt)}
+                ref={(el) => { itemsRef.current[idx] = el; }}
                 type="button"
                 onClick={() => handleSelect(opt)}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-red-50 ${
                   String(opt) === String(value) ? 'bg-red-50 text-p3-red font-medium' : 'text-gray-700'
-                }`}
+                } ${idx === highlightedIndex ? 'bg-red-100' : ''}`}
               >
                 {opt}
               </button>
@@ -255,6 +283,11 @@ function SearchableSelect({
 }
 
 export default function CotizadorPage() {
+  const navigateTo = (url) => {
+    window.history.pushState({ path: url }, '', url);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
   const { user, logout } = useAuth();
 
   const [cliente, setCliente] = useState('');
@@ -288,6 +321,9 @@ export default function CotizadorPage() {
   const [cotizacionGuardada, setCotizacionGuardada] = useState(null);
   const [error, setError] = useState(null);
 
+  const [editingPrecioId, setEditingPrecioId] = useState(null);
+  const [rawPrecio, setRawPrecio] = useState('');
+
   // Cargar catálogos de clientes y códigos desde historial de ventas
   useEffect(() => {
     fetchHistorialVentasMetadata()
@@ -310,7 +346,7 @@ export default function CotizadorPage() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [user?.nombre]);
 
   // Precargar descripciones
   useEffect(() => {
@@ -378,6 +414,7 @@ export default function CotizadorPage() {
   // Cargar fotos de producto para los códigos seleccionados en las líneas
   useEffect(() => {
     const codigos = [...new Set(lineas.map((l) => l.codigo).filter(Boolean))];
+    let cancelled = false;
 
     setFotosMap((prev) => {
       const next = {};
@@ -415,6 +452,14 @@ export default function CotizadorPage() {
           }
         })
       );
+      if (cancelled) {
+        resultados.forEach((r) => {
+          if (r.status === 'fulfilled' && r.value.url) {
+            URL.revokeObjectURL(r.value.url);
+          }
+        });
+        return;
+      }
       setFotosMap((prev) => {
         const next = { ...prev };
         for (const r of resultados) {
@@ -433,14 +478,18 @@ export default function CotizadorPage() {
     };
 
     cargarFotos();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineas]);
 
   // Limpiar object URLs de fotos al desmontar el componente
   useEffect(() => {
+    const urls = createdFotoUrlsRef.current;
     return () => {
-      createdFotoUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-      createdFotoUrlsRef.current.clear();
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.clear();
     };
   }, []);
 
@@ -448,7 +497,7 @@ export default function CotizadorPage() {
     setLineas((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         codigo: '',
         descripcion: '',
         almacen: '',
@@ -461,11 +510,40 @@ export default function CotizadorPage() {
   };
 
   const eliminarLinea = (id) => {
-    setLineas((prev) => prev.filter((l) => l.id !== id));
+    setLineas((prev) => {
+      const linea = prev.find((l) => l.id === id);
+      if (linea?.codigo) {
+        setFotosMap((fotosPrev) => {
+          const url = fotosPrev[linea.codigo];
+          if (url) {
+            URL.revokeObjectURL(url);
+            createdFotoUrlsRef.current.delete(url);
+          }
+          const next = { ...fotosPrev };
+          delete next[linea.codigo];
+          return next;
+        });
+      }
+      return prev.filter((l) => l.id !== id);
+    });
+    if (codigoTimeoutsRef.current[id]) {
+      clearTimeout(codigoTimeoutsRef.current[id]);
+      delete codigoTimeoutsRef.current[id];
+    }
+    setLoadingPrecio((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setLoadingFotos((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
   const generarFolio = useCallback((clienteValue) => {
-    const clienteLimpio = String(clienteValue || cliente).trim().toUpperCase();
+    const clienteLimpio = String(clienteValue || cliente).trim().toUpperCase().split(' ')[0];
     if (!clienteLimpio) return '';
     const hoy = new Date();
     const yy = String(hoy.getFullYear()).slice(-2);
@@ -482,10 +560,19 @@ export default function CotizadorPage() {
   }, [cliente, folio, generarFolio]);
 
   const actualizarLinea = (id, campo, valor) => {
+    const camposNumericos = ['cantidad', 'precio_unitario', 'descuento_pct', 'stock_leon'];
+    let valorNormalizado = valor;
+    if (camposNumericos.includes(campo)) {
+      const num = Number(valor);
+      valorNormalizado = Number.isNaN(num) ? 0 : num;
+      if (campo === 'descuento_pct') {
+        valorNormalizado = Math.max(0, Math.min(100, valorNormalizado));
+      }
+    }
     setLineas((prev) =>
       prev.map((l) => {
         if (l.id !== id) return l;
-        return { ...l, [campo]: valor };
+        return { ...l, [campo]: valorNormalizado };
       })
     );
   };
@@ -518,6 +605,13 @@ export default function CotizadorPage() {
 
   const codigoTimeoutsRef = useRef({});
 
+  useEffect(() => {
+    return () => {
+      Object.values(codigoTimeoutsRef.current).forEach((t) => clearTimeout(t));
+      codigoTimeoutsRef.current = {};
+    };
+  }, []);
+
   const handleCodigoChange = (lineaId, codigo) => {
     const codigoLimpio = String(codigo || '').trim();
     actualizarLinea(lineaId, 'codigo', codigoLimpio);
@@ -534,13 +628,23 @@ export default function CotizadorPage() {
     }, 400);
   };
 
+  // Al desactivar descuentos, resetear porcentajes para que UI y backend coincidan
+  useEffect(() => {
+    if (!conDescuento) {
+      setLineas((prev) =>
+        prev.map((l) => ({ ...l, descuento_pct: 0 }))
+      );
+    }
+  }, [conDescuento]);
+
   const lineasCalculadas = useMemo(() => {
     return lineas.map((l) => {
-      const precioConDesc = l.precio_unitario * (1 - (l.descuento_pct || 0) / 100);
+      const descuentoAplicable = conDescuento ? (l.descuento_pct || 0) : 0;
+      const precioConDesc = l.precio_unitario * (1 - descuentoAplicable / 100);
       const total = (l.cantidad || 0) * precioConDesc;
       return { ...l, precioConDesc, total };
     });
-  }, [lineas]);
+  }, [lineas, conDescuento]);
 
   const totales = useMemo(() => {
     const subtotal = lineasCalculadas.reduce((sum, l) => sum + (l.total || 0), 0);
@@ -588,13 +692,12 @@ export default function CotizadorPage() {
       const result = await guardarCotizacion(data);
       console.log('[CotizadorPage] Guardado exitoso:', result);
       setCotizacionGuardada(result);
-      // Descargar PDF automáticamente al guardar
+      // Abrir PDF automáticamente en una nueva pestaña al guardar
       try {
-        const filename = `${result.folio || `cotizacion-${result.id}`}.pdf`;
-        await descargarCotizacionPdf(result.id, filename);
+        await verCotizacionPdf(result.id);
       } catch (pdfErr) {
-        console.error('[CotizadorPage] Error al descargar PDF tras guardar:', pdfErr);
-        setError('Cotización guardada, pero no se pudo descargar el PDF automáticamente.');
+        console.error('[CotizadorPage] Error al abrir PDF tras guardar:', pdfErr);
+        setError('Cotización guardada, pero no se pudo abrir el PDF automáticamente.');
       }
     } catch (err) {
       console.error('[CotizadorPage] Error al guardar:', err);
@@ -604,19 +707,18 @@ export default function CotizadorPage() {
     }
   };
 
-  const [descargandoPdf, setDescargandoPdf] = useState(false);
+  const [abriendoPdf, setAbriendoPdf] = useState(false);
 
-  const descargarPdf = async () => {
+  const abrirPdf = async () => {
     if (!cotizacionGuardada?.id) return;
-    setDescargandoPdf(true);
+    setAbriendoPdf(true);
     try {
-      const filename = `${cotizacionGuardada.folio || `cotizacion-${cotizacionGuardada.id}`}.pdf`;
-      await descargarCotizacionPdf(cotizacionGuardada.id, filename);
+      await verCotizacionPdf(cotizacionGuardada.id);
     } catch (err) {
-      console.error('[CotizadorPage] Error al descargar PDF:', err);
-      setError(err.message || 'Ocurrió un error al descargar el PDF.');
+      console.error('[CotizadorPage] Error al abrir PDF:', err);
+      setError(err.message || 'Ocurrió un error al abrir el PDF.');
     } finally {
-      setDescargandoPdf(false);
+      setAbriendoPdf(false);
     }
   };
 
@@ -632,7 +734,7 @@ export default function CotizadorPage() {
           <div className="mx-auto max-w-7xl flex items-center justify-between h-14 sm:h-16">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => (window.location.href = '/dashboard')}
+                onClick={() => navigateTo('/dashboard')}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Regresar al dashboard"
               >
@@ -671,12 +773,12 @@ export default function CotizadorPage() {
                 <p className="text-sm">Total: {formatCurrency(cotizacionGuardada.total, moneda)}</p>
               </div>
               <button
-                onClick={descargarPdf}
-                disabled={descargandoPdf}
+                onClick={abrirPdf}
+                disabled={abriendoPdf}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
               >
-                <Download size={18} />
-                {descargandoPdf ? 'Preparando PDF...' : 'Descargar PDF'}
+                <Eye size={18} />
+                {abriendoPdf ? 'Abriendo PDF...' : 'Ver PDF'}
               </button>
             </div>
           )}
@@ -960,14 +1062,40 @@ export default function CotizadorPage() {
                           />
                         </td>
                         <td className="px-2 py-2 align-top">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={l.precio_unitario}
-                            onChange={(e) => actualizarLinea(l.id, 'precio_unitario', e.target.value)}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs text-right"
-                          />
+                          {editingPrecioId === l.id ? (
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={rawPrecio}
+                              autoFocus
+                              onChange={(e) => setRawPrecio(e.target.value)}
+                              onBlur={() => {
+                                actualizarLinea(l.id, 'precio_unitario', rawPrecio);
+                                setEditingPrecioId(null);
+                                setRawPrecio('');
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  actualizarLinea(l.id, 'precio_unitario', rawPrecio);
+                                  setEditingPrecioId(null);
+                                  setRawPrecio('');
+                                }
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-p3-red focus:border-p3-red text-xs text-right"
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingPrecioId(l.id);
+                                setRawPrecio(String(l.precio_unitario ?? ''));
+                              }}
+                              className="w-full px-2 py-1.5 text-xs text-right bg-transparent hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-200 transition-colors"
+                            >
+                              {formatCurrency(l.precio_unitario, moneda)}
+                            </button>
+                          )}
                         </td>
                         {conDescuento && (
                           <td className="px-2 py-2 align-top">

@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from app.almacen.router import get_vales_abiertos_count
 from app.auth.dependencies import get_current_user
 from app.database import postgres_cursor
-from app.ventas.router import get_pedidos_vivos_excel
+from app.services.excel import get_pedidos_vivos_excel, get_vales_abiertos_count
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 

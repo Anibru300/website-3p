@@ -1,4 +1,3 @@
-import secrets
 from functools import lru_cache
 from pathlib import Path
 
@@ -21,7 +20,7 @@ class Settings(BaseSettings):
     api_port: int = 8000
 
     # Security
-    jwt_secret: str = secrets.token_urlsafe(64)
+    jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 horas
     service_token: str = ""
@@ -50,6 +49,9 @@ class Settings(BaseSettings):
 
     # Historial de ventas / facturación Excel (solo lectura)
     ventas_facturacion_excel_path: str = "Y:/1 - CONTROL DE ALMACEN/BASES DE DATOS/VENTAS_FACTURACION_BASE.xlsx"
+
+    # Excel de vendedores/firmas del cotizador (solo lectura)
+    cotizador_vendedores_excel_path: str = "Y:/COTIZACIONES/1. COTIZADOR/2. COTIZADOR 2.0.xlsm"
 
     @property
     def database_url(self) -> str:

@@ -1,6 +1,5 @@
 import datetime
 import mimetypes
-import time
 from pathlib import Path
 
 from typing import List
@@ -12,129 +11,16 @@ from openpyxl import load_workbook
 from app.auth.dependencies import get_current_user
 from app.config import get_settings
 from app.database import postgres_cursor
+from app.services.excel import (
+    get_material_en_vales_by_code,
+    get_vales_abiertos_count,
+    get_fotos_map,
+    normalize_text,
+    read_excel_sheet,
+    to_date,
+)
 
 router = APIRouter(prefix="/api/almacen", tags=["almacen"])
-
-
-def _normalize_text(value):
-    if value is None:
-        return ""
-    return str(value).strip()
-
-
-def _read_excel_sheet(wb, sheet_name):
-    if sheet_name not in wb.sheetnames:
-        return []
-    ws = wb[sheet_name]
-    headers = [_normalize_text(cell.value) for cell in ws[1]]
-    data = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if not row or all(v is None for v in row):
-            continue
-        item = {}
-        for h, v in zip(headers, row):
-            if h:
-                item[h] = v
-        data.append(item)
-    return data
-
-
-def _get_material_en_vales_by_code():
-    """Lee el Excel de vales y devuelve un dict {codigo: cantidad_viva_total}.
-    
-    Si el archivo no existe o no se puede abrir, devuelve dict vacío.
-    """
-    settings = get_settings()
-    excel_path = Path(settings.vales_excel_path)
-
-    if not excel_path.exists():
-        return {}
-
-    try:
-        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
-    except Exception:
-        return {}
-
-    try:
-        cabeceras = _read_excel_sheet(wb, "VALES")
-        detalles = _read_excel_sheet(wb, "DETALLE_VALES")
-    finally:
-        wb.close()
-
-    cabeceras_by_folio = {}
-    for c in cabeceras:
-        folio = c.get("FOLIO_VALE")
-        if folio is not None:
-            cabeceras_by_folio[str(folio).strip()] = c
-
-    material = {}
-    for d in detalles:
-        folio = str(d.get("FOLIO_VALE", "")).strip()
-        cab = cabeceras_by_folio.get(folio, {})
-
-        status_val = _normalize_text(cab.get("STATUS") or d.get("STATUS")).upper()
-        cantidad_viva = d.get("CANTIDAD_VIVA", 0) or 0
-        try:
-            cantidad_viva = float(cantidad_viva)
-        except (ValueError, TypeError):
-            cantidad_viva = 0
-
-        if status_val == "CERRADO" or cantidad_viva <= 0:
-            continue
-
-        codigo = _normalize_text(d.get("CODIGO"))
-        if codigo:
-            material[codigo] = material.get(codigo, 0) + cantidad_viva
-
-    return material
-
-
-def get_vales_abiertos_count():
-    """Cuenta folios de vale distintos con cantidad viva > 0.
-
-    Lee el Excel de vales directamente (la misma fuente que la sección de vales).
-    """
-    settings = get_settings()
-    excel_path = Path(settings.vales_excel_path)
-
-    if not excel_path.exists():
-        return 0
-
-    try:
-        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
-    except Exception:
-        return 0
-
-    try:
-        cabeceras = _read_excel_sheet(wb, "VALES")
-        detalles = _read_excel_sheet(wb, "DETALLE_VALES")
-    finally:
-        wb.close()
-
-    cabeceras_by_folio = {}
-    for c in cabeceras:
-        folio = c.get("FOLIO_VALE")
-        if folio is not None:
-            cabeceras_by_folio[str(folio).strip()] = c
-
-    folios_abiertos = set()
-    for d in detalles:
-        folio = str(d.get("FOLIO_VALE", "")).strip()
-        cab = cabeceras_by_folio.get(folio, {})
-
-        status_val = _normalize_text(cab.get("STATUS") or d.get("STATUS")).upper()
-        cantidad_viva = d.get("CANTIDAD_VIVA", 0) or 0
-        try:
-            cantidad_viva = float(cantidad_viva)
-        except (ValueError, TypeError):
-            cantidad_viva = 0
-
-        if status_val == "CERRADO" or cantidad_viva <= 0:
-            continue
-
-        folios_abiertos.add(folio)
-
-    return len(folios_abiertos)
 
 
 @router.get("/existencias")
@@ -147,7 +33,7 @@ def existencias(
     user: dict = Depends(get_current_user),
 ):
     # Material en vales desde el Excel de almacén (solo lectura)
-    material_en_vales = _get_material_en_vales_by_code()
+    material_en_vales = get_material_en_vales_by_code()
 
     almacen_filtro = ""
     params = {}
@@ -250,7 +136,7 @@ def existencias_por_codigos(
     if not codigos:
         return {"data": {}}
 
-    material_en_vales = _get_material_en_vales_by_code()
+    material_en_vales = get_material_en_vales_by_code()
 
     sql = """
         SELECT cve_art AS codigo, COALESCE(SUM(exist), 0) AS existencia_total
@@ -276,24 +162,6 @@ def existencias_por_codigos(
         }
 
     return {"data": data}
-
-
-def _to_date(value):
-    """Normaliza un valor de fecha de Excel a datetime.date."""
-    if value is None:
-        return None
-    if isinstance(value, datetime.datetime):
-        return value.date()
-    if isinstance(value, datetime.date):
-        return value
-    if isinstance(value, str):
-        value = value.strip()
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"):
-            try:
-                return datetime.datetime.strptime(value, fmt).date()
-            except ValueError:
-                continue
-    return None
 
 
 @router.get("/vales")
@@ -324,8 +192,8 @@ def vales(
         )
 
     try:
-        cabeceras = _read_excel_sheet(wb, "VALES")
-        detalles = _read_excel_sheet(wb, "DETALLE_VALES")
+        cabeceras = read_excel_sheet(wb, "VALES")
+        detalles = read_excel_sheet(wb, "DETALLE_VALES")
     finally:
         wb.close()
 
@@ -343,7 +211,7 @@ def vales(
         cab = cabeceras_by_folio.get(folio, {})
 
         # Filtrar solo vales abiertos / con cantidad viva
-        status_val = _normalize_text(cab.get("STATUS") or d.get("STATUS")).upper()
+        status_val = normalize_text(cab.get("STATUS") or d.get("STATUS")).upper()
         cantidad_viva = d.get("CANTIDAD_VIVA", 0) or 0
         try:
             cantidad_viva = float(cantidad_viva)
@@ -353,7 +221,7 @@ def vales(
         if status_val == "CERRADO" or cantidad_viva <= 0:
             continue
 
-        entregado_a = _normalize_text(cab.get("ENTREGADO_A"))
+        entregado_a = normalize_text(cab.get("ENTREGADO_A"))
 
         # Filtro por responsable
         if responsable:
@@ -371,20 +239,20 @@ def vales(
             campos = [
                 str(folio),
                 entregado_a,
-                _normalize_text(d.get("CODIGO")),
-                _normalize_text(d.get("DESCRIPCION")),
-                _normalize_text(d.get("ALMACEN_ORIGEN")),
+                normalize_text(d.get("CODIGO")),
+                normalize_text(d.get("DESCRIPCION")),
+                normalize_text(d.get("ALMACEN_ORIGEN")),
             ]
             if not any(busqueda_lower in c.lower() for c in campos if c):
                 continue
 
         # Filtro por almacén origen
-        almacen_origen = _normalize_text(d.get("ALMACEN_ORIGEN"))
+        almacen_origen = normalize_text(d.get("ALMACEN_ORIGEN"))
         if almacen and almacen.lower() not in almacen_origen.lower():
             continue
 
         # Filtro por rango de fecha de salida
-        fecha_salida = _to_date(cab.get("FECHA_SALIDA"))
+        fecha_salida = to_date(cab.get("FECHA_SALIDA"))
         if fecha_salida and fecha_desde:
             try:
                 desde = datetime.datetime.strptime(fecha_desde, "%Y-%m-%d").date()
@@ -404,11 +272,11 @@ def vales(
             "folio": folio,
             "entregado_a": entregado_a,
             "fecha_salida": cab.get("FECHA_SALIDA"),
-            "codigo": _normalize_text(d.get("CODIGO")),
-            "descripcion": _normalize_text(d.get("DESCRIPCION")),
+            "codigo": normalize_text(d.get("CODIGO")),
+            "descripcion": normalize_text(d.get("DESCRIPCION")),
             "cantidad": d.get("CANTIDAD", 0),
-            "almacen_origen": _normalize_text(d.get("ALMACEN_ORIGEN")),
-            "estado": _normalize_text(cab.get("STATUS") or d.get("STATUS")),
+            "almacen_origen": normalize_text(d.get("ALMACEN_ORIGEN")),
+            "estado": normalize_text(cab.get("STATUS") or d.get("STATUS")),
             "cantidad_viva": cantidad_viva,
         })
 
@@ -451,60 +319,9 @@ def subalmacenes(user: dict = Depends(get_current_user)):
     return {"data": data}
 
 
-# Caché simple del mapa codigo -> ruta_foto con TTL de 5 minutos
-_FOTOS_CACHE = {"map": None, "ts": 0}
-_FOTOS_TTL_SECONDS = 300
-
-
-def _get_fotos_map():
-    """Lee la hoja FOTOS_PRODUCTOS del Excel de almacén y devuelve un dict.
-
-    Si el archivo no existe o no se puede abrir, devuelve dict vacío.
-    La última versión del mapa se conserva en memoria por _FOTOS_TTL_SECONDS.
-    """
-    global _FOTOS_CACHE
-    now = time.time()
-    if _FOTOS_CACHE["map"] is not None and (now - _FOTOS_CACHE["ts"]) < _FOTOS_TTL_SECONDS:
-        return _FOTOS_CACHE["map"]
-
-    settings = get_settings()
-    excel_path = Path(settings.vales_excel_path)
-
-    if not excel_path.exists():
-        _FOTOS_CACHE = {"map": {}, "ts": now}
-        return {}
-
-    try:
-        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
-    except Exception:
-        _FOTOS_CACHE = {"map": {}, "ts": now}
-        return {}
-
-    try:
-        fotos = {}
-        ws = wb["FOTOS_PRODUCTOS"]
-        headers = [_normalize_text(cell.value) for cell in ws[1]]
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not row or all(v is None for v in row):
-                continue
-            item = {}
-            for h, v in zip(headers, row):
-                if h:
-                    item[h] = v
-            codigo = _normalize_text(item.get("CODIGO"))
-            ruta = _normalize_text(item.get("RUTA_FOTO"))
-            if codigo and ruta:
-                fotos[codigo] = ruta
-    finally:
-        wb.close()
-
-    _FOTOS_CACHE = {"map": fotos, "ts": now}
-    return fotos
-
-
 @router.get("/foto-producto/{codigo}")
 def foto_producto(codigo: str, user: dict = Depends(get_current_user)):
-    fotos = _get_fotos_map()
+    fotos = get_fotos_map()
     ruta = fotos.get(codigo.strip())
     if not ruta:
         return Response(status_code=204)

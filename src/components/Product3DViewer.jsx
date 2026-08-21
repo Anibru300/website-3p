@@ -93,26 +93,17 @@ const Product3DViewer = ({
   const [autoRotate, setAutoRotate] = useState(true);
   const [currentEnv, setCurrentEnv] = useState(0);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [modelLoaded, setModelLoaded] = useState(false);
-  const [currentColor, setCurrentColor] = useState(null);
+  const initialColor = productCode ? detectProductType(productCode).color : null;
+  const [currentColor, setCurrentColor] = useState(initialColor);
   const [appliedColor, setAppliedColor] = useState(null);
   const [colorApplied, setColorApplied] = useState(false);
   const modelViewerRef = useRef(null);
-  const canvasRef = useRef(null);
 
   useEffect(() => {
     loadModelViewerScript()
       .then(() => setLoaded(true))
       .catch(() => setError(true));
   }, []);
-
-  // Detectar color automático al cargar
-  useEffect(() => {
-    if (productCode) {
-      const detected = detectProductType(productCode);
-      setCurrentColor(detected.color);
-    }
-  }, [productCode]);
 
   // Función para aplicar color al modelo - intenta múltiples métodos
   const applyColorToModel = useCallback(async (colorHex) => {
@@ -151,27 +142,6 @@ const Product3DViewer = ({
         });
       }
 
-      // Método 2: Intentar acceder a la escena de Three.js interna
-      if (!applied) {
-        const scene = modelViewerRef.current[$]?.scene;
-        if (scene) {
-          scene.traverse((child) => {
-            if (child.isMesh && child.material) {
-              try {
-                if (Array.isArray(child.material)) {
-                  child.material.forEach(mat => {
-                    mat.color.setHex(parseInt(colorHex.slice(1), 16));
-                  });
-                } else {
-                  child.material.color.setHex(parseInt(colorHex.slice(1), 16));
-                }
-                applied = true;
-              } catch (e) {}
-            }
-          });
-        }
-      }
-
       return applied;
     } catch (e) {
       console.log('Error aplicando color:', e);
@@ -181,8 +151,6 @@ const Product3DViewer = ({
 
   // Handler cuando el modelo carga
   const handleModelLoad = async () => {
-    setModelLoaded(true);
-    
     // Esperar un momento para que el modelo se inicialice completamente
     setTimeout(async () => {
       if (currentColor) {
@@ -284,7 +252,9 @@ const Product3DViewer = ({
             </div>
             <div className="text-white">
               <p className="font-semibold text-sm">Vista 3D</p>
-              <p className="text-xs text-white/80">{productType.name} {colorApplied && '• Color aplicado'}</p>
+              <p className="text-xs text-white/80">
+                {productName || productType.name} {colorApplied && '• Color aplicado'}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">

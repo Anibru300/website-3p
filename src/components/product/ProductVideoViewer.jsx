@@ -4,13 +4,12 @@ import {
   Rotate3D, Film, AlertCircle
 } from 'lucide-react';
 
-const ProductVideoViewer = ({ 
-  videoUrl, 
-  posterUrl, 
+const ProductVideoViewer = ({
+  videoUrl,
+  posterUrl,
   alt = 'Producto',
   onClose,
   productName,
-  productCode
 }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
@@ -104,6 +103,7 @@ const ProductVideoViewer = ({
             </div>
             <div className="text-white">
               <p className="font-semibold text-xs">Vista 360°</p>
+              {productName && <p className="text-[10px] text-white/70">{productName}</p>}
             </div>
           </div>
           <div className="flex items-center gap-2">

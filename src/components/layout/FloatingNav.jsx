@@ -11,20 +11,20 @@ import {
   ChevronUp,
 } from 'lucide-react';
 
+const sections = [
+  { id: 'inicio', icon: Home, labelEs: 'Inicio', labelEn: 'Home' },
+  { id: 'nosotros', icon: Building2, labelEs: 'Nosotros', labelEn: 'About' },
+  { id: 'servicios', icon: Briefcase, labelEs: 'Servicios', labelEn: 'Services' },
+  { id: 'marcas', icon: Award, labelEs: 'Marcas', labelEn: 'Brands' },
+  { id: 'catalogo', icon: PackageSearch, labelEs: 'Catálogo', labelEn: 'Catalog' },
+  { id: 'clientes', icon: Users, labelEs: 'Clientes', labelEn: 'Clients' },
+  { id: 'contacto', icon: Phone, labelEs: 'Cotización', labelEn: 'Quote' },
+];
+
 const FloatingNav = () => {
   const { language } = useLanguage();
   const [activeSection, setActiveSection] = useState('inicio');
   const [isVisible, setIsVisible] = useState(false);
-
-  const sections = [
-    { id: 'inicio', icon: Home, labelEs: 'Inicio', labelEn: 'Home' },
-    { id: 'nosotros', icon: Building2, labelEs: 'Nosotros', labelEn: 'About' },
-    { id: 'servicios', icon: Briefcase, labelEs: 'Servicios', labelEn: 'Services' },
-    { id: 'marcas', icon: Award, labelEs: 'Marcas', labelEn: 'Brands' },
-    { id: 'catalogo', icon: PackageSearch, labelEs: 'Catálogo', labelEn: 'Catalog' },
-    { id: 'clientes', icon: Users, labelEs: 'Clientes', labelEn: 'Clients' },
-    { id: 'contacto', icon: Phone, labelEs: 'Cotización', labelEn: 'Quote' },
-  ];
 
   useEffect(() => {
     const handleScroll = () => {

@@ -163,55 +163,67 @@ function SearchableSelect({
   emptyMessage = 'Sin coincidencias',
   className = '',
   id,
+  allowFreeText = false,
 }) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(value ? String(value) : '');
   const [coords, setCoords] = useState(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
+  const itemsRef = useRef([]);
 
-  const updateCoords = () => {
+  const openDropdown = () => {
+    setQuery(value ? String(value) : '');
+    setHighlightedIndex(-1);
     if (inputRef.current) {
       const rect = inputRef.current.getBoundingClientRect();
       setCoords({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
     }
+    setOpen(true);
   };
+
+  const closeDropdown = useCallback(() => {
+    setOpen(false);
+    setCoords(null);
+    setHighlightedIndex(-1);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-        setOpen(false);
+        closeDropdown();
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [closeDropdown]);
 
   useEffect(() => {
     function handleScroll() {
-      if (open) setOpen(false);
+      if (open) closeDropdown();
     }
     window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
     return () => window.removeEventListener('scroll', handleScroll, { capture: true });
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) {
-      setQuery(value ? String(value) : '');
-      setCoords(null);
-    } else {
-      updateCoords();
-    }
-  }, [open, value]);
+  }, [closeDropdown, open]);
 
   useEffect(() => {
     if (!open) return;
     function handleResize() {
-      updateCoords();
+      if (inputRef.current) {
+        const rect = inputRef.current.getBoundingClientRect();
+        setCoords({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
+      }
     }
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [open]);
+
+  useEffect(() => {
+    if (highlightedIndex >= 0 && itemsRef.current[highlightedIndex]) {
+      itemsRef.current[highlightedIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIndex]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -223,19 +235,52 @@ function SearchableSelect({
     onChange(opt);
     setQuery(String(opt));
     setOpen(false);
+    setCoords(null);
+    setHighlightedIndex(-1);
+  };
+
+  const confirmFreeText = () => {
+    if (allowFreeText) {
+      onChange(query.trim());
+    }
+    closeDropdown();
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      setOpen(false);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!open) {
+        openDropdown();
+        setHighlightedIndex(filtered.length > 0 ? 0 : -1);
+      } else {
+        setHighlightedIndex((prev) => Math.min(prev + 1, filtered.length - 1));
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (open) {
+        setHighlightedIndex((prev) => Math.max(prev - 1, -1));
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (open && highlightedIndex >= 0 && highlightedIndex < filtered.length) {
+        handleSelect(filtered[highlightedIndex]);
+      } else if (allowFreeText && query.trim()) {
+        confirmFreeText();
+      } else {
+        closeDropdown();
+      }
+    } else if (e.key === 'Tab') {
+      if (open && highlightedIndex >= 0 && highlightedIndex < filtered.length) {
+        handleSelect(filtered[highlightedIndex]);
+      } else if (allowFreeText) {
+        confirmFreeText();
+      } else {
+        closeDropdown();
+      }
+    } else if (e.key === 'Escape') {
+      closeDropdown();
       inputRef.current?.blur();
     }
-  };
-
-  const openDropdown = () => {
-    setQuery(value ? String(value) : '');
-    updateCoords();
-    setOpen(true);
   };
 
   return (
@@ -245,13 +290,24 @@ function SearchableSelect({
         type="text"
         value={open ? query : value ? String(value) : ''}
         onChange={(e) => {
-          setQuery(e.target.value);
-          openDropdown();
-          if (!e.target.value) {
+          const val = e.target.value;
+          setQuery(val);
+          setHighlightedIndex(-1);
+          if (!open) openDropdown();
+          if (allowFreeText) {
+            onChange(val);
+          } else if (!val) {
             onChange('');
           }
         }}
-        onFocus={openDropdown}
+        onFocus={() => {
+          openDropdown();
+          inputRef.current?.select();
+        }}
+        onBlur={() => {
+          // No cerrar inmediatamente para permitir clics en las opciones.
+          // El cierre por click outside ya está manejado.
+        }}
         placeholder={placeholder}
         className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red pr-8"
         autoComplete="off"
@@ -260,15 +316,12 @@ function SearchableSelect({
       <button
         type="button"
         onClick={() => {
-          setOpen((v) => {
-            const next = !v;
-            if (next) {
-              setQuery(value ? String(value) : '');
-              updateCoords();
-              inputRef.current?.focus();
-            }
-            return next;
-          });
+          if (open) {
+            closeDropdown();
+          } else {
+            openDropdown();
+            inputRef.current?.focus();
+          }
         }}
         className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
         tabIndex={-1}
@@ -288,16 +341,22 @@ function SearchableSelect({
           style={{ top: coords.top, left: coords.left, width: coords.width }}
         >
           {filtered.length === 0 ? (
-            <div className="px-4 py-2 text-sm text-gray-500">{emptyMessage}</div>
+            <div className="px-4 py-2 text-sm text-gray-500">
+              {allowFreeText ? 'Presiona Enter o Tab para usar este texto' : emptyMessage}
+            </div>
           ) : (
-            filtered.map((opt) => (
+            filtered.map((opt, idx) => (
               <button
                 key={String(opt)}
+                ref={(el) => { itemsRef.current[idx] = el; }}
                 type="button"
-                onClick={() => handleSelect(opt)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleSelect(opt);
+                }}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-red-50 ${
                   String(opt) === String(value) ? 'bg-red-50 text-p3-red font-medium' : 'text-gray-700'
-                }`}
+                } ${idx === highlightedIndex ? 'bg-red-100' : ''}`}
               >
                 {opt}
               </button>
@@ -1108,6 +1167,9 @@ export default function DashboardPage() {
   // Historial de valor del inventario
   const [historialValor, setHistorialValor] = useState([]);
   const [historialValorLoading, setHistorialValorLoading] = useState(false);
+
+  // Refs para evitar doble carga inicial en efectos con debounce
+  const initialLoadDone = useRef({ existencias: false, historial: false });
   const [historialValorDesde, setHistorialValorDesde] = useState('');
   const [historialValorHasta, setHistorialValorHasta] = useState('');
   const [historialValorVisibleSeries, setHistorialValorVisibleSeries] = useState({});
@@ -1239,6 +1301,10 @@ export default function DashboardPage() {
 
   // Búsqueda server-side en existencias con debounce fluido
   useEffect(() => {
+    if (!initialLoadDone.current.existencias) {
+      initialLoadDone.current.existencias = true;
+      return;
+    }
     setExistenciasOffset(0);
     const query = buildExistenciasQuery(0);
     const t = setTimeout(() => {
@@ -1249,6 +1315,10 @@ export default function DashboardPage() {
 
   // Búsqueda en historial de ventas con debounce
   useEffect(() => {
+    if (!initialLoadDone.current.historial) {
+      initialLoadDone.current.historial = true;
+      return;
+    }
     setHistorialOffset(0);
     const query = buildHistorialQuery(0);
     const t = setTimeout(() => {
@@ -1256,6 +1326,18 @@ export default function DashboardPage() {
     }, 400);
     return () => clearTimeout(t);
   }, [buildHistorialQuery, loadHistorialVentas]);
+
+  // Cambio de página en existencias
+  useEffect(() => {
+    if (!initialLoadDone.current.existencias) return;
+    loadExistencias(buildExistenciasQuery(existenciasOffset));
+  }, [existenciasOffset, buildExistenciasQuery, loadExistencias]);
+
+  // Cambio de página en historial de ventas
+  useEffect(() => {
+    if (!initialLoadDone.current.historial) return;
+    loadHistorialVentas(buildHistorialQuery(historialOffset));
+  }, [historialOffset, buildHistorialQuery, loadHistorialVentas]);
 
   useEffect(() => {
     const params = new URLSearchParams({ limit: '500' });
@@ -1271,15 +1353,20 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const [r, e, s, v, p] = await Promise.all([
+      const [r, e, h, s, v, p] = await Promise.all([
         fetchDashboardResumen(),
-        fetchExistencias('limit=500'),
+        fetchExistencias(buildExistenciasQuery(0)),
+        fetchHistorialVentas(buildHistorialQuery(0)),
         fetchSubalmacenes(),
         fetchVales('limit=500'),
         fetchPedidosVivos('limit=500'),
       ]);
       setResumen(r.resumen);
       setExistencias(e.data || []);
+      setExistenciasTotal(e.total || 0);
+      setHistorialVentas(h.data || []);
+      setHistorialTotal(h.total || 0);
+      setHistorialTotales(h.totales || { MXN: 0, USD: 0 });
       setSubalmacenes(s.data || []);
       setVales(v.data || []);
       setAllVales(v.data || []);
@@ -1289,7 +1376,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [buildExistenciasQuery, buildHistorialQuery]);
 
   const loadTabData = useCallback(
     async (tab) => {
@@ -1337,16 +1424,12 @@ export default function DashboardPage() {
   }, [valesQuery]);
 
   useEffect(() => {
-    if (activeTab === 'existencias') {
-      loadExistencias(buildExistenciasQuery(existenciasOffset));
-    } else if (activeTab === 'ventas') {
-      loadHistorialVentas(buildHistorialQuery(historialOffset));
-    } else if (activeTab === 'valor-inventario') {
+    if (activeTab === 'valor-inventario') {
       loadHistorialValorInventario();
-    } else if (activeTab !== 'resumen') {
+    } else if (activeTab !== 'resumen' && activeTab !== 'existencias' && activeTab !== 'ventas') {
       loadTabData(activeTab);
     }
-  }, [activeTab, valesQuery, pedidosQuery, sanAntonioQuery, loadTabData, loadExistencias, loadHistorialVentas, loadHistorialValorInventario, buildExistenciasQuery, buildHistorialQuery, existenciasOffset, historialOffset]);
+  }, [activeTab, valesQuery, pedidosQuery, sanAntonioQuery, loadTabData, loadHistorialValorInventario]);
 
   // Carga metadatos de clientes/códigos para selects del historial de ventas
   useEffect(() => {
@@ -1375,11 +1458,11 @@ export default function DashboardPage() {
     }
   }, [activeTab, historialValor, historialValorLoading, loadHistorialValorInventario]);
 
-  const formatCurrency = (value) => {
+  const formatCurrency = (value, moneda = 'MXN') => {
     if (value == null) return '—';
     const num = Number(value);
     if (Number.isNaN(num)) return value;
-    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(num);
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: moneda }).format(num);
   };
 
   const formatNumber = (value) => {
@@ -1396,26 +1479,26 @@ export default function DashboardPage() {
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  const formatCurrencyCompact = (value) => {
+  const formatCurrencyCompact = (value, moneda = 'MXN') => {
     if (value == null) return '—';
     const num = Number(value);
     if (Number.isNaN(num)) return value;
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'MXN',
+      currency: moneda,
       notation: 'compact',
       maximumFractionDigits: 1,
     }).format(num);
   };
 
-  const formatCurrencySmart = (value) => {
+  const formatCurrencySmart = (value, moneda = 'MXN') => {
     if (value == null) return '—';
     const num = Number(value);
     if (Number.isNaN(num)) return value;
     if (Math.abs(num) >= 1_000_000) {
-      return formatCurrencyCompact(num);
+      return formatCurrencyCompact(num, moneda);
     }
-    return formatCurrency(num);
+    return formatCurrency(num, moneda);
   };
 
   const valesResumen = useMemo(() => {
@@ -1602,7 +1685,7 @@ export default function DashboardPage() {
         />
         <KpiCard
           label="Pendiente USD"
-          value={formatCurrencySmart(resumen?.monto_pendiente_usd)}
+          value={formatCurrencySmart(resumen?.monto_pendiente_usd, 'USD')}
           icon={DollarSign}
           color="bg-emerald-600"
           subtext="Saldo en dólares"
@@ -2486,7 +2569,7 @@ export default function DashboardPage() {
           />
           <KpiCard
             label="Total ventas USD"
-            value={formatCurrency(historialTotales.USD)}
+            value={formatCurrency(historialTotales.USD, 'USD')}
             icon={DollarSign}
             color="bg-emerald-600"
             subtext="Total acumulado filtrado"
@@ -2515,8 +2598,9 @@ export default function DashboardPage() {
               value={historialCliente}
               onChange={setHistorialCliente}
               options={historialClientesOptions}
-              placeholder="Todos los clientes"
+              placeholder="Escribe para buscar cliente..."
               emptyMessage="No se encontraron clientes"
+              allowFreeText
               className="w-full"
             />
           </div>
