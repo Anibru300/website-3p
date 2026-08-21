@@ -1150,6 +1150,10 @@ export default function DashboardPage() {
   const [allVales, setAllVales] = useState([]);
   const [pedidos, setPedidos] = useState([]);
   const [sanAntonio, setSanAntonio] = useState(null);
+  const [sanAntonioOcSeleccionada, setSanAntonioOcSeleccionada] = useState(null);
+  const [sanAntonioBusquedaOc, setSanAntonioBusquedaOc] = useState('');
+  const [sanAntonioBusquedaPartida, setSanAntonioBusquedaPartida] = useState('');
+  const [sanAntonioEstadoPartida, setSanAntonioEstadoPartida] = useState('');
 
   // Historial de ventas
   const [historialVentas, setHistorialVentas] = useState([]);
@@ -1392,6 +1396,7 @@ export default function DashboardPage() {
         } else if (tab === 'san-antonio') {
           const data = await fetchSanAntonioOrdenes(sanAntonioQuery);
           setSanAntonio(data);
+          setSanAntonioOcSeleccionada(null);
         }
       } catch (err) {
         setError(err.message);
@@ -2715,96 +2720,223 @@ export default function DashboardPage() {
     );
   };
 
-  const renderSanAntonio = () => (
-    <div className="space-y-8">
-      {sanAntonio?.error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-start gap-3">
-          <AlertCircle className="shrink-0 mt-0.5" size={20} />
-          <span>{sanAntonio.error}</span>
-        </div>
-      )}
-      <section>
-        <SectionHeader title="Órdenes de compra" count={sanAntonio?.total ?? 0} icon={FileText} />
-        <DataTable
-          rows={sanAntonio?.cabeceras || []}
-          columns={[
-            { key: 'folio', label: 'Folio', sortable: true },
-            { key: 'nopedido', label: 'No. pedido', sortable: true },
-            { key: 'fechaoc', label: 'Fecha OC', sortable: true },
-            { key: 'moneda', label: 'Moneda', sortable: true },
-            { key: 'condicionespago', label: 'Condiciones pago', sortable: true, wrap: true },
-            {
-              key: 'totaloc',
-              label: 'Total',
-              sortable: true,
-              accessor: (row) => Number(row.totaloc) || 0,
-              format: formatCurrency,
-            },
-            { key: 'estadooc', label: 'Estado', sortable: true },
-            { key: 'cargadaportal', label: 'Cargada portal', sortable: true },
-          ]}
-          emptyMessage="No se encontraron órdenes de San Antonio"
-          emptyIcon={FileText}
-        />
-      </section>
-      <section>
-        <SectionHeader
-          title="Partidas visibles"
-          count={(sanAntonio?.partidas || []).length}
-          icon={Filter}
-        />
-        <DataTable
-          rows={sanAntonio?.partidas || []}
-          columns={[
-            { key: 'folio', label: 'Folio', sortable: true },
-            {
-              key: 'posicion',
-              label: 'Pos',
-              sortable: true,
-              accessor: (row) => Number(row.posicion) || 0,
-              format: formatNumber,
-            },
-            { key: 'codigo', label: 'Código', sortable: true },
-            { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
-            {
-              key: 'cantidadpedido',
-              label: 'Cantidad',
-              sortable: true,
-              total: true,
-              accessor: (row) => Number(row.cantidadpedido) || 0,
-              format: formatNumber,
-            },
-            {
-              key: 'preciounitario',
-              label: 'Precio unit',
-              sortable: true,
-              accessor: (row) => Number(row.preciounitario) || 0,
-              format: formatCurrency,
-            },
-            {
-              key: 'entregada',
-              label: 'Entregada',
-              sortable: true,
-              total: true,
-              accessor: (row) => Number(row.entregada) || 0,
-              format: formatNumber,
-            },
-            {
-              key: 'saldo',
-              label: 'Saldo',
-              sortable: true,
-              total: true,
-              accessor: (row) => Number(row.saldo) || 0,
-              format: formatNumber,
-            },
-            { key: 'estadolinea', label: 'Estado', sortable: true },
-          ]}
-          emptyMessage="Sin partidas"
-          emptyIcon={Filter}
-        />
-      </section>
-    </div>
-  );
+  const renderSanAntonio = () => {
+    const cabeceras = sanAntonio?.cabeceras || [];
+    const partidas = sanAntonio?.partidas || [];
+
+    const estadosPartida = [...new Set(partidas.map((p) => String(p.estadolinea || '').trim()).filter(Boolean))].sort();
+
+    const cabecerasFiltradas = (() => {
+      if (!sanAntonioBusquedaOc.trim()) return cabeceras;
+      const q = sanAntonioBusquedaOc.toLowerCase();
+      return cabeceras.filter((oc) =>
+        ['folio', 'nopedido', 'fechaoc', 'moneda', 'condicionespago', 'estadooc', 'cargadaportal'].some((k) =>
+          String(oc[k] || '').toLowerCase().includes(q)
+        )
+      );
+    })();
+
+    const partidasFiltradas = (() => {
+      let filtradas = partidas;
+      if (sanAntonioOcSeleccionada) {
+        filtradas = filtradas.filter((p) => String(p.folio) === String(sanAntonioOcSeleccionada.folio));
+      }
+      if (sanAntonioEstadoPartida) {
+        filtradas = filtradas.filter(
+          (p) => String(p.estadolinea || '').toLowerCase() === sanAntonioEstadoPartida.toLowerCase()
+        );
+      }
+      if (sanAntonioBusquedaPartida.trim()) {
+        const q = sanAntonioBusquedaPartida.toLowerCase();
+        filtradas = filtradas.filter((p) =>
+          [p.codigo, p.descripcion, p.folio].some((v) => String(v || '').toLowerCase().includes(q))
+        );
+      }
+      return filtradas;
+    })();
+
+    return (
+      <div className="space-y-6">
+        {sanAntonio?.error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-start gap-3">
+            <AlertCircle className="shrink-0 mt-0.5" size={20} />
+            <span>{sanAntonio.error}</span>
+          </div>
+        )}
+
+        <section className="space-y-4">
+          <SectionHeader title="Órdenes de compra" count={cabecerasFiltradas.length} icon={FileText} />
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="relative flex-1 min-w-[16rem]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Buscar folio, pedido, fecha, moneda, condiciones o estado..."
+                  value={sanAntonioBusquedaOc}
+                  onChange={(e) => setSanAntonioBusquedaOc(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setSanAntonioBusquedaOc('');
+                  setSanAntonioOcSeleccionada(null);
+                }}
+                className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                Limpiar
+              </button>
+            </div>
+          </div>
+          <DataTable
+            rows={cabecerasFiltradas}
+            selectedRow={sanAntonioOcSeleccionada}
+            onRowClick={(row) => setSanAntonioOcSeleccionada(row)}
+            columns={[
+              { key: 'folio', label: 'Folio', sortable: true },
+              { key: 'nopedido', label: 'No. pedido', sortable: true },
+              { key: 'fechaoc', label: 'Fecha OC', sortable: true },
+              { key: 'moneda', label: 'Moneda', sortable: true },
+              { key: 'condicionespago', label: 'Condiciones pago', sortable: true, wrap: true },
+              {
+                key: 'totaloc',
+                label: 'Total',
+                sortable: true,
+                accessor: (row) => Number(row.totaloc) || 0,
+                format: formatCurrency,
+              },
+              { key: 'estadooc', label: 'Estado', sortable: true },
+              { key: 'cargadaportal', label: 'Cargada portal', sortable: true },
+            ]}
+            emptyMessage="No se encontraron órdenes de San Antonio"
+            emptyIcon={FileText}
+          />
+          <p className="text-xs text-gray-500">
+            {sanAntonioOcSeleccionada
+              ? `Mostrando material de la OC ${sanAntonioOcSeleccionada.folio}. Haz clic en otra fila para cambiar.`
+              : 'Haz clic en una orden de compra para ver su material abajo.'}
+          </p>
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <SectionHeader
+              title={sanAntonioOcSeleccionada ? `Material de OC ${sanAntonioOcSeleccionada.folio}` : 'Material de la OC'}
+              count={partidasFiltradas.length}
+              icon={Filter}
+            />
+            {sanAntonioOcSeleccionada && (
+              <button
+                onClick={() => setSanAntonioOcSeleccionada(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                Ver todas las OC
+              </button>
+            )}
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="relative flex-1 min-w-[14rem]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Buscar código o descripción..."
+                  value={sanAntonioBusquedaPartida}
+                  onChange={(e) => setSanAntonioBusquedaPartida(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500">Estado de línea</label>
+                <select
+                  value={sanAntonioEstadoPartida}
+                  onChange={(e) => setSanAntonioEstadoPartida(e.target.value)}
+                  className="min-w-[12rem] px-3 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+                >
+                  <option value="">Todos los estados</option>
+                  {estadosPartida.map((estado) => (
+                    <option key={estado} value={estado}>
+                      {estado}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={() => {
+                  setSanAntonioBusquedaPartida('');
+                  setSanAntonioEstadoPartida('');
+                }}
+                className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                Limpiar
+              </button>
+            </div>
+          </div>
+
+          {sanAntonioOcSeleccionada ? (
+            <DataTable
+              rows={partidasFiltradas}
+              columns={[
+                {
+                  key: 'posicion',
+                  label: 'Pos',
+                  sortable: true,
+                  accessor: (row) => Number(row.posicion) || 0,
+                  format: formatNumber,
+                },
+                { key: 'codigo', label: 'Código', sortable: true },
+                { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
+                {
+                  key: 'cantidadpedido',
+                  label: 'Cantidad pedido',
+                  sortable: true,
+                  total: true,
+                  accessor: (row) => Number(row.cantidadpedido) || 0,
+                  format: formatNumber,
+                },
+                {
+                  key: 'preciounitario',
+                  label: 'Precio unit',
+                  sortable: true,
+                  accessor: (row) => Number(row.preciounitario) || 0,
+                  format: formatCurrency,
+                },
+                {
+                  key: 'entregada',
+                  label: 'Entregada',
+                  sortable: true,
+                  total: true,
+                  accessor: (row) => Number(row.entregada) || 0,
+                  format: formatNumber,
+                },
+                {
+                  key: 'saldo',
+                  label: 'Saldo',
+                  sortable: true,
+                  total: true,
+                  accessor: (row) => Number(row.saldo) || 0,
+                  format: formatNumber,
+                },
+                { key: 'estadolinea', label: 'Estado', sortable: true },
+              ]}
+              emptyMessage="No hay partidas para la OC seleccionada"
+              emptyIcon={Filter}
+            />
+          ) : (
+            <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-10 text-center">
+              <Filter className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-600 font-medium">Selecciona una orden de compra</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Haz clic en una fila de la tabla superior para ver su material.
+              </p>
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  };
 
   const renderValorInventario = () => {
     const fechas = [...new Set(historialValor.map((d) => d.fecha))].sort();
