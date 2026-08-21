@@ -1152,6 +1152,7 @@ export default function DashboardPage() {
   const [sanAntonio, setSanAntonio] = useState(null);
   const [sanAntonioOcSeleccionada, setSanAntonioOcSeleccionada] = useState(null);
   const [sanAntonioBusquedaOc, setSanAntonioBusquedaOc] = useState('');
+  const [sanAntonioBusquedaMaterialOc, setSanAntonioBusquedaMaterialOc] = useState('');
   const [sanAntonioBusquedaPartida, setSanAntonioBusquedaPartida] = useState('');
   const [sanAntonioEstadoPartida, setSanAntonioEstadoPartida] = useState('');
 
@@ -2727,13 +2728,30 @@ export default function DashboardPage() {
     const estadosPartida = [...new Set(partidas.map((p) => String(p.estadolinea || '').trim()).filter(Boolean))].sort();
 
     const cabecerasFiltradas = (() => {
-      if (!sanAntonioBusquedaOc.trim()) return cabeceras;
-      const q = sanAntonioBusquedaOc.toLowerCase();
-      return cabeceras.filter((oc) =>
-        ['folio', 'nopedido', 'fechaoc', 'moneda', 'condicionespago', 'estadooc', 'cargadaportal'].some((k) =>
-          String(oc[k] || '').toLowerCase().includes(q)
-        )
-      );
+      let filtradas = cabeceras;
+
+      if (sanAntonioBusquedaOc.trim()) {
+        const q = sanAntonioBusquedaOc.toLowerCase();
+        filtradas = filtradas.filter((oc) =>
+          ['folio', 'nopedido', 'fechaoc', 'moneda', 'condicionespago', 'estadooc', 'cargadaportal'].some((k) =>
+            String(oc[k] || '').toLowerCase().includes(q)
+          )
+        );
+      }
+
+      if (sanAntonioBusquedaMaterialOc.trim()) {
+        const q = sanAntonioBusquedaMaterialOc.toLowerCase();
+        const foliosConMaterial = new Set(
+          partidas
+            .filter((p) =>
+              [p.codigo, p.descripcion].some((v) => String(v || '').toLowerCase().includes(q))
+            )
+            .map((p) => String(p.folio))
+        );
+        filtradas = filtradas.filter((oc) => foliosConMaterial.has(String(oc.folio)));
+      }
+
+      return filtradas;
     })();
 
     const partidasFiltradas = (() => {
@@ -2768,7 +2786,7 @@ export default function DashboardPage() {
           <SectionHeader title="Órdenes de compra" count={cabecerasFiltradas.length} icon={FileText} />
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <div className="flex flex-wrap items-end gap-3">
-              <div className="relative flex-1 min-w-[16rem]">
+              <div className="relative flex-1 min-w-[14rem]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   type="text"
@@ -2778,9 +2796,20 @@ export default function DashboardPage() {
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
                 />
               </div>
+              <div className="relative flex-1 min-w-[14rem]">
+                <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Filtrar OC por código o descripción de material..."
+                  value={sanAntonioBusquedaMaterialOc}
+                  onChange={(e) => setSanAntonioBusquedaMaterialOc(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+                />
+              </div>
               <button
                 onClick={() => {
                   setSanAntonioBusquedaOc('');
+                  setSanAntonioBusquedaMaterialOc('');
                   setSanAntonioOcSeleccionada(null);
                 }}
                 className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
