@@ -6,6 +6,7 @@ import {
   fetchSubalmacenes,
   fetchVales,
   fetchPedidosVivos,
+  fetchSeguimientoDocumental,
   fetchSanAntonioOrdenes,
   fetchProductoFotoBlobUrl,
   fetchHistorialVentas,
@@ -157,22 +158,23 @@ function colorHexForResponsable(id) {
 
 function DebouncedInput({ value, onChange, delay = 600, className = '', ...props }) {
   const inputRef = useRef(null);
-  const localValueRef = useRef(value);
+  const syncedValueRef = useRef(value);
   const timeoutRef = useRef(null);
 
   // Sincroniza cambios externos sin setState en un effect.
   useEffect(() => {
-    if (inputRef.current && value !== localValueRef.current) {
-      inputRef.current.value = value;
-      localValueRef.current = value;
+    if (value !== syncedValueRef.current) {
+      syncedValueRef.current = value;
+      if (inputRef.current) inputRef.current.value = value;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     }
   }, [value]);
 
   const handleChange = (e) => {
     const newValue = e.target.value;
-    localValueRef.current = newValue;
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
+      syncedValueRef.current = newValue;
       onChange(newValue);
     }, delay);
   };
@@ -1227,7 +1229,11 @@ export default function DashboardPage() {
   const [valesBusqueda, setValesBusqueda] = useState('');
   const [valesModo, setValesModo] = useState('desglose'); // 'desglose' | 'global'
   const [valeSeleccionado, setValeSeleccionado] = useState(null);
-  const [pedidosQuery] = useState('limit=500');
+  const [pedidosQuery, setPedidosQuery] = useState('limit=500');
+  const [pedidoBusqueda, setPedidoBusqueda] = useState('');
+  const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
+  const [pedidoDetalle, setPedidoDetalle] = useState([]);
+  const [pedidoDetalleLoading, setPedidoDetalleLoading] = useState(false);
   const [sanAntonioQuery] = useState('limit=500');
   const [existenciasSearch, setExistenciasSearch] = useState('');
   const [existenciasAlmacen, setExistenciasAlmacen] = useState('');
@@ -1376,6 +1382,37 @@ export default function DashboardPage() {
     if (valesBusqueda.trim()) params.set('busqueda', valesBusqueda.trim());
     setValesQuery(params.toString());
   }, [valesResponsable, valesFechaDesde, valesFechaHasta, valesAlmacen, valesBusqueda]);
+
+  useEffect(() => {
+    const params = new URLSearchParams({ limit: '500' });
+    if (pedidoBusqueda.trim()) params.set('busqueda', pedidoBusqueda.trim());
+    setPedidosQuery(params.toString());
+  }, [pedidoBusqueda]);
+
+  useEffect(() => {
+    if (!pedidoSeleccionado?.folio) {
+      setPedidoDetalle([]);
+      return;
+    }
+    let cancelled = false;
+    async function load() {
+      setPedidoDetalleLoading(true);
+      try {
+        const params = new URLSearchParams({ limit: '500' });
+        params.set('folio_pedido', pedidoSeleccionado.folio);
+        const data = await fetchSeguimientoDocumental(params.toString());
+        if (!cancelled) setPedidoDetalle(data.data || []);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setPedidoDetalleLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [pedidoSeleccionado]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -2532,8 +2569,36 @@ export default function DashboardPage() {
   const renderPedidos = () => (
     <div className="space-y-6">
       <SectionHeader title="Pedidos abiertos" count={pedidos.length} icon={ShoppingCart} />
+
+      <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="relative flex-1 min-w-[14rem]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <DebouncedInput
+              type="text"
+              placeholder="Buscar folio, cliente o código..."
+              value={pedidoBusqueda}
+              onChange={setPedidoBusqueda}
+              delay={600}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
+            />
+          </div>
+          <button
+            onClick={() => {
+              setPedidoBusqueda('');
+              setPedidoSeleccionado(null);
+            }}
+            className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+          >
+            Limpiar
+          </button>
+        </div>
+      </div>
+
       <DataTable
         rows={pedidos}
+        selectedRow={pedidoSeleccionado}
+        onRowClick={(row) => setPedidoSeleccionado(row)}
         columns={[
           { key: 'folio', label: 'Folio', sortable: true },
           { key: 'cliente', label: 'Cliente', sortable: true, wrap: true },
@@ -2574,6 +2639,87 @@ export default function DashboardPage() {
         emptyMessage="No hay pedidos abiertos pendientes"
         emptyIcon={ShoppingCart}
       />
+
+      <p className="text-xs text-gray-500">
+        {pedidoSeleccionado
+          ? `Mostrando seguimiento documental del pedido ${pedidoSeleccionado.folio}. Haz clic en otra fila para cambiar.`
+          : 'Haz clic en un pedido para ver su seguimiento documental.'}
+      </p>
+
+      <section className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <SectionHeader
+            title={pedidoSeleccionado ? `Seguimiento documental: ${pedidoSeleccionado.folio}` : 'Seguimiento documental'}
+            count={pedidoDetalle.length}
+            icon={FileText}
+          />
+          {pedidoSeleccionado && (
+            <button
+              onClick={() => setPedidoSeleccionado(null)}
+              className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+            >
+              Ver todos los pedidos
+            </button>
+          )}
+        </div>
+
+        {pedidoDetalleLoading && (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="w-4 h-4 border-2 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+            Cargando seguimiento...
+          </div>
+        )}
+
+        {pedidoSeleccionado ? (
+          <DataTable
+            rows={pedidoDetalle}
+            columns={[
+              { key: 'folio_pedido', label: 'Pedido', sortable: true },
+              { key: 'fecha_pedido', label: 'Fecha pedido', sortable: true },
+              { key: 'cliente', label: 'Cliente', sortable: true, wrap: true },
+              { key: 'codigo', label: 'Código', sortable: true },
+              { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
+              {
+                key: 'cantidad_pedido',
+                label: 'Cantidad',
+                sortable: true,
+                total: true,
+                accessor: (row) => Number(row.cantidad_pedido) || 0,
+                format: formatNumber,
+              },
+              { key: 'folio_remision', label: 'Remisión', sortable: true },
+              {
+                key: 'cantidad_remision',
+                label: 'Cant. remisión',
+                sortable: true,
+                total: true,
+                accessor: (row) => Number(row.cantidad_remision) || 0,
+                format: formatNumber,
+              },
+              { key: 'folio_factura', label: 'Factura', sortable: true },
+              {
+                key: 'cantidad_factura',
+                label: 'Cant. factura',
+                sortable: true,
+                total: true,
+                accessor: (row) => Number(row.cantidad_factura) || 0,
+                format: formatNumber,
+              },
+              { key: 'estatus_linea', label: 'Estatus', sortable: true },
+            ]}
+            emptyMessage="No hay seguimiento documental para este pedido"
+            emptyIcon={FileText}
+          />
+        ) : (
+          <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-10 text-center">
+            <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-600 font-medium">Selecciona un pedido</p>
+            <p className="text-sm text-gray-400 mt-1">
+              Haz clic en una fila de la tabla superior para ver su seguimiento documental.
+            </p>
+          </div>
+        )}
+      </section>
     </div>
   );
 
