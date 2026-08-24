@@ -1,14 +1,18 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth.dependencies import get_current_user
 from app.database import postgres_cursor
 from app.services.excel import (
     _get_cached_historial,
+    get_pedido_detalle_excel,
     get_pedidos_vivos_excel,
     precargar_historial_cache,
 )
 
 router = APIRouter(prefix="/api/ventas", tags=["ventas"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/pedidos-vivos")
@@ -51,34 +55,46 @@ def seguimiento_documental(
     limit: int = Query(50, ge=1, le=500),
     user: dict = Depends(get_current_user),
 ):
-    sql = """
-        SELECT
-            folio_pedido,
-            fecha_pedido,
-            cliente,
-            codigo,
-            descripcion,
-            cantidad_pedido,
-            folio_remision,
-            cantidad_remision,
-            folio_factura,
-            cantidad_factura,
-            estatus_linea
-        FROM v_seguimiento_documental
-        WHERE 1=1
-    """
-    params = {}
-    if folio_pedido:
-        sql += " AND folio_pedido = %(folio_pedido)s"
-        params["folio_pedido"] = folio_pedido
-    sql += " ORDER BY folio_pedido, codigo LIMIT %(limit)s"
-    params["limit"] = limit
+    try:
+        sql = """
+            SELECT
+                folio_pedido,
+                fecha_pedido,
+                cliente,
+                codigo,
+                descripcion,
+                cantidad_pedido,
+                folio_remision,
+                cantidad_remision,
+                folio_factura,
+                cantidad_factura,
+                estatus_linea
+            FROM v_seguimiento_documental
+            WHERE 1=1
+        """
+        params = {}
+        if folio_pedido:
+            sql += " AND folio_pedido = %(folio_pedido)s"
+            params["folio_pedido"] = folio_pedido
+        sql += " ORDER BY folio_pedido, codigo LIMIT %(limit)s"
+        params["limit"] = limit
 
-    with postgres_cursor() as cur:
-        cur.execute(sql, params)
-        rows = cur.fetchall()
+        with postgres_cursor() as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
 
-    return {"data": [dict(row) for row in rows]}
+        return {"data": [dict(row) for row in rows]}
+    except Exception as e:
+        logger.warning("v_seguimiento_documental fallo, usando fallback Excel: %s", e)
+        try:
+            detalle = get_pedido_detalle_excel(folio_pedido)
+            return {"data": detalle}
+        except Exception as e2:
+            logger.error("Fallback Excel tambien fallo: %s", e2)
+            raise HTTPException(
+                status_code=503,
+                detail=f"No se pudo cargar el seguimiento documental: {e}",
+            )
 
 
 @router.get("/historial")

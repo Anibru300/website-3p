@@ -241,6 +241,60 @@ def get_pedidos_vivos_excel(busqueda: str = "", limit: int | None = None):
     return resultados
 
 
+def get_pedido_detalle_excel(folio_pedido: str = ""):
+    """Lee el detalle de un pedido desde el Excel de pendientes por facturar.
+
+    Funciona como fallback cuando la vista v_seguimiento_documental no está
+    disponible en PostgreSQL.
+    """
+    settings = get_settings()
+    excel_path = Path(settings.pedidos_pendientes_facturar_excel_path)
+
+    if not excel_path.exists():
+        return []
+
+    try:
+        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+    except Exception:
+        return []
+
+    try:
+        detalles = read_excel_sheet(wb, "DETALLE_PEDIDOS")
+    finally:
+        wb.close()
+
+    folio_lower = folio_pedido.lower().strip()
+    resultados = []
+    for d in detalles:
+        folio = normalize_text(d.get("FOLIO_PEDIDO"))
+        if folio_lower and folio_lower != folio.lower():
+            continue
+
+        cant_pedida = _to_float(d.get("CANT_PEDIDA"))
+        precio_unitario = _to_float(d.get("PRECIO_UNITARIO"))
+        total_facturado = _to_float(d.get("TOTAL_FACTURADO"))
+        pendiente_facturar = _to_float(d.get("PENDIENTE_FACTURAR"))
+
+        resultados.append({
+            "folio_pedido": folio,
+            "fecha_pedido": None,
+            "cliente": normalize_text(d.get("CLIENTE")),
+            "codigo": normalize_text(d.get("CODIGO") or d.get("CODIGO_PRODUCTO")),
+            "descripcion": normalize_text(d.get("DESCRIPCION") or d.get("DESCRIPCION_PRODUCTO")),
+            "cantidad_pedido": cant_pedida,
+            "folio_remision": normalize_text(d.get("FOLIO_REMISION")),
+            "cantidad_remision": _to_float(d.get("CANT_REMISION")),
+            "folio_factura": normalize_text(d.get("FOLIO_FACTURA")),
+            "cantidad_factura": _to_float(d.get("CANT_FACTURA")),
+            "estatus_linea": normalize_text(d.get("ESTATUS_LINEA") or d.get("STATUS")),
+            "precio_unitario": precio_unitario,
+            "total_facturado": total_facturado,
+            "pendiente_facturar": pendiente_facturar,
+        })
+
+    return resultados
+
+
 # ---------------------------------------------------------------------------
 # Fotos de productos
 # ---------------------------------------------------------------------------

@@ -172,11 +172,9 @@ function DebouncedInput({ value, onChange, delay = 600, className = '', ...props
 
   const handleChange = (e) => {
     const newValue = e.target.value;
-    console.log('[DebouncedInput] handleChange', newValue);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
       syncedValueRef.current = newValue;
-      console.log('[DebouncedInput] dispatch onChange', newValue);
       onChange(newValue);
     }, delay);
   };
@@ -267,7 +265,6 @@ function SearchableSelect({
   }, [options, query]);
 
   const handleSelect = (opt) => {
-    console.log('[SearchableSelect] handleSelect', opt);
     onChange(opt);
     setQuery(String(opt));
     setOpen(false);
@@ -327,7 +324,6 @@ function SearchableSelect({
         value={open ? query : value ? String(value) : ''}
         onChange={(e) => {
           const val = e.target.value;
-          console.log('[SearchableSelect] input onChange', val, 'allowFreeText', allowFreeText);
           setQuery(val);
           setHighlightedIndex(-1);
           if (!open) openDropdown();
@@ -1264,7 +1260,6 @@ export default function DashboardPage() {
   // Carga de existencias con loading sutil (no bloquea toda la página)
   const loadExistencias = useCallback(
     async (query) => {
-      console.log('[loadExistencias]', query);
       setExistenciasLoading(true);
       setError(null);
       try {
@@ -1298,7 +1293,6 @@ export default function DashboardPage() {
   // Carga de historial de ventas con loading sutil
   const loadHistorialVentas = useCallback(
     async (query) => {
-      console.log('[loadHistorialVentas]', query);
       setHistorialLoading(true);
       setError(null);
       try {
@@ -1451,7 +1445,6 @@ export default function DashboardPage() {
 
   const loadTabData = useCallback(
     async (tab) => {
-      console.log('[loadTabData]', tab, { valesQuery, pedidosQuery, sanAntonioQuery });
       setLoading(true);
       setError(null);
       try {
