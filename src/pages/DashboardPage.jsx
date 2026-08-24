@@ -155,13 +155,35 @@ function colorHexForResponsable(id) {
   }
 }
 
-function useDebounce(value, delay = 600) {
-  const [debounced, setDebounced] = useState(value);
+function DebouncedInput({ value, onChange, delay = 600, className = '', ...props }) {
+  const inputRef = useRef(null);
+  const localValueRef = useRef(value);
+  const timeoutRef = useRef(null);
+
+  // Sincroniza cambios externos sin setState en un effect.
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  return debounced;
+    if (inputRef.current && value !== localValueRef.current) {
+      inputRef.current.value = value;
+      localValueRef.current = value;
+    }
+  }, [value]);
+
+  const handleChange = (e) => {
+    const newValue = e.target.value;
+    localValueRef.current = newValue;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      onChange(newValue);
+    }, delay);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return <input ref={inputRef} {...props} defaultValue={value} onChange={handleChange} className={className} />;
 }
 
 function SearchableSelect({
@@ -236,8 +258,8 @@ function SearchableSelect({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((opt) => String(opt).toLowerCase().includes(q));
+    if (!q) return options.slice(0, 100);
+    return options.filter((opt) => String(opt).toLowerCase().includes(q)).slice(0, 100);
   }, [options, query]);
 
   const handleSelect = (opt) => {
@@ -1164,9 +1186,6 @@ export default function DashboardPage() {
   const [sanAntonioBusquedaMaterialOc, setSanAntonioBusquedaMaterialOc] = useState('');
   const [sanAntonioBusquedaPartida, setSanAntonioBusquedaPartida] = useState('');
   const [sanAntonioEstadoPartida, setSanAntonioEstadoPartida] = useState('');
-  const sanAntonioBusquedaOcDebounced = useDebounce(sanAntonioBusquedaOc, 400);
-  const sanAntonioBusquedaMaterialOcDebounced = useDebounce(sanAntonioBusquedaMaterialOc, 400);
-  const sanAntonioBusquedaPartidaDebounced = useDebounce(sanAntonioBusquedaPartida, 400);
 
   // Historial de ventas
   const [historialVentas, setHistorialVentas] = useState([]);
@@ -1174,8 +1193,6 @@ export default function DashboardPage() {
   const [historialCliente, setHistorialCliente] = useState('');
   const [historialCodigo, setHistorialCodigo] = useState('');
   const [historialMoneda, setHistorialMoneda] = useState('');
-  const historialSearchDebounced = useDebounce(historialSearch, 600);
-  const historialClienteDebounced = useDebounce(historialCliente, 600);
   const [historialLoading, setHistorialLoading] = useState(false);
   const [historialClientesOptions, setHistorialClientesOptions] = useState([]);
   const [historialCodigosOptions, setHistorialCodigosOptions] = useState([]);
@@ -1208,9 +1225,6 @@ export default function DashboardPage() {
   const [valesFechaHasta, setValesFechaHasta] = useState('');
   const [valesAlmacen, setValesAlmacen] = useState('');
   const [valesBusqueda, setValesBusqueda] = useState('');
-  const valesBusquedaDebounced = useDebounce(valesBusqueda, 600);
-  const valesFechaDesdeDebounced = useDebounce(valesFechaDesde, 400);
-  const valesFechaHastaDebounced = useDebounce(valesFechaHasta, 400);
   const [valesModo, setValesModo] = useState('desglose'); // 'desglose' | 'global'
   const [valeSeleccionado, setValeSeleccionado] = useState(null);
   const [pedidosQuery] = useState('limit=500');
@@ -1218,7 +1232,6 @@ export default function DashboardPage() {
   const [existenciasSearch, setExistenciasSearch] = useState('');
   const [existenciasAlmacen, setExistenciasAlmacen] = useState('');
   const [existenciasFiltro, setExistenciasFiltro] = useState('con'); // 'con' | 'sin' | 'todos'
-  const existenciasSearchDebounced = useDebounce(existenciasSearch, 600);
   const [existenciasLoading, setExistenciasLoading] = useState(false);
 
   // Filtros interactivos para graficas del dashboard
@@ -1262,13 +1275,13 @@ export default function DashboardPage() {
         limit: String(EXISTENCIAS_PAGE_SIZE),
         offset: String(offset),
       });
-      const term = existenciasSearchDebounced.trim();
+      const term = existenciasSearch.trim();
       if (term) params.set('busqueda', term);
       if (existenciasAlmacen) params.set('almacen', existenciasAlmacen);
       if (existenciasFiltro && existenciasFiltro !== 'con') params.set('existencia', existenciasFiltro);
       return params.toString();
     },
-    [existenciasSearchDebounced, existenciasAlmacen, existenciasFiltro]
+    [existenciasSearch, existenciasAlmacen, existenciasFiltro]
   );
 
   // Carga de historial de ventas con loading sutil
@@ -1312,14 +1325,14 @@ export default function DashboardPage() {
         limit: String(HISTORIAL_PAGE_SIZE),
         offset: String(offset),
       });
-      const term = historialSearchDebounced.trim();
+      const term = historialSearch.trim();
       if (term) params.set('busqueda', term);
-      if (historialClienteDebounced) params.set('cliente', historialClienteDebounced);
+      if (historialCliente) params.set('cliente', historialCliente);
       if (historialCodigo) params.set('codigo', historialCodigo);
       if (historialMoneda) params.set('moneda', historialMoneda);
       return params.toString();
     },
-    [historialSearchDebounced, historialClienteDebounced, historialCodigo, historialMoneda]
+    [historialSearch, historialCliente, historialCodigo, historialMoneda]
   );
 
   // Búsqueda server-side en existencias con debounce
@@ -1357,12 +1370,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams({ limit: '500' });
     if (valesResponsable) params.set('responsable', valesResponsable);
-    if (valesFechaDesdeDebounced) params.set('fecha_desde', valesFechaDesdeDebounced);
-    if (valesFechaHastaDebounced) params.set('fecha_hasta', valesFechaHastaDebounced);
+    if (valesFechaDesde) params.set('fecha_desde', valesFechaDesde);
+    if (valesFechaHasta) params.set('fecha_hasta', valesFechaHasta);
     if (valesAlmacen) params.set('almacen', valesAlmacen);
-    if (valesBusquedaDebounced.trim()) params.set('busqueda', valesBusquedaDebounced.trim());
+    if (valesBusqueda.trim()) params.set('busqueda', valesBusqueda.trim());
     setValesQuery(params.toString());
-  }, [valesResponsable, valesFechaDesdeDebounced, valesFechaHastaDebounced, valesAlmacen, valesBusquedaDebounced]);
+  }, [valesResponsable, valesFechaDesde, valesFechaHasta, valesAlmacen, valesBusqueda]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -2062,11 +2075,12 @@ export default function DashboardPage() {
         <div className="flex flex-col lg:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input
+            <DebouncedInput
               type="text"
               placeholder="Buscar código o descripción..."
               value={existenciasSearch}
-              onChange={(e) => setExistenciasSearch(e.target.value)}
+              onChange={setExistenciasSearch}
+              delay={600}
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
             />
             {existenciasLoading && (
@@ -2361,11 +2375,12 @@ export default function DashboardPage() {
             <label className="text-xs font-medium text-gray-500">Código / descripción</label>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input
+              <DebouncedInput
                 type="text"
                 placeholder="Buscar..."
                 value={valesBusqueda}
-                onChange={(e) => setValesBusqueda(e.target.value)}
+                onChange={setValesBusqueda}
+                delay={600}
                 className="min-w-[14rem] pl-9 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
               />
             </div>
@@ -2598,11 +2613,12 @@ export default function DashboardPage() {
         <div className="flex flex-col lg:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input
+            <DebouncedInput
               type="text"
               placeholder="Buscar cliente, código o descripción..."
               value={historialSearch}
-              onChange={(e) => setHistorialSearch(e.target.value)}
+              onChange={setHistorialSearch}
+              delay={600}
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
             />
             {historialLoading && (
@@ -2618,7 +2634,6 @@ export default function DashboardPage() {
               options={historialClientesOptions}
               placeholder="Escribe para buscar cliente..."
               emptyMessage="No se encontraron clientes"
-              allowFreeText
               className="w-full"
             />
           </div>
@@ -2740,8 +2755,8 @@ export default function DashboardPage() {
     const cabecerasFiltradas = (() => {
       let filtradas = cabeceras;
 
-      if (sanAntonioBusquedaOcDebounced.trim()) {
-        const q = sanAntonioBusquedaOcDebounced.toLowerCase();
+      if (sanAntonioBusquedaOc.trim()) {
+        const q = sanAntonioBusquedaOc.toLowerCase();
         filtradas = filtradas.filter((oc) =>
           ['folio', 'nopedido', 'fechaoc', 'moneda', 'condicionespago', 'estadooc', 'cargadaportal'].some((k) =>
             String(oc[k] || '').toLowerCase().includes(q)
@@ -2749,8 +2764,8 @@ export default function DashboardPage() {
         );
       }
 
-      if (sanAntonioBusquedaMaterialOcDebounced.trim()) {
-        const q = sanAntonioBusquedaMaterialOcDebounced.toLowerCase();
+      if (sanAntonioBusquedaMaterialOc.trim()) {
+        const q = sanAntonioBusquedaMaterialOc.toLowerCase();
         const foliosConMaterial = new Set(
           partidas
             .filter((p) =>
@@ -2774,8 +2789,8 @@ export default function DashboardPage() {
           (p) => String(p.estadolinea || '').toLowerCase() === sanAntonioEstadoPartida.toLowerCase()
         );
       }
-      if (sanAntonioBusquedaPartidaDebounced.trim()) {
-        const q = sanAntonioBusquedaPartidaDebounced.toLowerCase();
+      if (sanAntonioBusquedaPartida.trim()) {
+        const q = sanAntonioBusquedaPartida.toLowerCase();
         filtradas = filtradas.filter((p) =>
           [p.codigo, p.descripcion, p.folio].some((v) => String(v || '').toLowerCase().includes(q))
         );
@@ -2798,21 +2813,23 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-end gap-3">
               <div className="relative flex-1 min-w-[14rem]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input
+                <DebouncedInput
                   type="text"
                   placeholder="Buscar folio, pedido, fecha, moneda, condiciones o estado..."
                   value={sanAntonioBusquedaOc}
-                  onChange={(e) => setSanAntonioBusquedaOc(e.target.value)}
+                  onChange={setSanAntonioBusquedaOc}
+                  delay={400}
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
                 />
               </div>
               <div className="relative flex-1 min-w-[14rem]">
                 <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input
+                <DebouncedInput
                   type="text"
                   placeholder="Filtrar OC por código o descripción de material..."
                   value={sanAntonioBusquedaMaterialOc}
-                  onChange={(e) => setSanAntonioBusquedaMaterialOc(e.target.value)}
+                  onChange={setSanAntonioBusquedaMaterialOc}
+                  delay={400}
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
                 />
               </div>
@@ -2879,11 +2896,12 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-end gap-3">
               <div className="relative flex-1 min-w-[14rem]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input
+                <DebouncedInput
                   type="text"
                   placeholder="Buscar código o descripción..."
                   value={sanAntonioBusquedaPartida}
-                  onChange={(e) => setSanAntonioBusquedaPartida(e.target.value)}
+                  onChange={setSanAntonioBusquedaPartida}
+                  delay={400}
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow"
                 />
               </div>
