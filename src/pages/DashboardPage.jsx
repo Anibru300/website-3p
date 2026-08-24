@@ -155,6 +155,15 @@ function colorHexForResponsable(id) {
   }
 }
 
+function useDebounce(value, delay = 600) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
 function SearchableSelect({
   value,
   onChange,
@@ -1155,6 +1164,9 @@ export default function DashboardPage() {
   const [sanAntonioBusquedaMaterialOc, setSanAntonioBusquedaMaterialOc] = useState('');
   const [sanAntonioBusquedaPartida, setSanAntonioBusquedaPartida] = useState('');
   const [sanAntonioEstadoPartida, setSanAntonioEstadoPartida] = useState('');
+  const sanAntonioBusquedaOcDebounced = useDebounce(sanAntonioBusquedaOc, 400);
+  const sanAntonioBusquedaMaterialOcDebounced = useDebounce(sanAntonioBusquedaMaterialOc, 400);
+  const sanAntonioBusquedaPartidaDebounced = useDebounce(sanAntonioBusquedaPartida, 400);
 
   // Historial de ventas
   const [historialVentas, setHistorialVentas] = useState([]);
@@ -1162,6 +1174,8 @@ export default function DashboardPage() {
   const [historialCliente, setHistorialCliente] = useState('');
   const [historialCodigo, setHistorialCodigo] = useState('');
   const [historialMoneda, setHistorialMoneda] = useState('');
+  const historialSearchDebounced = useDebounce(historialSearch, 600);
+  const historialClienteDebounced = useDebounce(historialCliente, 600);
   const [historialLoading, setHistorialLoading] = useState(false);
   const [historialClientesOptions, setHistorialClientesOptions] = useState([]);
   const [historialCodigosOptions, setHistorialCodigosOptions] = useState([]);
@@ -1194,6 +1208,9 @@ export default function DashboardPage() {
   const [valesFechaHasta, setValesFechaHasta] = useState('');
   const [valesAlmacen, setValesAlmacen] = useState('');
   const [valesBusqueda, setValesBusqueda] = useState('');
+  const valesBusquedaDebounced = useDebounce(valesBusqueda, 600);
+  const valesFechaDesdeDebounced = useDebounce(valesFechaDesde, 400);
+  const valesFechaHastaDebounced = useDebounce(valesFechaHasta, 400);
   const [valesModo, setValesModo] = useState('desglose'); // 'desglose' | 'global'
   const [valeSeleccionado, setValeSeleccionado] = useState(null);
   const [pedidosQuery] = useState('limit=500');
@@ -1201,6 +1218,7 @@ export default function DashboardPage() {
   const [existenciasSearch, setExistenciasSearch] = useState('');
   const [existenciasAlmacen, setExistenciasAlmacen] = useState('');
   const [existenciasFiltro, setExistenciasFiltro] = useState('con'); // 'con' | 'sin' | 'todos'
+  const existenciasSearchDebounced = useDebounce(existenciasSearch, 600);
   const [existenciasLoading, setExistenciasLoading] = useState(false);
 
   // Filtros interactivos para graficas del dashboard
@@ -1244,13 +1262,13 @@ export default function DashboardPage() {
         limit: String(EXISTENCIAS_PAGE_SIZE),
         offset: String(offset),
       });
-      const term = existenciasSearch.trim();
+      const term = existenciasSearchDebounced.trim();
       if (term) params.set('busqueda', term);
       if (existenciasAlmacen) params.set('almacen', existenciasAlmacen);
       if (existenciasFiltro && existenciasFiltro !== 'con') params.set('existencia', existenciasFiltro);
       return params.toString();
     },
-    [existenciasSearch, existenciasAlmacen, existenciasFiltro]
+    [existenciasSearchDebounced, existenciasAlmacen, existenciasFiltro]
   );
 
   // Carga de historial de ventas con loading sutil
@@ -1294,28 +1312,24 @@ export default function DashboardPage() {
         limit: String(HISTORIAL_PAGE_SIZE),
         offset: String(offset),
       });
-      const term = historialSearch.trim();
+      const term = historialSearchDebounced.trim();
       if (term) params.set('busqueda', term);
-      if (historialCliente) params.set('cliente', historialCliente);
+      if (historialClienteDebounced) params.set('cliente', historialClienteDebounced);
       if (historialCodigo) params.set('codigo', historialCodigo);
       if (historialMoneda) params.set('moneda', historialMoneda);
       return params.toString();
     },
-    [historialSearch, historialCliente, historialCodigo, historialMoneda]
+    [historialSearchDebounced, historialClienteDebounced, historialCodigo, historialMoneda]
   );
 
-  // Búsqueda server-side en existencias con debounce fluido
+  // Búsqueda server-side en existencias con debounce
   useEffect(() => {
     if (!initialLoadDone.current.existencias) {
       initialLoadDone.current.existencias = true;
       return;
     }
     setExistenciasOffset(0);
-    const query = buildExistenciasQuery(0);
-    const t = setTimeout(() => {
-      loadExistencias(query);
-    }, 300);
-    return () => clearTimeout(t);
+    loadExistencias(buildExistenciasQuery(0));
   }, [buildExistenciasQuery, loadExistencias]);
 
   // Búsqueda en historial de ventas con debounce
@@ -1325,11 +1339,7 @@ export default function DashboardPage() {
       return;
     }
     setHistorialOffset(0);
-    const query = buildHistorialQuery(0);
-    const t = setTimeout(() => {
-      loadHistorialVentas(query);
-    }, 400);
-    return () => clearTimeout(t);
+    loadHistorialVentas(buildHistorialQuery(0));
   }, [buildHistorialQuery, loadHistorialVentas]);
 
   // Cambio de página en existencias
@@ -1347,12 +1357,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams({ limit: '500' });
     if (valesResponsable) params.set('responsable', valesResponsable);
-    if (valesFechaDesde) params.set('fecha_desde', valesFechaDesde);
-    if (valesFechaHasta) params.set('fecha_hasta', valesFechaHasta);
+    if (valesFechaDesdeDebounced) params.set('fecha_desde', valesFechaDesdeDebounced);
+    if (valesFechaHastaDebounced) params.set('fecha_hasta', valesFechaHastaDebounced);
     if (valesAlmacen) params.set('almacen', valesAlmacen);
-    if (valesBusqueda.trim()) params.set('busqueda', valesBusqueda.trim());
+    if (valesBusquedaDebounced.trim()) params.set('busqueda', valesBusquedaDebounced.trim());
     setValesQuery(params.toString());
-  }, [valesResponsable, valesFechaDesde, valesFechaHasta, valesAlmacen, valesBusqueda]);
+  }, [valesResponsable, valesFechaDesdeDebounced, valesFechaHastaDebounced, valesAlmacen, valesBusquedaDebounced]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -2730,8 +2740,8 @@ export default function DashboardPage() {
     const cabecerasFiltradas = (() => {
       let filtradas = cabeceras;
 
-      if (sanAntonioBusquedaOc.trim()) {
-        const q = sanAntonioBusquedaOc.toLowerCase();
+      if (sanAntonioBusquedaOcDebounced.trim()) {
+        const q = sanAntonioBusquedaOcDebounced.toLowerCase();
         filtradas = filtradas.filter((oc) =>
           ['folio', 'nopedido', 'fechaoc', 'moneda', 'condicionespago', 'estadooc', 'cargadaportal'].some((k) =>
             String(oc[k] || '').toLowerCase().includes(q)
@@ -2739,8 +2749,8 @@ export default function DashboardPage() {
         );
       }
 
-      if (sanAntonioBusquedaMaterialOc.trim()) {
-        const q = sanAntonioBusquedaMaterialOc.toLowerCase();
+      if (sanAntonioBusquedaMaterialOcDebounced.trim()) {
+        const q = sanAntonioBusquedaMaterialOcDebounced.toLowerCase();
         const foliosConMaterial = new Set(
           partidas
             .filter((p) =>
@@ -2764,8 +2774,8 @@ export default function DashboardPage() {
           (p) => String(p.estadolinea || '').toLowerCase() === sanAntonioEstadoPartida.toLowerCase()
         );
       }
-      if (sanAntonioBusquedaPartida.trim()) {
-        const q = sanAntonioBusquedaPartida.toLowerCase();
+      if (sanAntonioBusquedaPartidaDebounced.trim()) {
+        const q = sanAntonioBusquedaPartidaDebounced.toLowerCase();
         filtradas = filtradas.filter((p) =>
           [p.codigo, p.descripcion, p.folio].some((v) => String(v || '').toLowerCase().includes(q))
         );
