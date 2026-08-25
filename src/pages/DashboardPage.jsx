@@ -401,6 +401,244 @@ function SearchableSelect({
   );
 }
 
+function MultiSearchableSelect({
+  values = [],
+  onChange,
+  options,
+  placeholder = 'Buscar...',
+  emptyMessage = 'Sin coincidencias',
+  className = '',
+  id,
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [coords, setCoords] = useState(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
+  const itemsRef = useRef([]);
+
+  const normalizedValues = useMemo(
+    () => new Set(values.map((v) => String(v).trim()).filter(Boolean)),
+    [values]
+  );
+
+  const openDropdown = () => {
+    setQuery('');
+    setHighlightedIndex(-1);
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setCoords({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
+    }
+    setOpen(true);
+  };
+
+  const closeDropdown = useCallback(() => {
+    setOpen(false);
+    setCoords(null);
+    setHighlightedIndex(-1);
+    setQuery('');
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        closeDropdown();
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [closeDropdown]);
+
+  useEffect(() => {
+    function handleScroll() {
+      if (open) closeDropdown();
+    }
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener('scroll', handleScroll, { capture: true });
+  }, [closeDropdown, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleResize() {
+      if (inputRef.current) {
+        const rect = inputRef.current.getBoundingClientRect();
+        setCoords({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
+      }
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [open]);
+
+  useEffect(() => {
+    if (highlightedIndex >= 0 && itemsRef.current[highlightedIndex]) {
+      itemsRef.current[highlightedIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIndex]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let base = options;
+    if (q) {
+      base = options.filter((opt) => String(opt).toLowerCase().includes(q));
+    }
+    // Mostrar primero los no seleccionados para facilitar la selección
+    return base
+      .filter((opt) => !normalizedValues.has(String(opt).trim()))
+      .slice(0, 100);
+  }, [options, query, normalizedValues]);
+
+  const selectedList = useMemo(
+    () => values.map((v) => String(v).trim()).filter(Boolean),
+    [values]
+  );
+
+  const toggleOption = (opt) => {
+    const str = String(opt).trim();
+    if (normalizedValues.has(str)) {
+      onChange(values.filter((v) => String(v).trim() !== str));
+    } else {
+      onChange([...values, str]);
+    }
+    setQuery('');
+    inputRef.current?.focus();
+  };
+
+  const removeValue = (str) => {
+    onChange(values.filter((v) => String(v).trim() !== str));
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!open) {
+        openDropdown();
+        setHighlightedIndex(filtered.length > 0 ? 0 : -1);
+      } else {
+        setHighlightedIndex((prev) => Math.min(prev + 1, filtered.length - 1));
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (open) {
+        setHighlightedIndex((prev) => Math.max(prev - 1, -1));
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (open && highlightedIndex >= 0 && highlightedIndex < filtered.length) {
+        toggleOption(filtered[highlightedIndex]);
+      } else {
+        closeDropdown();
+      }
+    } else if (e.key === 'Tab') {
+      closeDropdown();
+    } else if (e.key === 'Escape') {
+      closeDropdown();
+      inputRef.current?.blur();
+    } else if (e.key === 'Backspace' && !query && selectedList.length > 0) {
+      removeValue(selectedList[selectedList.length - 1]);
+    }
+  };
+
+  return (
+    <div className={`relative ${className}`} ref={wrapperRef} id={id}>
+      <div
+        className="w-full min-h-[2.75rem] px-3 py-2 bg-white border border-gray-300 rounded-xl focus-within:ring-2 focus-within:ring-p3-red focus-within:border-p3-red transition-shadow flex flex-wrap items-center gap-1.5 cursor-text"
+        onClick={() => {
+          openDropdown();
+          inputRef.current?.focus();
+        }}
+      >
+        {selectedList.map((val) => (
+          <span
+            key={val}
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-p3-red text-xs font-medium rounded-lg border border-red-100"
+          >
+            {val}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeValue(val);
+              }}
+              className="hover:text-red-700 focus:outline-none"
+              aria-label={`Quitar ${val}`}
+            >
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setHighlightedIndex(-1);
+            if (!open) openDropdown();
+          }}
+          onFocus={() => {
+            openDropdown();
+          }}
+          placeholder={selectedList.length === 0 ? placeholder : ''}
+          className="flex-1 min-w-[4rem] outline-none text-sm text-gray-700 bg-transparent"
+          autoComplete="off"
+          onKeyDown={handleKeyDown}
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          if (open) {
+            closeDropdown();
+          } else {
+            openDropdown();
+            inputRef.current?.focus();
+          }
+        }}
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+        tabIndex={-1}
+      >
+        <svg
+          className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && coords && (
+        <div
+          className="fixed z-[100] mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto"
+          style={{ top: coords.top, left: coords.left, width: coords.width }}
+        >
+          {filtered.length === 0 ? (
+            <div className="px-4 py-2 text-sm text-gray-500">{emptyMessage}</div>
+          ) : (
+            filtered.map((opt, idx) => (
+              <button
+                key={String(opt)}
+                ref={(el) => { itemsRef.current[idx] = el; }}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  toggleOption(opt);
+                }}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-gray-700 ${
+                  idx === highlightedIndex ? 'bg-red-100' : ''
+                }`}
+              >
+                {opt}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EmptyState({ message = 'Sin datos', icon = Inbox }) {
   const IconComponent = icon;
   return (
@@ -1192,8 +1430,8 @@ export default function DashboardPage() {
   // Historial de ventas
   const [historialVentas, setHistorialVentas] = useState([]);
   const [historialSearch, setHistorialSearch] = useState('');
-  const [historialCliente, setHistorialCliente] = useState('');
-  const [historialCodigo, setHistorialCodigo] = useState('');
+  const [historialCliente, setHistorialCliente] = useState([]);
+  const [historialCodigo, setHistorialCodigo] = useState([]);
   const [historialMoneda, setHistorialMoneda] = useState('');
   const [historialLoading, setHistorialLoading] = useState(false);
   const [historialClientesOptions, setHistorialClientesOptions] = useState([]);
@@ -1333,8 +1571,12 @@ export default function DashboardPage() {
       });
       const term = historialSearch.trim();
       if (term) params.set('busqueda', term);
-      if (historialCliente) params.set('cliente', historialCliente);
-      if (historialCodigo) params.set('codigo', historialCodigo);
+      historialCliente.forEach((c) => {
+        if (c && c.trim()) params.append('cliente', c.trim());
+      });
+      historialCodigo.forEach((c) => {
+        if (c && c.trim()) params.append('codigo', c.trim());
+      });
       if (historialMoneda) params.set('moneda', historialMoneda);
       return params.toString();
     },
@@ -2773,22 +3015,22 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          <div className="min-w-[12rem]">
-            <SearchableSelect
-              value={historialCliente}
+          <div className="min-w-[14rem]">
+            <MultiSearchableSelect
+              values={historialCliente}
               onChange={setHistorialCliente}
               options={historialClientesOptions}
-              placeholder="Escribe para buscar cliente..."
+              placeholder="Escribe para buscar clientes..."
               emptyMessage="No se encontraron clientes"
               className="w-full"
             />
           </div>
-          <div className="min-w-[10rem]">
-            <SearchableSelect
-              value={historialCodigo}
+          <div className="min-w-[12rem]">
+            <MultiSearchableSelect
+              values={historialCodigo}
               onChange={setHistorialCodigo}
               options={historialCodigosOptions}
-              placeholder="Todos los códigos"
+              placeholder="Buscar códigos..."
               emptyMessage="No se encontraron códigos"
               className="w-full"
             />

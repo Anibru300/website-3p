@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -91,10 +92,7 @@ def seguimiento_documental(
             return {"data": detalle}
         except Exception as e2:
             logger.error("Fallback Excel tambien fallo: %s", e2)
-            raise HTTPException(
-                status_code=503,
-                detail=f"No se pudo cargar el seguimiento documental: {e}",
-            )
+            return {"data": []}
 
 
 @router.get("/historial")
@@ -102,8 +100,8 @@ def historial_ventas(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     busqueda: str = Query(""),
-    cliente: str = Query(""),
-    codigo: str = Query(""),
+    cliente: List[str] = Query(default_factory=list),
+    codigo: List[str] = Query(default_factory=list),
     moneda: str = Query(""),
     user: dict = Depends(get_current_user),
 ):
@@ -131,8 +129,8 @@ def historial_ventas(
         )
 
     busqueda_lower = busqueda.lower().strip()
-    cliente_lower = cliente.lower().strip()
-    codigo_lower = codigo.lower().strip()
+    clientes_lower = [c.lower().strip() for c in cliente if c and c.strip()]
+    codigos_lower = [c.lower().strip() for c in codigo if c and c.strip()]
     moneda_upper = moneda.upper().strip()
 
     resultados = []
@@ -145,9 +143,9 @@ def historial_ventas(
             continue
 
         # Filtros específicos
-        if cliente_lower and cliente_lower not in fila["cliente"].lower():
+        if clientes_lower and not any(c in fila["cliente"].lower() for c in clientes_lower):
             continue
-        if codigo_lower and codigo_lower not in fila["codigo"].lower():
+        if codigos_lower and not any(c in fila["codigo"].lower() for c in codigos_lower):
             continue
         if moneda_upper and moneda_upper not in fila["moneda"]:
             continue
