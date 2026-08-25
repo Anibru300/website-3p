@@ -108,6 +108,47 @@ export async function fetchHistorialVentasMetadata() {
   return apiFetch('/api/ventas/historial/metadata');
 }
 
+export async function exportarHistorialVentas(filtros, filename = 'historial_ventas.xlsx') {
+  const token = getToken();
+  const url = `${API_BASE}/api/ventas/historial/exportar`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(filtros),
+  });
+
+  if (response.status === 401) {
+    removeToken();
+    window.location.href = '/login';
+    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
+  }
+
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try {
+      const data = await response.json();
+      detail = data.detail || detail;
+    } catch {
+      detail = await response.text();
+    }
+    throw new Error(detail);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
+}
+
 export async function fetchPrecioReferencia(codigo, cliente = '') {
   const params = new URLSearchParams({ codigo });
   if (cliente) params.set('cliente', cliente);

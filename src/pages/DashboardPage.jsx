@@ -11,6 +11,7 @@ import {
   fetchProductoFotoBlobUrl,
   fetchHistorialVentas,
   fetchHistorialVentasMetadata,
+  exportarHistorialVentas,
   guardarSnapshotValorInventario,
   fetchHistorialValorInventario,
 } from '../utils/api';
@@ -1433,6 +1434,8 @@ export default function DashboardPage() {
   const [historialCliente, setHistorialCliente] = useState([]);
   const [historialCodigo, setHistorialCodigo] = useState([]);
   const [historialMoneda, setHistorialMoneda] = useState('');
+  const [historialFechaDesde, setHistorialFechaDesde] = useState('');
+  const [historialFechaHasta, setHistorialFechaHasta] = useState('');
   const [historialLoading, setHistorialLoading] = useState(false);
   const [historialClientesOptions, setHistorialClientesOptions] = useState([]);
   const [historialCodigosOptions, setHistorialCodigosOptions] = useState([]);
@@ -1578,9 +1581,11 @@ export default function DashboardPage() {
         if (c && c.trim()) params.append('codigo', c.trim());
       });
       if (historialMoneda) params.set('moneda', historialMoneda);
+      if (historialFechaDesde) params.set('fecha_desde', historialFechaDesde);
+      if (historialFechaHasta) params.set('fecha_hasta', historialFechaHasta);
       return params.toString();
     },
-    [historialSearch, historialCliente, historialCodigo, historialMoneda]
+    [historialSearch, historialCliente, historialCodigo, historialMoneda, historialFechaDesde, historialFechaHasta]
   );
 
   // Búsqueda server-side en existencias con debounce
@@ -3047,6 +3052,106 @@ export default function DashboardPage() {
               <option value="USD">Dólares (USD)</option>
             </select>
           </div>
+        </div>
+
+        {/* Filtros de fecha y exportación */}
+        <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
+          <div className="flex flex-1 flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="date"
+                value={historialFechaDesde}
+                onChange={(e) => setHistorialFechaDesde(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow text-sm"
+                placeholder="Desde"
+              />
+            </div>
+            <div className="relative flex-1">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="date"
+                value={historialFechaHasta}
+                onChange={(e) => setHistorialFechaHasta(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-p3-red focus:border-p3-red transition-shadow text-sm"
+                placeholder="Hasta"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                const start = new Date(now.getFullYear(), now.getMonth(), 1);
+                setHistorialFechaDesde(start.toISOString().slice(0, 10));
+                setHistorialFechaHasta(now.toISOString().slice(0, 10));
+              }}
+              className="px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              Mes actual
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const end = new Date(now.getFullYear(), now.getMonth(), 0);
+                setHistorialFechaDesde(start.toISOString().slice(0, 10));
+                setHistorialFechaHasta(end.toISOString().slice(0, 10));
+              }}
+              className="px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              Mes anterior
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                setHistorialFechaDesde(`${now.getFullYear()}-01-01`);
+                setHistorialFechaHasta(now.toISOString().slice(0, 10));
+              }}
+              className="px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              Año actual
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHistorialFechaDesde('');
+                setHistorialFechaHasta('');
+              }}
+              className="px-3 py-2 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              Limpiar fechas
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await exportarHistorialVentas(
+                  {
+                    busqueda: historialSearch.trim(),
+                    cliente: historialCliente.filter(Boolean),
+                    codigo: historialCodigo.filter(Boolean),
+                    moneda: historialMoneda,
+                    fecha_desde: historialFechaDesde || null,
+                    fecha_hasta: historialFechaHasta || null,
+                  },
+                  `historial_ventas_${new Date().toISOString().slice(0, 10)}.xlsx`
+                );
+              } catch (err) {
+                setError(err.message);
+              }
+            }}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-colors shadow-sm"
+          >
+            <FileSpreadsheet size={18} />
+            Exportar Excel
+          </button>
         </div>
 
         {/* Tabla */}
