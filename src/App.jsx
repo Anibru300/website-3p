@@ -7,8 +7,29 @@ import GenericBrandPage from './pages/GenericBrandPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import CotizadorPage from './pages/CotizadorPage';
+import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
+
+function AdminGuard({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-p3-red border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
+  if (!user || user.rol !== 'admin') {
+    window.location.href = '/dashboard';
+    return null;
+  }
+  return children;
+}
 
 function App() {
   const [route, setRoute] = useState(window.location.pathname || '/');
@@ -73,6 +94,16 @@ function App() {
     content = (
       <ProtectedRoute>
         <CotizadorPage />
+      </ProtectedRoute>
+    );
+    showHeader = false;
+    mainClass = '';
+  } else if (segments[0] === 'admin') {
+    content = (
+      <ProtectedRoute>
+        <AdminGuard>
+          <AdminPage />
+        </AdminGuard>
       </ProtectedRoute>
     );
     showHeader = false;

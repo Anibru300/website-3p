@@ -46,6 +46,7 @@ import {
   History,
   Calculator,
   Activity,
+  Shield,
 } from 'lucide-react';
 
 const TABS = [
@@ -3694,6 +3695,16 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {user?.rol === 'admin' && (
+                <button
+                  onClick={() => (window.location.href = '/admin')}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
+                  title="Administración"
+                >
+                  <Shield size={18} />
+                  <span className="hidden sm:inline">Administración</span>
+                </button>
+              )}
               <button
                 onClick={() => (window.location.href = '/cotizador')}
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"

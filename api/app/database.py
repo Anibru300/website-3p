@@ -66,6 +66,93 @@ def _ensure_users_db():
             )
             """
         )
+
+        # ---------------------------------------------------------------------------
+        # CRM (tablas en SQLite de usuarios del portal)
+        # ---------------------------------------------------------------------------
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS crm_entidades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tipo TEXT NOT NULL,
+                nombre TEXT NOT NULL,
+                rfc TEXT,
+                razon_social TEXT,
+                telefono TEXT,
+                email TEXT,
+                notas TEXT,
+                activo INTEGER NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS crm_contactos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entidad_id INTEGER NOT NULL,
+                nombre TEXT NOT NULL,
+                puesto TEXT,
+                telefono TEXT,
+                email TEXT,
+                principal INTEGER NOT NULL DEFAULT 0,
+                notas TEXT,
+                FOREIGN KEY (entidad_id) REFERENCES crm_entidades(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS crm_ubicaciones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entidad_id INTEGER NOT NULL,
+                nombre TEXT,
+                tipo TEXT,
+                direccion TEXT,
+                ciudad TEXT,
+                estado TEXT,
+                pais TEXT,
+                coordenadas TEXT,
+                notas TEXT,
+                FOREIGN KEY (entidad_id) REFERENCES crm_entidades(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS crm_portales (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entidad_id INTEGER NOT NULL,
+                nombre TEXT,
+                url TEXT,
+                usuario TEXT,
+                password TEXT,
+                notas TEXT,
+                FOREIGN KEY (entidad_id) REFERENCES crm_entidades(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS crm_documentos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entidad_id INTEGER NOT NULL,
+                tipo TEXT,
+                nombre_archivo TEXT,
+                ruta_archivo TEXT,
+                notas TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (entidad_id) REFERENCES crm_entidades(id) ON DELETE CASCADE
+            )
+            """
+        )
+
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_contactos_entidad ON crm_contactos(entidad_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_ubicaciones_entidad ON crm_ubicaciones(entidad_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_portales_entidad ON crm_portales(entidad_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_documentos_entidad ON crm_documentos(entidad_id)")
+
         conn.commit()
     finally:
         conn.close()

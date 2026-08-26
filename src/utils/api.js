@@ -263,6 +263,46 @@ export async function fetchSanAntonioOrdenes(query = '') {
   return apiFetch(`/api/san-antonio/ordenes?${query}`);
 }
 
+export async function fetchCrmResumen() {
+  return apiFetch('/api/admin/crm/resumen');
+}
+
+export async function fetchCrmEntidades(query = '') {
+  return apiFetch(`/api/admin/crm/entidades?${query}`);
+}
+
+export async function crearEntidadCrm(data) {
+  return apiFetch('/api/admin/crm/entidades', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function fetchCrmEntidad(id) {
+  return apiFetch(`/api/admin/crm/entidades/${id}`);
+}
+
+export async function crearContactoCrm(entidadId, data) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/contactos`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function crearUbicacionCrm(entidadId, data) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/ubicaciones`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function crearPortalCrm(entidadId, data) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/portales`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 export function getProductoFotoUrl(codigo) {
   return `${API_BASE}/api/almacen/foto-producto/${encodeURIComponent(codigo)}`;
 }

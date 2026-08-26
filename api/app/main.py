@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.admin.router import router as admin_router
 from app.almacen.router import router as almacen_router
 from app.auth.router import router as auth_router
 from app.config import get_settings
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(auth_router)
+    app.include_router(admin_router)
     app.include_router(dashboard_router)
     app.include_router(almacen_router)
     app.include_router(ventas_router)
