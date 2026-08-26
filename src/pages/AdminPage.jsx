@@ -3,12 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import {
   fetchCrmResumen,
   fetchCrmEntidades,
+  fetchCrmPortales,
   crearEntidadCrm,
 } from '../utils/api';
 import {
   LayoutDashboard,
   Users,
-  UserCog,
   Building2,
   MapPin,
   Lock,
@@ -22,11 +22,12 @@ import {
   Menu,
   ChevronRight,
   Briefcase,
+  ArrowLeft,
 } from 'lucide-react';
 
 const SIDEBAR_ITEMS = [
   { id: 'crms', label: 'CRMs', icon: Briefcase },
-  { id: 'usuarios', label: 'Usuarios', icon: Users },
+  { id: 'portales', label: 'Portales', icon: Lock },
 ];
 
 const CRM_SUBTABS = [
@@ -76,6 +77,13 @@ export default function AdminPage() {
     notas: '',
   });
 
+  // Portales
+  const [portales, setPortales] = useState([]);
+  const [totalPortales, setTotalPortales] = useState(0);
+  const [portalesSearch, setPortalesSearch] = useState('');
+  const [portalesSkip, setPortalesSkip] = useState(0);
+  const PORTALES_LIMIT = 20;
+
   const tipoQuery = useMemo(() => {
     if (activeCrmTab === 'clientes') return 'cliente';
     if (activeCrmTab === 'proveedores') return 'proveedor';
@@ -109,12 +117,35 @@ export default function AdminPage() {
     }
   }
 
+  async function cargarPortales(resetSkip = true) {
+    setLoading(true);
+    setError('');
+    try {
+      const params = new URLSearchParams();
+      if (portalesSearch.trim()) params.set('q', portalesSearch.trim());
+      const currentSkip = resetSkip ? 0 : portalesSkip;
+      params.set('skip', String(currentSkip));
+      params.set('limit', String(PORTALES_LIMIT));
+
+      const data = await fetchCrmPortales(params.toString());
+      setPortales(data.data || []);
+      setTotalPortales(data.total || 0);
+      if (resetSkip) setPortalesSkip(0);
+    } catch (err) {
+      setError(err.message || 'Error al cargar los portales');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (activeSection === 'crms') {
       cargarDatos(true);
+    } else if (activeSection === 'portales') {
+      cargarPortales(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSection, activeCrmTab, tipoQuery, search]);
+  }, [activeSection, activeCrmTab, tipoQuery, search, portalesSearch]);
 
   useEffect(() => {
     if (activeSection === 'crms') {
@@ -122,6 +153,13 @@ export default function AdminPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skip]);
+
+  useEffect(() => {
+    if (activeSection === 'portales') {
+      cargarPortales(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portalesSkip]);
 
   function handleOpenModal() {
     setForm({
@@ -217,7 +255,15 @@ export default function AdminPage() {
               Panel de Administración
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              onClick={() => (window.location.href = '/dashboard')}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
+              title="Regresar al dashboard"
+            >
+              <ArrowLeft size={18} />
+              <span className="hidden sm:inline">Regresar</span>
+            </button>
             <div className="hidden sm:block text-right">
               <p className="text-sm font-medium text-gray-900">{user?.nombre}</p>
               <p className="text-xs text-gray-500 capitalize">{user?.rol}</p>
@@ -440,12 +486,134 @@ export default function AdminPage() {
     );
   }
 
-  function renderUsuariosPlaceholder() {
+  function renderPortalesTable() {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-        <UserCog className="mx-auto text-gray-300 mb-3" size={48} />
-        <h2 className="text-lg font-bold text-gray-900">Gestión de usuarios</h2>
-        <p className="text-sm text-gray-500 mt-1">Sección en construcción.</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
+              <th className="py-3 px-3 font-semibold">Empresa</th>
+              <th className="py-3 px-3 font-semibold">Tipo</th>
+              <th className="py-3 px-3 font-semibold">Portal</th>
+              <th className="py-3 px-3 font-semibold">URL</th>
+              <th className="py-3 px-3 font-semibold">Usuario</th>
+              <th className="py-3 px-3 font-semibold">Contraseña</th>
+              <th className="py-3 px-3 font-semibold">Notas</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {portales.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-8 text-center text-gray-500">
+                  No se encontraron portales.
+                </td>
+              </tr>
+            ) : (
+              portales.map((p) => (
+                <tr key={p.id} className="hover:bg-gray-50/60">
+                  <td className="py-3 px-3 font-medium text-gray-900">{p.entidad}</td>
+                  <td className="py-3 px-3">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        TIPO_BADGE[p.entidad_tipo] || 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {TIPO_LABEL[p.entidad_tipo] || p.entidad_tipo}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-gray-700">{p.portal || '-'}</td>
+                  <td className="py-3 px-3 text-gray-600">
+                    {p.url ? (
+                      <a
+                        href={p.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-p3-blue hover:underline"
+                      >
+                        {p.url}
+                      </a>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+                  <td className="py-3 px-3 text-gray-700 font-mono text-xs">{p.usuario || '-'}</td>
+                  <td className="py-3 px-3 text-gray-700 font-mono text-xs">{p.password || '-'}</td>
+                  <td className="py-3 px-3 text-gray-500 text-xs">{p.notas || '-'}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  function renderPortalesPagination() {
+    const pages = Math.ceil(totalPortales / PORTALES_LIMIT);
+    const currentPage = Math.floor(portalesSkip / PORTALES_LIMIT) + 1;
+    if (pages <= 1) return null;
+    return (
+      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+        <p className="text-xs text-gray-500">
+          Mostrando {portalesSkip + 1}-{Math.min(portalesSkip + portales.length, totalPortales)} de {totalPortales}
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setPortalesSkip((s) => Math.max(0, s - PORTALES_LIMIT))}
+            disabled={portalesSkip === 0}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+          >
+            Anterior
+          </button>
+          <span className="text-xs text-gray-600 px-2">
+            {currentPage} / {pages}
+          </span>
+          <button
+            onClick={() => setPortalesSkip((s) => Math.min((pages - 1) * PORTALES_LIMIT, s + PORTALES_LIMIT))}
+            disabled={portalesSkip + PORTALES_LIMIT >= totalPortales}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+          >
+            Siguiente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderPortalesSection() {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-gray-100">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Portales de clientes y proveedores</h2>
+            <p className="text-xs text-gray-500">Usuarios y contraseñas de acceso a portales.</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              value={portalesSearch}
+              onChange={(e) => setPortalesSearch(e.target.value)}
+              placeholder="Buscar por empresa, portal o usuario..."
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+            />
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-48">
+            <div className="w-10 h-10 border-4 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+            <p className="mt-3 text-sm text-gray-500">Cargando portales...</p>
+          </div>
+        ) : (
+          <>
+            {renderPortalesTable()}
+            {renderPortalesPagination()}
+          </>
+        )}
       </div>
     );
   }
@@ -589,7 +757,8 @@ export default function AdminPage() {
               </div>
             )}
 
-            {activeSection === 'crms' ? renderCrmSection() : renderUsuariosPlaceholder()}
+            {activeSection === 'crms' && renderCrmSection()}
+            {activeSection === 'portales' && renderPortalesSection()}
           </div>
         </main>
       </div>

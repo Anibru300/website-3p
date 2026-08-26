@@ -159,6 +159,72 @@ def resumen_crm():
     return totals
 
 
+@router.get("/portales")
+def listar_portales(
+    q: Optional[str] = Query(default=None),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=200),
+):
+    """Devuelve todos los portales de todas las entidades con contraseñas descifradas."""
+    with users_connection() as conn:
+        conditions = ["e.activo = 1"]
+        params: list = []
+        if q:
+            conditions.append("(e.nombre LIKE ? OR p.nombre LIKE ? OR p.usuario LIKE ?)")
+            like = f"%{q}%"
+            params.extend([like, like, like])
+
+        where_clause = "WHERE " + " AND ".join(conditions)
+
+        rows = conn.execute(
+            f"""
+            SELECT
+                p.id,
+                p.entidad_id,
+                e.nombre AS entidad,
+                e.tipo AS entidad_tipo,
+                p.nombre AS portal,
+                p.url,
+                p.usuario,
+                p.password,
+                p.notas
+            FROM crm_portales p
+            JOIN crm_entidades e ON e.id = p.entidad_id
+            {where_clause}
+            ORDER BY e.nombre ASC, p.nombre ASC
+            LIMIT ? OFFSET ?
+            """,
+            (*params, limit, skip),
+        ).fetchall()
+
+        total = conn.execute(
+            f"""
+            SELECT COUNT(*)
+            FROM crm_portales p
+            JOIN crm_entidades e ON e.id = p.entidad_id
+            {where_clause}
+            """,
+            tuple(params),
+        ).fetchone()[0]
+
+    portales = []
+    for row in rows:
+        p_dict = dict(row)
+        try:
+            p_dict["password"] = _decrypt_password(p_dict["password"])
+        except Exception as exc:
+            logger.warning("[crm] No se pudo descifrar password del portal %s: %s", p_dict.get("id"), exc)
+            p_dict["password"] = ""
+        portales.append(p_dict)
+
+    return {
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "data": portales,
+    }
+
+
 @router.get("/entidades")
 def listar_entidades(
     tipo: Optional[str] = Query(default=None),

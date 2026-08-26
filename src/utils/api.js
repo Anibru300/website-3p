@@ -271,6 +271,10 @@ export async function fetchCrmEntidades(query = '') {
   return apiFetch(`/api/admin/crm/entidades?${query}`);
 }
 
+export async function fetchCrmPortales(query = '') {
+  return apiFetch(`/api/admin/crm/portales?${query}`);
+}
+
 export async function crearEntidadCrm(data) {
   return apiFetch('/api/admin/crm/entidades', {
     method: 'POST',
