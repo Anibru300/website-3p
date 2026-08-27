@@ -286,11 +286,81 @@ export async function fetchCrmEntidad(id) {
   return apiFetch(`/api/admin/crm/entidades/${id}`);
 }
 
+export async function actualizarEntidadCrm(id, data) {
+  return apiFetch(`/api/admin/crm/entidades/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function eliminarEntidadCrm(id) {
+  return apiFetch(`/api/admin/crm/entidades/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Contactos
+// ---------------------------------------------------------------------------
+
+export async function fetchCrmContactos(entidadId) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/contactos`);
+}
+
 export async function crearContactoCrm(entidadId, data) {
   return apiFetch(`/api/admin/crm/entidades/${entidadId}/contactos`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+export async function actualizarContactoCrm(contactoId, data) {
+  return apiFetch(`/api/admin/crm/contactos/${contactoId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function eliminarContactoCrm(contactoId) {
+  return apiFetch(`/api/admin/crm/contactos/${contactoId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Granjas
+// ---------------------------------------------------------------------------
+
+export async function fetchCrmGranjas(entidadId) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/granjas`);
+}
+
+export async function crearGranjaCrm(entidadId, data) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/granjas`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function actualizarGranjaCrm(granjaId, data) {
+  return apiFetch(`/api/admin/crm/granjas/${granjaId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function eliminarGranjaCrm(granjaId) {
+  return apiFetch(`/api/admin/crm/granjas/${granjaId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Ubicaciones / Domicilios
+// ---------------------------------------------------------------------------
+
+export async function fetchCrmUbicaciones(entidadId) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/ubicaciones`);
 }
 
 export async function crearUbicacionCrm(entidadId, data) {
@@ -300,10 +370,128 @@ export async function crearUbicacionCrm(entidadId, data) {
   });
 }
 
+export async function actualizarUbicacionCrm(ubicacionId, data) {
+  return apiFetch(`/api/admin/crm/ubicaciones/${ubicacionId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function eliminarUbicacionCrm(ubicacionId) {
+  return apiFetch(`/api/admin/crm/ubicaciones/${ubicacionId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Paqueterías
+// ---------------------------------------------------------------------------
+
+export async function fetchCrmPaqueterias(entidadId) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/paqueterias`);
+}
+
+export async function crearPaqueteriaCrm(entidadId, data) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/paqueterias`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function actualizarPaqueteriaCrm(paqueteriaId, data) {
+  return apiFetch(`/api/admin/crm/paqueterias/${paqueteriaId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function eliminarPaqueteriaCrm(paqueteriaId) {
+  return apiFetch(`/api/admin/crm/paqueterias/${paqueteriaId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Portales
+// ---------------------------------------------------------------------------
+
+export async function fetchCrmEntidadPortales(entidadId) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/portales`);
+}
+
 export async function crearPortalCrm(entidadId, data) {
   return apiFetch(`/api/admin/crm/entidades/${entidadId}/portales`, {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+export async function actualizarPortalCrm(portalId, data) {
+  return apiFetch(`/api/admin/crm/portales/${portalId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function eliminarPortalCrm(portalId) {
+  return apiFetch(`/api/admin/crm/portales/${portalId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Descuentos
+// ---------------------------------------------------------------------------
+
+export async function fetchCrmDescuentos(entidadId) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/descuentos`);
+}
+
+export async function crearDescuentoCrm(entidadId, data) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/descuentos`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function actualizarDescuentoCrm(descuentoId, data) {
+  return apiFetch(`/api/admin/crm/descuentos/${descuentoId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function eliminarDescuentoCrm(descuentoId) {
+  return apiFetch(`/api/admin/crm/descuentos/${descuentoId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Documentos
+// ---------------------------------------------------------------------------
+
+export async function fetchCrmDocumentos(entidadId) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/documentos`);
+}
+
+export async function crearDocumentoCrm(entidadId, data) {
+  return apiFetch(`/api/admin/crm/entidades/${entidadId}/documentos`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function actualizarDocumentoCrm(documentoId, data) {
+  return apiFetch(`/api/admin/crm/documentos/${documentoId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function eliminarDocumentoCrm(documentoId) {
+  return apiFetch(`/api/admin/crm/documentos/${documentoId}`, {
+    method: 'DELETE',
   });
 }
 

@@ -47,6 +47,15 @@ def postgres_cursor(cursor_factory=RealDictCursor):
 # SQLite local para usuarios del portal (no va al repositorio)
 # ---------------------------------------------------------------------------
 
+def _add_column_if_missing(conn, table: str, column: str, definition: str):
+    """Agrega una columna si aún no existe. Ignora el error si ya existe."""
+    try:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+    except sqlite3.OperationalError as exc:
+        if "duplicate column name" not in str(exc).lower():
+            raise
+
+
 def _ensure_users_db():
     settings = get_settings()
     path = Path(settings.users_db_path)
@@ -74,12 +83,25 @@ def _ensure_users_db():
             """
             CREATE TABLE IF NOT EXISTS crm_entidades (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_externo TEXT,
                 tipo TEXT NOT NULL,
                 nombre TEXT NOT NULL,
-                rfc TEXT,
                 razon_social TEXT,
+                rfc TEXT,
+                tipo_persona TEXT,
+                regimen_fiscal TEXT,
+                uso_cfdi TEXT,
+                correo_cfdi TEXT,
                 telefono TEXT,
                 email TEXT,
+                condicion_pago TEXT,
+                dias_credito TEXT,
+                vendedor TEXT,
+                link_documentos TEXT,
+                industria TEXT,
+                interes_principal TEXT,
+                puntuacion INTEGER,
+                status TEXT DEFAULT 'Activo',
                 notas TEXT,
                 activo INTEGER NOT NULL DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -87,6 +109,24 @@ def _ensure_users_db():
             )
             """
         )
+        # Migraciones: columnas agregadas al esquema original
+        _add_column_if_missing(conn, "crm_entidades", "id_externo", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "razon_social", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "tipo_persona", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "regimen_fiscal", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "uso_cfdi", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "correo_cfdi", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "telefono", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "condicion_pago", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "dias_credito", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "vendedor", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "link_documentos", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "industria", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "interes_principal", "TEXT")
+        _add_column_if_missing(conn, "crm_entidades", "puntuacion", "INTEGER")
+        _add_column_if_missing(conn, "crm_entidades", "status", "TEXT DEFAULT 'Activo'")
+        _add_column_if_missing(conn, "crm_entidades", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS crm_contactos (
@@ -94,31 +134,97 @@ def _ensure_users_db():
                 entidad_id INTEGER NOT NULL,
                 nombre TEXT NOT NULL,
                 puesto TEXT,
+                departamento TEXT,
                 telefono TEXT,
+                whatsapp TEXT,
                 email TEXT,
+                correos_facturas TEXT,
+                direccion_entrega TEXT,
                 principal INTEGER NOT NULL DEFAULT 0,
                 notas TEXT,
                 FOREIGN KEY (entidad_id) REFERENCES crm_entidades(id) ON DELETE CASCADE
             )
             """
         )
+        _add_column_if_missing(conn, "crm_contactos", "departamento", "TEXT")
+        _add_column_if_missing(conn, "crm_contactos", "whatsapp", "TEXT")
+        _add_column_if_missing(conn, "crm_contactos", "correos_facturas", "TEXT")
+        _add_column_if_missing(conn, "crm_contactos", "direccion_entrega", "TEXT")
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS crm_granjas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entidad_id INTEGER NOT NULL,
+                granja_id_externo TEXT,
+                nombre TEXT NOT NULL,
+                tipo TEXT,
+                paso TEXT,
+                contacto_nombre TEXT,
+                contacto_puesto TEXT,
+                contacto_telefono TEXT,
+                contacto_correo TEXT,
+                activo INTEGER NOT NULL DEFAULT 1,
+                comentarios TEXT,
+                FOREIGN KEY (entidad_id) REFERENCES crm_entidades(id) ON DELETE CASCADE
+            )
+            """
+        )
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS crm_ubicaciones (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 entidad_id INTEGER NOT NULL,
+                granja_id INTEGER,
                 nombre TEXT,
                 tipo TEXT,
-                direccion TEXT,
+                calle TEXT,
+                numero TEXT,
+                colonia TEXT,
+                cp TEXT,
                 ciudad TEXT,
                 estado TEXT,
                 pais TEXT,
+                direccion TEXT,
                 coordenadas TEXT,
+                link_mapa TEXT,
                 notas TEXT,
-                FOREIGN KEY (entidad_id) REFERENCES crm_entidades(id) ON DELETE CASCADE
+                FOREIGN KEY (entidad_id) REFERENCES crm_entidades(id) ON DELETE CASCADE,
+                FOREIGN KEY (granja_id) REFERENCES crm_granjas(id) ON DELETE SET NULL
             )
             """
         )
+        _add_column_if_missing(conn, "crm_ubicaciones", "granja_id", "INTEGER")
+        _add_column_if_missing(conn, "crm_ubicaciones", "calle", "TEXT")
+        _add_column_if_missing(conn, "crm_ubicaciones", "numero", "TEXT")
+        _add_column_if_missing(conn, "crm_ubicaciones", "colonia", "TEXT")
+        _add_column_if_missing(conn, "crm_ubicaciones", "cp", "TEXT")
+        _add_column_if_missing(conn, "crm_ubicaciones", "link_mapa", "TEXT")
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS crm_paqueterias (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entidad_id INTEGER NOT NULL,
+                ubicacion_id INTEGER,
+                paqueteria_id_externo TEXT,
+                tipo_envio TEXT,
+                paqueteria TEXT,
+                ocurre_domicilio TEXT,
+                atencion_a TEXT,
+                telefono TEXT,
+                correo_guia TEXT,
+                tipo_pago TEXT,
+                facturado_a TEXT,
+                status TEXT DEFAULT 'Activo',
+                comentarios TEXT,
+                FOREIGN KEY (entidad_id) REFERENCES crm_entidades(id) ON DELETE CASCADE,
+                FOREIGN KEY (ubicacion_id) REFERENCES crm_ubicaciones(id) ON DELETE SET NULL
+            )
+            """
+        )
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS crm_portales (
@@ -128,11 +234,27 @@ def _ensure_users_db():
                 url TEXT,
                 usuario TEXT,
                 password TEXT,
+                persona_apoyo TEXT,
                 notas TEXT,
                 FOREIGN KEY (entidad_id) REFERENCES crm_entidades(id) ON DELETE CASCADE
             )
             """
         )
+        _add_column_if_missing(conn, "crm_portales", "persona_apoyo", "TEXT")
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS crm_descuentos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entidad_id INTEGER NOT NULL,
+                marca TEXT,
+                descuento TEXT,
+                notas TEXT,
+                FOREIGN KEY (entidad_id) REFERENCES crm_entidades(id) ON DELETE CASCADE
+            )
+            """
+        )
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS crm_documentos (
@@ -148,9 +270,19 @@ def _ensure_users_db():
             """
         )
 
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_entidades_id_externo ON crm_entidades(id_externo)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_entidades_tipo ON crm_entidades(tipo)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_entidades_status ON crm_entidades(status)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_entidades_industria ON crm_entidades(industria)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_entidades_nombre ON crm_entidades(nombre)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_contactos_entidad ON crm_contactos(entidad_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_contactos_principal ON crm_contactos(entidad_id, principal)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_granjas_entidad ON crm_granjas(entidad_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_ubicaciones_entidad ON crm_ubicaciones(entidad_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_ubicaciones_granja ON crm_ubicaciones(granja_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_paqueterias_entidad ON crm_paqueterias(entidad_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_portales_entidad ON crm_portales(entidad_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_descuentos_entidad ON crm_descuentos(entidad_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_documentos_entidad ON crm_documentos(entidad_id)")
 
         conn.commit()

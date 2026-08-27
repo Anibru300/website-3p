@@ -4,7 +4,31 @@ import {
   fetchCrmResumen,
   fetchCrmEntidades,
   fetchCrmPortales,
+  fetchCrmEntidad,
   crearEntidadCrm,
+  actualizarEntidadCrm,
+  eliminarEntidadCrm,
+  crearContactoCrm,
+  actualizarContactoCrm,
+  eliminarContactoCrm,
+  crearGranjaCrm,
+  actualizarGranjaCrm,
+  eliminarGranjaCrm,
+  crearUbicacionCrm,
+  actualizarUbicacionCrm,
+  eliminarUbicacionCrm,
+  crearPaqueteriaCrm,
+  actualizarPaqueteriaCrm,
+  eliminarPaqueteriaCrm,
+  crearPortalCrm,
+  actualizarPortalCrm,
+  eliminarPortalCrm,
+  crearDescuentoCrm,
+  actualizarDescuentoCrm,
+  eliminarDescuentoCrm,
+  crearDocumentoCrm,
+  actualizarDocumentoCrm,
+  eliminarDocumentoCrm,
 } from '../utils/api';
 import {
   LayoutDashboard,
@@ -23,6 +47,17 @@ import {
   ChevronRight,
   Briefcase,
   ArrowLeft,
+  Pencil,
+  Trash2,
+  Save,
+  Truck,
+  Percent,
+  Home,
+  Phone,
+  Warehouse,
+  Tag,
+  ExternalLink,
+  Globe,
 } from 'lucide-react';
 
 const SIDEBAR_ITEMS = [
@@ -34,6 +69,17 @@ const CRM_SUBTABS = [
   { id: 'general', label: 'General' },
   { id: 'clientes', label: 'Clientes' },
   { id: 'proveedores', label: 'Proveedores' },
+];
+
+const ENTITY_TABS = [
+  { id: 'general', label: 'General', icon: Building2 },
+  { id: 'contactos', label: 'Contactos', icon: Users },
+  { id: 'granjas', label: 'Granjas', icon: Warehouse },
+  { id: 'ubicaciones', label: 'Domicilios', icon: Home },
+  { id: 'paqueterias', label: 'Paqueterías', icon: Truck },
+  { id: 'portales', label: 'Portales', icon: Lock },
+  { id: 'descuentos', label: 'Descuentos', icon: Percent },
+  { id: 'documentos', label: 'Documentos', icon: FileText },
 ];
 
 const TIPO_LABEL = {
@@ -48,11 +94,41 @@ const TIPO_BADGE = {
   ambos: 'bg-violet-100 text-violet-700',
 };
 
+const STATUS_BADGE = {
+  Activo: 'bg-green-100 text-green-700',
+  Inactivo: 'bg-gray-100 text-gray-700',
+};
+
+function classNames(...c) {
+  return c.filter(Boolean).join(' ');
+}
+
+function useRouteEntityId() {
+  const [entityId, setEntityId] = useState(null);
+  useEffect(() => {
+    const parse = () => {
+      const path = window.location.pathname || '';
+      const match = path.match(/\/admin\/crms\/entidad\/(\d+)/);
+      setEntityId(match ? parseInt(match[1], 10) : null);
+    };
+    parse();
+    window.addEventListener('popstate', parse);
+    return () => window.removeEventListener('popstate', parse);
+  }, []);
+  return entityId;
+}
+
 export default function AdminPage() {
   const { user, logout } = useAuth();
+  const routeEntityId = useRouteEntityId();
+
   const [activeSection, setActiveSection] = useState('crms');
   const [activeCrmTab, setActiveCrmTab] = useState('general');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [view, setView] = useState(routeEntityId ? 'detail' : 'list');
+  const [selectedEntityId, setSelectedEntityId] = useState(routeEntityId);
+  const [activeEntityTab, setActiveEntityTab] = useState('general');
 
   const [resumen, setResumen] = useState(null);
   const [entidades, setEntidades] = useState([]);
@@ -62,20 +138,18 @@ export default function AdminPage() {
 
   const [search, setSearch] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState('');
+  const [statusFiltro, setStatusFiltro] = useState('');
+  const [industriaFiltro, setIndustriaFiltro] = useState('');
   const [skip, setSkip] = useState(0);
   const LIMIT = 10;
 
-  const [showModal, setShowModal] = useState(false);
+  const [modal, setModal] = useState({ type: null, data: null });
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    tipo: 'cliente',
-    nombre: '',
-    rfc: '',
-    razon_social: '',
-    telefono: '',
-    email: '',
-    notas: '',
-  });
+  const [confirmDelete, setConfirmDelete] = useState({ type: null, id: null, name: '' });
+
+  // Detail state
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // Portales
   const [portales, setPortales] = useState([]);
@@ -90,6 +164,23 @@ export default function AdminPage() {
     return tipoFiltro;
   }, [activeCrmTab, tipoFiltro]);
 
+  useEffect(() => {
+    if (routeEntityId) {
+      setSelectedEntityId(routeEntityId);
+      setView('detail');
+    }
+  }, [routeEntityId]);
+
+  function navigateToEntity(entityId) {
+    const url = entityId ? `/admin/crms/entidad/${entityId}` : '/admin';
+    window.history.pushState({}, '', url);
+    setSelectedEntityId(entityId);
+    setView(entityId ? 'detail' : 'list');
+    if (entityId) {
+      setActiveEntityTab('general');
+    }
+  }
+
   async function cargarDatos(resetSkip = true) {
     setLoading(true);
     setError('');
@@ -97,6 +188,8 @@ export default function AdminPage() {
       const params = new URLSearchParams();
       if (tipoQuery) params.set('tipo', tipoQuery);
       if (search.trim()) params.set('q', search.trim());
+      if (statusFiltro) params.set('status', statusFiltro);
+      if (industriaFiltro) params.set('industria', industriaFiltro);
       const currentSkip = resetSkip ? 0 : skip;
       params.set('skip', String(currentSkip));
       params.set('limit', String(LIMIT));
@@ -138,17 +231,31 @@ export default function AdminPage() {
     }
   }
 
+  async function cargarDetalle() {
+    if (!selectedEntityId) return;
+    setDetailLoading(true);
+    setError('');
+    try {
+      const data = await fetchCrmEntidad(selectedEntityId);
+      setDetail(data);
+    } catch (err) {
+      setError(err.message || 'Error al cargar el detalle');
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
   useEffect(() => {
-    if (activeSection === 'crms') {
+    if (activeSection === 'crms' && view === 'list') {
       cargarDatos(true);
     } else if (activeSection === 'portales') {
       cargarPortales(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSection, activeCrmTab, tipoQuery, search, portalesSearch]);
+  }, [activeSection, activeCrmTab, tipoQuery, search, statusFiltro, industriaFiltro, portalesSearch, view]);
 
   useEffect(() => {
-    if (activeSection === 'crms') {
+    if (activeSection === 'crms' && view === 'list') {
       cargarDatos(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,33 +268,81 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [portalesSkip]);
 
-  function handleOpenModal() {
-    setForm({
-      tipo: activeCrmTab === 'proveedores' ? 'proveedor' : 'cliente',
-      nombre: '',
-      rfc: '',
-      razon_social: '',
-      telefono: '',
-      email: '',
-      notas: '',
-    });
-    setShowModal(true);
+  useEffect(() => {
+    if (view === 'detail' && selectedEntityId) {
+      cargarDetalle();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, selectedEntityId, activeEntityTab]);
+
+  // ---------------------------------------------------------------------------
+  // Acciones
+  // ---------------------------------------------------------------------------
+
+  function handleOpenEntityModal(data = null) {
+    setModal({ type: 'entidad', data });
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!form.nombre.trim()) return;
+  async function handleSaveEntity(form) {
     setSaving(true);
     try {
-      await crearEntidadCrm(form);
-      setShowModal(false);
+      if (form.id) {
+        await actualizarEntidadCrm(form.id, form);
+      } else {
+        await crearEntidadCrm(form);
+      }
+      setModal({ type: null, data: null });
+      if (view === 'detail' && selectedEntityId) {
+        await cargarDetalle();
+      }
       await cargarDatos(true);
     } catch (err) {
-      setError(err.message || 'Error al crear la entidad');
+      setError(err.message || 'Error al guardar la entidad');
     } finally {
       setSaving(false);
     }
   }
+
+  async function handleDeleteEntity() {
+    if (!confirmDelete.id) return;
+    try {
+      await eliminarEntidadCrm(confirmDelete.id);
+      setConfirmDelete({ type: null, id: null, name: '' });
+      navigateToEntity(null);
+      await cargarDatos(true);
+    } catch (err) {
+      setError(err.message || 'Error al eliminar la entidad');
+    }
+  }
+
+  async function handleSaveRelacion(apiCall, reload) {
+    setSaving(true);
+    try {
+      await apiCall();
+      setModal({ type: null, data: null });
+      if (reload) await reload();
+      await cargarDatos(true);
+    } catch (err) {
+      setError(err.message || 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteRelacion(apiCall, reload) {
+    try {
+      await apiCall();
+      setConfirmDelete({ type: null, id: null, name: '' });
+      if (reload) await reload();
+      await cargarDatos(true);
+    } catch (err) {
+      setError(err.message || 'Error al eliminar');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render: Sidebar / Topbar
+  // ---------------------------------------------------------------------------
 
   function renderSidebar() {
     return (
@@ -213,6 +368,7 @@ export default function AdminPage() {
                   onClick={() => {
                     setActiveSection(item.id);
                     setSidebarOpen(false);
+                    if (item.id === 'crms') navigateToEntity(null);
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     active
@@ -281,19 +437,26 @@ export default function AdminPage() {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Render: CRM Listado
+  // ---------------------------------------------------------------------------
+
   function renderResumenCards() {
     if (!resumen) return null;
     const items = [
       { label: 'Clientes', value: resumen.clientes || 0, icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50' },
       { label: 'Proveedores', value: resumen.proveedores || 0, icon: Briefcase, color: 'text-emerald-600', bg: 'bg-emerald-50' },
       { label: 'Contactos', value: resumen.contactos || 0, icon: Users, color: 'text-violet-600', bg: 'bg-violet-50' },
-      { label: 'Ubicaciones', value: resumen.ubicaciones || 0, icon: MapPin, color: 'text-amber-600', bg: 'bg-amber-50' },
+      { label: 'Granjas', value: resumen.granjas || 0, icon: Warehouse, color: 'text-amber-600', bg: 'bg-amber-50' },
+      { label: 'Ubicaciones', value: resumen.ubicaciones || 0, icon: MapPin, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+      { label: 'Paqueterías', value: resumen.paqueterias || 0, icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
       { label: 'Portales', value: resumen.portales || 0, icon: Lock, color: 'text-p3-red', bg: 'bg-red-50' },
+      { label: 'Descuentos', value: resumen.descuentos || 0, icon: Percent, color: 'text-teal-600', bg: 'bg-teal-50' },
       { label: 'Documentos', value: resumen.documentos || 0, icon: FileText, color: 'text-gray-600', bg: 'bg-gray-100' },
     ];
 
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3 mb-6">
         {items.map((item) => {
           const Icon = item.icon;
           return (
@@ -319,25 +482,31 @@ export default function AdminPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
+              <th className="py-3 px-3 font-semibold">ID</th>
               <th className="py-3 px-3 font-semibold">Tipo</th>
               <th className="py-3 px-3 font-semibold">Nombre</th>
               <th className="py-3 px-3 font-semibold">RFC</th>
+              <th className="py-3 px-3 font-semibold">Ciudad/Estado</th>
+              <th className="py-3 px-3 font-semibold">Teléfono</th>
               <th className="py-3 px-3 font-semibold">Contacto principal</th>
-              <th className="py-3 px-3 font-semibold text-center">Ubicaciones</th>
+              <th className="py-3 px-3 font-semibold text-center">Granjas</th>
+              <th className="py-3 px-3 font-semibold text-center">Ubics.</th>
               <th className="py-3 px-3 font-semibold text-center">Portales</th>
+              <th className="py-3 px-3 font-semibold">Status</th>
               <th className="py-3 px-3 font-semibold text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {entidades.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500">
+                <td colSpan={12} className="py-8 text-center text-gray-500">
                   No se encontraron entidades.
                 </td>
               </tr>
             ) : (
               entidades.map((entidad) => (
                 <tr key={entidad.id} className="hover:bg-gray-50/60">
+                  <td className="py-3 px-3 text-gray-500 font-mono text-xs">{entidad.id_externo || entidad.id}</td>
                   <td className="py-3 px-3">
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -349,18 +518,41 @@ export default function AdminPage() {
                   </td>
                   <td className="py-3 px-3 font-medium text-gray-900">{entidad.nombre}</td>
                   <td className="py-3 px-3 text-gray-600">{entidad.rfc || '-'}</td>
+                  <td className="py-3 px-3 text-gray-600">
+                    {[entidad.ciudad, entidad.estado].filter(Boolean).join(', ') || '-'}
+                  </td>
+                  <td className="py-3 px-3 text-gray-600">{entidad.telefono || '-'}</td>
                   <td className="py-3 px-3 text-gray-600">{entidad.contacto_principal || '-'}</td>
+                  <td className="py-3 px-3 text-center text-gray-600">{entidad.total_granjas || 0}</td>
                   <td className="py-3 px-3 text-center text-gray-600">{entidad.total_ubicaciones || 0}</td>
                   <td className="py-3 px-3 text-center text-gray-600">{entidad.total_portales || 0}</td>
-                  <td className="py-3 px-3 text-right">
-                    <button
-                      onClick={() => (window.location.href = `/admin/crms/entidad/${entidad.id}`)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
-                      title="Ver detalle"
+                  <td className="py-3 px-3">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        STATUS_BADGE[entidad.status] || 'bg-gray-100 text-gray-700'
+                      }`}
                     >
-                      <Eye size={14} />
-                      Ver
-                    </button>
+                      {entidad.status || 'Activo'}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-right">
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => navigateToEntity(entidad.id)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
+                        title="Ver detalle"
+                      >
+                        <Eye size={14} />
+                        Ver
+                      </button>
+                      <button
+                        onClick={() => handleOpenEntityModal(entidad)}
+                        className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-500 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -403,7 +595,7 @@ export default function AdminPage() {
     );
   }
 
-  function renderCrmGeneral() {
+  function renderCrmList() {
     return (
       <div>
         {renderResumenCards()}
@@ -412,7 +604,7 @@ export default function AdminPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-gray-100">
             <h2 className="text-base font-bold text-gray-900">Entidades del CRM</h2>
             <button
-              onClick={handleOpenModal}
+              onClick={() => handleOpenEntityModal(null)}
               className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-p3-red hover:bg-p3-red-dark rounded-lg transition-colors shadow-sm"
             >
               <Plus size={18} />
@@ -420,8 +612,8 @@ export default function AdminPage() {
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 mb-4">
-            <div className="relative flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
@@ -442,6 +634,22 @@ export default function AdminPage() {
               <option value="proveedor">Proveedor</option>
               <option value="ambos">Ambos</option>
             </select>
+            <select
+              value={statusFiltro}
+              onChange={(e) => setStatusFiltro(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+            >
+              <option value="">Todos los status</option>
+              <option value="Activo">Activo</option>
+              <option value="Inactivo">Inactivo</option>
+            </select>
+            <input
+              type="text"
+              value={industriaFiltro}
+              onChange={(e) => setIndustriaFiltro(e.target.value)}
+              placeholder="Industria..."
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+            />
           </div>
 
           {loading ? (
@@ -461,6 +669,9 @@ export default function AdminPage() {
   }
 
   function renderCrmSection() {
+    if (view === 'detail') {
+      return renderEntityDetail();
+    }
     return (
       <div>
         <div className="flex items-center gap-2 mb-6">
@@ -481,10 +692,633 @@ export default function AdminPage() {
             );
           })}
         </div>
-        {renderCrmGeneral()}
+        {renderCrmList()}
       </div>
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Render: Entity Detail
+  // ---------------------------------------------------------------------------
+
+  function renderEntityDetail() {
+    const entidad = detail?.entidad;
+    if (!entidad && detailLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center h-96">
+          <div className="w-10 h-10 border-4 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-3 text-sm text-gray-500">Cargando ficha...</p>
+        </div>
+      );
+    }
+    if (!entidad) {
+      return (
+        <div className="text-center py-20 text-gray-500">
+          No se encontró la entidad.
+          <div className="mt-4">
+            <button
+              onClick={() => navigateToEntity(null)}
+              className="px-4 py-2 text-sm font-medium text-white bg-p3-red hover:bg-p3-red-dark rounded-lg"
+            >
+              Regresar al listado
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigateToEntity(null)}
+              className="p-2 text-gray-500 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
+              title="Regresar"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-gray-900">{entidad.nombre}</h2>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    TIPO_BADGE[entidad.tipo] || 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {TIPO_LABEL[entidad.tipo] || entidad.tipo}
+                </span>
+              </div>
+              <p className="text-sm text-gray-500">
+                {entidad.razon_social || entidad.rfc || ''} · {entidad.status || 'Activo'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleOpenEntityModal(entidad)}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <Pencil size={16} />
+              Editar
+            </button>
+            <button
+              onClick={() =>
+                setConfirmDelete({ type: 'entidad', id: entidad.id, name: entidad.nombre })
+              }
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <Trash2 size={16} />
+              Eliminar
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="flex overflow-x-auto border-b border-gray-100">
+            {ENTITY_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const active = activeEntityTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveEntityTab(tab.id)}
+                  className={classNames(
+                    'flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2',
+                    active
+                      ? 'text-p3-red border-p3-red bg-red-50/50'
+                      : 'text-gray-600 border-transparent hover:text-gray-900 hover:bg-gray-50'
+                  )}
+                >
+                  <Icon size={16} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="p-4 lg:p-6">
+            {activeEntityTab === 'general' && renderTabGeneral(entidad)}
+            {activeEntityTab === 'contactos' && renderTabContactos()}
+            {activeEntityTab === 'granjas' && renderTabGranjas()}
+            {activeEntityTab === 'ubicaciones' && renderTabUbicaciones()}
+            {activeEntityTab === 'paqueterias' && renderTabPaqueterias()}
+            {activeEntityTab === 'portales' && renderTabPortales()}
+            {activeEntityTab === 'descuentos' && renderTabDescuentos()}
+            {activeEntityTab === 'documentos' && renderTabDocumentos()}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderTabGeneral(entidad) {
+    const fields = [
+      { label: 'ID externo', value: entidad.id_externo },
+      { label: 'Nombre', value: entidad.nombre },
+      { label: 'Razón social', value: entidad.razon_social },
+      { label: 'RFC', value: entidad.rfc },
+      { label: 'Tipo de persona', value: entidad.tipo_persona },
+      { label: 'Régimen fiscal', value: entidad.regimen_fiscal },
+      { label: 'Uso CFDI', value: entidad.uso_cfdi },
+      { label: 'Correo CFDI', value: entidad.correo_cfdi },
+      { label: 'Teléfono', value: entidad.telefono },
+      { label: 'Email', value: entidad.email },
+      { label: 'Condición de pago', value: entidad.condicion_pago },
+      { label: 'Días de crédito', value: entidad.dias_credito },
+      { label: 'Vendedor', value: entidad.vendedor },
+      { label: 'Industria', value: entidad.industria },
+      { label: 'Interés principal', value: entidad.interes_principal },
+      { label: 'Puntuación', value: entidad.puntuacion },
+      { label: 'Status', value: entidad.status },
+      { label: 'Link documentos', value: entidad.link_documentos, isLink: true },
+      { label: 'Notas', value: entidad.notas },
+    ];
+
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-bold text-gray-900">Información general</h3>
+          <button
+            onClick={() => handleOpenEntityModal(entidad)}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-p3-red hover:bg-p3-red-dark rounded-lg transition-colors"
+          >
+            <Pencil size={16} />
+            Editar
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {fields.map((f) => (
+            <div key={f.label} className="bg-gray-50 rounded-lg p-3">
+              <p className="text-xs text-gray-500 mb-1">{f.label}</p>
+              {f.isLink && f.value ? (
+                <a
+                  href={f.value}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-p3-blue hover:underline break-all"
+                >
+                  {f.value}
+                </a>
+              ) : (
+                <p className="text-sm font-medium text-gray-900">{f.value || '-'}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render helpers: tablas de relación
+  // ---------------------------------------------------------------------------
+
+  function SectionHeader({ title, onAdd }) {
+    return (
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-bold text-gray-900">{title}</h3>
+        <button
+          onClick={onAdd}
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-p3-red hover:bg-p3-red-dark rounded-lg transition-colors"
+        >
+          <Plus size={16} />
+          Nuevo
+        </button>
+      </div>
+    );
+  }
+
+  function EmptyState({ message }) {
+    return <p className="text-sm text-gray-500 py-6 text-center bg-gray-50 rounded-lg">{message}</p>;
+  }
+
+  function ActionButtons({ onEdit, onDelete }) {
+    return (
+      <div className="inline-flex items-center gap-1">
+        <button
+          onClick={onEdit}
+          className="p-1.5 text-gray-500 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
+          title="Editar"
+        >
+          <Pencil size={14} />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          title="Eliminar"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Contactos
+  // ---------------------------------------------------------------------------
+
+  function renderTabContactos() {
+    const items = detail?.contactos || [];
+    return (
+      <div>
+        <SectionHeader
+          title="Contactos"
+          onAdd={() => setModal({ type: 'contacto', data: null })}
+        />
+        {items.length === 0 ? (
+          <EmptyState message="No hay contactos registrados." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
+                  <th className="py-2 px-3 font-semibold">Nombre</th>
+                  <th className="py-2 px-3 font-semibold">Puesto</th>
+                  <th className="py-2 px-3 font-semibold">Departamento</th>
+                  <th className="py-2 px-3 font-semibold">Teléfono</th>
+                  <th className="py-2 px-3 font-semibold">WhatsApp</th>
+                  <th className="py-2 px-3 font-semibold">Email</th>
+                  <th className="py-2 px-3 font-semibold">Principal</th>
+                  <th className="py-2 px-3 font-semibold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {items.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50/60">
+                    <td className="py-2 px-3 font-medium text-gray-900">{item.nombre}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.puesto || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.departamento || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.telefono || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.whatsapp || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.email || '-'}</td>
+                    <td className="py-2 px-3">
+                      {item.principal ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                          Sí
+                        </span>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className="py-2 px-3 text-right">
+                      <ActionButtons
+                        onEdit={() => setModal({ type: 'contacto', data: item })}
+                        onDelete={() =>
+                          setConfirmDelete({ type: 'contacto', id: item.id, name: item.nombre })
+                        }
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Granjas
+  // ---------------------------------------------------------------------------
+
+  function renderTabGranjas() {
+    const items = detail?.granjas || [];
+    return (
+      <div>
+        <SectionHeader
+          title="Granjas"
+          onAdd={() => setModal({ type: 'granja', data: null })}
+        />
+        {items.length === 0 ? (
+          <EmptyState message="No hay granjas registradas." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
+                  <th className="py-2 px-3 font-semibold">ID externo</th>
+                  <th className="py-2 px-3 font-semibold">Nombre</th>
+                  <th className="py-2 px-3 font-semibold">Tipo</th>
+                  <th className="py-2 px-3 font-semibold">Paso</th>
+                  <th className="py-2 px-3 font-semibold">Contacto</th>
+                  <th className="py-2 px-3 font-semibold">Teléfono</th>
+                  <th className="py-2 px-3 font-semibold">Correo</th>
+                  <th className="py-2 px-3 font-semibold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {items.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50/60">
+                    <td className="py-2 px-3 text-gray-500 font-mono text-xs">{item.granja_id_externo || '-'}</td>
+                    <td className="py-2 px-3 font-medium text-gray-900">{item.nombre}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.tipo || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.paso || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">
+                      {item.contacto_nombre || '-'} {item.contacto_puesto ? `(${item.contacto_puesto})` : ''}
+                    </td>
+                    <td className="py-2 px-3 text-gray-600">{item.contacto_telefono || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.contacto_correo || '-'}</td>
+                    <td className="py-2 px-3 text-right">
+                      <ActionButtons
+                        onEdit={() => setModal({ type: 'granja', data: item })}
+                        onDelete={() =>
+                          setConfirmDelete({ type: 'granja', id: item.id, name: item.nombre })
+                        }
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Ubicaciones
+  // ---------------------------------------------------------------------------
+
+  function renderTabUbicaciones() {
+    const items = detail?.ubicaciones || [];
+    return (
+      <div>
+        <SectionHeader
+          title="Domicilios"
+          onAdd={() => setModal({ type: 'ubicacion', data: null })}
+        />
+        {items.length === 0 ? (
+          <EmptyState message="No hay domicilios registrados." />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {items.map((item) => (
+              <div key={item.id} className="border border-gray-100 rounded-xl p-4 bg-white shadow-sm">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-medium text-gray-900">{item.nombre || 'Domicilio'}</p>
+                    <p className="text-xs text-gray-500">{item.tipo || ''}</p>
+                  </div>
+                  <ActionButtons
+                    onEdit={() => setModal({ type: 'ubicacion', data: item })}
+                    onDelete={() =>
+                      setConfirmDelete({ type: 'ubicacion', id: item.id, name: item.nombre || 'ubicación' })
+                    }
+                  />
+                </div>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p>{item.direccion || [item.calle, item.numero, item.colonia, item.cp, item.ciudad, item.estado].filter(Boolean).join(', ') || '-'}</p>
+                  {item.coordenadas && <p className="text-xs font-mono">{item.coordenadas}</p>}
+                  {item.link_mapa && (
+                    <a
+                      href={item.link_mapa}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-p3-blue hover:underline text-xs"
+                    >
+                      <ExternalLink size={12} />
+                      Ver mapa
+                    </a>
+                  )}
+                  {item.notas && <p className="text-xs text-gray-500 mt-2">{item.notas}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Paqueterías
+  // ---------------------------------------------------------------------------
+
+  function renderTabPaqueterias() {
+    const items = detail?.paqueterias || [];
+    return (
+      <div>
+        <SectionHeader
+          title="Paqueterías"
+          onAdd={() => setModal({ type: 'paqueteria', data: null })}
+        />
+        {items.length === 0 ? (
+          <EmptyState message="No hay paqueterías registradas." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
+                  <th className="py-2 px-3 font-semibold">Paquetería</th>
+                  <th className="py-2 px-3 font-semibold">Tipo envío</th>
+                  <th className="py-2 px-3 font-semibold">Ocurre/Domicilio</th>
+                  <th className="py-2 px-3 font-semibold">Atención a</th>
+                  <th className="py-2 px-3 font-semibold">Teléfono</th>
+                  <th className="py-2 px-3 font-semibold">Correo guía</th>
+                  <th className="py-2 px-3 font-semibold">Tipo pago</th>
+                  <th className="py-2 px-3 font-semibold">Status</th>
+                  <th className="py-2 px-3 font-semibold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {items.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50/60">
+                    <td className="py-2 px-3 font-medium text-gray-900">{item.paqueteria || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.tipo_envio || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.ocurre_domicilio || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.atencion_a || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.telefono || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.correo_guia || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.tipo_pago || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.status || 'Activo'}</td>
+                    <td className="py-2 px-3 text-right">
+                      <ActionButtons
+                        onEdit={() => setModal({ type: 'paqueteria', data: item })}
+                        onDelete={() =>
+                          setConfirmDelete({ type: 'paqueteria', id: item.id, name: item.paqueteria || 'paquetería' })
+                        }
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Portales
+  // ---------------------------------------------------------------------------
+
+  function renderTabPortales() {
+    const items = detail?.portales || [];
+    return (
+      <div>
+        <SectionHeader
+          title="Portales"
+          onAdd={() => setModal({ type: 'portal', data: null })}
+        />
+        {items.length === 0 ? (
+          <EmptyState message="No hay portales registrados." />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {items.map((item) => (
+              <div key={item.id} className="border border-gray-100 rounded-xl p-4 bg-white shadow-sm">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Globe size={16} className="text-p3-red" />
+                    <p className="font-medium text-gray-900">{item.nombre || 'Portal'}</p>
+                  </div>
+                  <ActionButtons
+                    onEdit={() => setModal({ type: 'portal', data: item })}
+                    onDelete={() =>
+                      setConfirmDelete({ type: 'portal', id: item.id, name: item.nombre || 'portal' })
+                    }
+                  />
+                </div>
+                <div className="space-y-1 text-sm text-gray-600">
+                  {item.url && (
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-p3-blue hover:underline break-all"
+                    >
+                      {item.url}
+                    </a>
+                  )}
+                  <p>Usuario: <span className="font-mono text-xs">{item.usuario || '-'}</span></p>
+                  <p>Contraseña: <span className="font-mono text-xs">{item.password || '-'}</span></p>
+                  {item.persona_apoyo && <p>Apoyo: {item.persona_apoyo}</p>}
+                  {item.notas && <p className="text-xs text-gray-500 mt-2">{item.notas}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Descuentos
+  // ---------------------------------------------------------------------------
+
+  function renderTabDescuentos() {
+    const items = detail?.descuentos || [];
+    const entidad = detail?.entidad;
+    return (
+      <div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-xs text-gray-500 mb-1">Días de crédito</p>
+            <p className="text-lg font-bold text-gray-900">{entidad?.dias_credito || '-'}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-xs text-gray-500 mb-1">Condición de pago</p>
+            <p className="text-lg font-bold text-gray-900">{entidad?.condicion_pago || '-'}</p>
+          </div>
+        </div>
+        <SectionHeader
+          title="Descuentos por marca"
+          onAdd={() => setModal({ type: 'descuento', data: null })}
+        />
+        {items.length === 0 ? (
+          <EmptyState message="No hay descuentos registrados." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
+                  <th className="py-2 px-3 font-semibold">Marca</th>
+                  <th className="py-2 px-3 font-semibold">Descuento</th>
+                  <th className="py-2 px-3 font-semibold">Notas</th>
+                  <th className="py-2 px-3 font-semibold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {items.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50/60">
+                    <td className="py-2 px-3 font-medium text-gray-900">{item.marca || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.descuento || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.notas || '-'}</td>
+                    <td className="py-2 px-3 text-right">
+                      <ActionButtons
+                        onEdit={() => setModal({ type: 'descuento', data: item })}
+                        onDelete={() =>
+                          setConfirmDelete({ type: 'descuento', id: item.id, name: item.marca || 'descuento' })
+                        }
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Documentos
+  // ---------------------------------------------------------------------------
+
+  function renderTabDocumentos() {
+    const items = detail?.documentos || [];
+    return (
+      <div>
+        <SectionHeader
+          title="Documentos"
+          onAdd={() => setModal({ type: 'documento', data: null })}
+        />
+        {items.length === 0 ? (
+          <EmptyState message="No hay documentos registrados (placeholder)." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
+                  <th className="py-2 px-3 font-semibold">Tipo</th>
+                  <th className="py-2 px-3 font-semibold">Nombre archivo</th>
+                  <th className="py-2 px-3 font-semibold">Ruta</th>
+                  <th className="py-2 px-3 font-semibold">Notas</th>
+                  <th className="py-2 px-3 font-semibold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {items.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50/60">
+                    <td className="py-2 px-3 text-gray-600">{item.tipo || '-'}</td>
+                    <td className="py-2 px-3 font-medium text-gray-900">{item.nombre_archivo || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600 font-mono text-xs">{item.ruta_archivo || '-'}</td>
+                    <td className="py-2 px-3 text-gray-600">{item.notas || '-'}</td>
+                    <td className="py-2 px-3 text-right">
+                      <ActionButtons
+                        onEdit={() => setModal({ type: 'documento', data: item })}
+                        onDelete={() =>
+                          setConfirmDelete({ type: 'documento', id: item.id, name: item.nombre_archivo || 'documento' })
+                        }
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Portales global
+  // ---------------------------------------------------------------------------
 
   function renderPortalesTable() {
     return (
@@ -498,13 +1332,14 @@ export default function AdminPage() {
               <th className="py-3 px-3 font-semibold">URL</th>
               <th className="py-3 px-3 font-semibold">Usuario</th>
               <th className="py-3 px-3 font-semibold">Contraseña</th>
+              <th className="py-3 px-3 font-semibold">Apoyo</th>
               <th className="py-3 px-3 font-semibold">Notas</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {portales.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500">
+                <td colSpan={8} className="py-8 text-center text-gray-500">
                   No se encontraron portales.
                 </td>
               </tr>
@@ -538,6 +1373,7 @@ export default function AdminPage() {
                   </td>
                   <td className="py-3 px-3 text-gray-700 font-mono text-xs">{p.usuario || '-'}</td>
                   <td className="py-3 px-3 text-gray-700 font-mono text-xs">{p.password || '-'}</td>
+                  <td className="py-3 px-3 text-gray-600 text-xs">{p.persona_apoyo || '-'}</td>
                   <td className="py-3 px-3 text-gray-500 text-xs">{p.notas || '-'}</td>
                 </tr>
               ))
@@ -618,118 +1454,637 @@ export default function AdminPage() {
     );
   }
 
-  function renderModal() {
-    if (!showModal) return null;
+  // ---------------------------------------------------------------------------
+  // Modales
+  // ---------------------------------------------------------------------------
+
+  function Modal({ title, onClose, children }) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between p-5 border-b border-gray-100">
-            <h3 className="text-lg font-bold text-gray-900">Nueva entidad</h3>
+            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
             <button
-              onClick={() => setShowModal(false)}
+              onClick={onClose}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <X size={18} />
             </button>
           </div>
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-              <select
-                value={form.tipo}
-                onChange={(e) => setForm({ ...form, tipo: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
-              >
-                <option value="cliente">Cliente</option>
-                <option value="proveedor">Proveedor</option>
-                <option value="ambos">Ambos</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-              <input
-                type="text"
-                value={form.nombre}
-                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                required
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">RFC</label>
-                <input
-                  type="text"
-                  value={form.rfc}
-                  onChange={(e) => setForm({ ...form, rfc: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Razón social</label>
-                <input
-                  type="text"
-                  value={form.razon_social}
-                  onChange={(e) => setForm({ ...form, razon_social: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                <input
-                  type="text"
-                  value={form.telefono}
-                  onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
-              <textarea
-                value={form.notas}
-                onChange={(e) => setForm({ ...form, notas: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
-              />
-            </div>
-            {error && (
-              <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                {error}
-              </div>
-            )}
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={saving || !form.nombre.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-p3-red hover:bg-p3-red-dark rounded-lg transition-colors disabled:opacity-50"
-              >
-                {saving ? 'Guardando...' : 'Guardar'}
-              </button>
-            </div>
-          </form>
+          <div className="p-5">{children}</div>
         </div>
       </div>
     );
   }
+
+  function FormInput({ label, value, onChange, type = 'text', required = false, placeholder = '', rows }) {
+    const baseClass =
+      'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red';
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {label}
+          {required && <span className="text-p3-red"> *</span>}
+        </label>
+        {rows ? (
+          <textarea
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+            rows={rows}
+            placeholder={placeholder}
+            className={baseClass}
+          />
+        ) : (
+          <input
+            type={type}
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            className={baseClass}
+          />
+        )}
+      </div>
+    );
+  }
+
+  function FormSelect({ label, value, onChange, options, required = false }) {
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {label}
+          {required && <span className="text-p3-red"> *</span>}
+        </label>
+        <select
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+        >
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  function FormCheckbox({ label, checked, onChange }) {
+    return (
+      <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={!!checked}
+          onChange={(e) => onChange(e.target.checked ? 1 : 0)}
+          className="w-4 h-4 text-p3-red border-gray-300 rounded focus:ring-p3-red"
+        />
+        {label}
+      </label>
+    );
+  }
+
+  function ModalFooter({ onClose, disabled, savingText = 'Guardando...', saveText = 'Guardar' }) {
+    return (
+      <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          disabled={disabled}
+          className="px-4 py-2 text-sm font-medium text-white bg-p3-red hover:bg-p3-red-dark rounded-lg transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+        >
+          <Save size={16} />
+          {disabled ? savingText : saveText}
+        </button>
+      </div>
+    );
+  }
+
+  function EntityModal() {
+    const initial = modal.data || {
+      tipo: activeCrmTab === 'proveedores' ? 'proveedor' : 'cliente',
+      status: 'Activo',
+    };
+    const [form, setForm] = useState(initial);
+
+    const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+    return (
+      <Modal title={form.id ? 'Editar entidad' : 'Nueva entidad'} onClose={() => setModal({ type: null, data: null })}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveEntity(form);
+          }}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormSelect
+              label="Tipo"
+              value={form.tipo}
+              onChange={(v) => update('tipo', v)}
+              required
+              options={[
+                { value: 'cliente', label: 'Cliente' },
+                { value: 'proveedor', label: 'Proveedor' },
+                { value: 'ambos', label: 'Ambos' },
+              ]}
+            />
+            <FormInput label="ID externo" value={form.id_externo} onChange={(v) => update('id_externo', v)} />
+          </div>
+          <FormInput label="Nombre" value={form.nombre} onChange={(v) => update('nombre', v)} required />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Razón social" value={form.razon_social} onChange={(v) => update('razon_social', v)} />
+            <FormInput label="RFC" value={form.rfc} onChange={(v) => update('rfc', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <FormSelect
+              label="Tipo de persona"
+              value={form.tipo_persona || ''}
+              onChange={(v) => update('tipo_persona', v || null)}
+              options={[
+                { value: '', label: '—' },
+                { value: 'Física', label: 'Física' },
+                { value: 'Moral', label: 'Moral' },
+              ]}
+            />
+            <FormInput label="Régimen fiscal" value={form.regimen_fiscal} onChange={(v) => update('regimen_fiscal', v)} />
+            <FormInput label="Uso CFDI" value={form.uso_cfdi} onChange={(v) => update('uso_cfdi', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Correo CFDI" value={form.correo_cfdi} onChange={(v) => update('correo_cfdi', v)} />
+            <FormInput label="Email general" value={form.email} onChange={(v) => update('email', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Teléfono" value={form.telefono} onChange={(v) => update('telefono', v)} />
+            <FormInput label="Vendedor" value={form.vendedor} onChange={(v) => update('vendedor', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Condición de pago" value={form.condicion_pago} onChange={(v) => update('condicion_pago', v)} />
+            <FormInput label="Días de crédito" value={form.dias_credito} onChange={(v) => update('dias_credito', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Industria" value={form.industria} onChange={(v) => update('industria', v)} />
+            <FormInput label="Interés principal" value={form.interes_principal} onChange={(v) => update('interes_principal', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <FormInput
+              type="number"
+              label="Puntuación (0-100)"
+              value={form.puntuacion}
+              onChange={(v) => update('puntuacion', v === '' ? null : parseInt(v, 10))}
+            />
+            <FormSelect
+              label="Status"
+              value={form.status || 'Activo'}
+              onChange={(v) => update('status', v)}
+              options={[
+                { value: 'Activo', label: 'Activo' },
+                { value: 'Inactivo', label: 'Inactivo' },
+              ]}
+            />
+            <FormInput label="Link documentos" value={form.link_documentos} onChange={(v) => update('link_documentos', v)} />
+          </div>
+          <FormInput label="Notas" value={form.notas} onChange={(v) => update('notas', v)} rows={3} />
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</div>
+          )}
+          <ModalFooter onClose={() => setModal({ type: null, data: null })} disabled={saving || !form.nombre?.trim()} />
+        </form>
+      </Modal>
+    );
+  }
+
+  function ContactoModal() {
+    const initial = modal.data || { principal: 0 };
+    const [form, setForm] = useState(initial);
+    const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+    return (
+      <Modal title={form.id ? 'Editar contacto' : 'Nuevo contacto'} onClose={() => setModal({ type: null, data: null })}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveRelacion(
+              () =>
+                form.id
+                  ? actualizarContactoCrm(form.id, form)
+                  : crearContactoCrm(selectedEntityId, form),
+              cargarDetalle
+            );
+          }}
+          className="space-y-4"
+        >
+          <FormInput label="Nombre" value={form.nombre} onChange={(v) => update('nombre', v)} required />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Puesto" value={form.puesto} onChange={(v) => update('puesto', v)} />
+            <FormInput label="Departamento" value={form.departamento} onChange={(v) => update('departamento', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Teléfono" value={form.telefono} onChange={(v) => update('telefono', v)} />
+            <FormInput label="WhatsApp" value={form.whatsapp} onChange={(v) => update('whatsapp', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Email" value={form.email} onChange={(v) => update('email', v)} />
+            <FormInput label="Correos facturas" value={form.correos_facturas} onChange={(v) => update('correos_facturas', v)} />
+          </div>
+          <FormInput label="Dirección de entrega" value={form.direccion_entrega} onChange={(v) => update('direccion_entrega', v)} />
+          <FormCheckbox label="Contacto principal" checked={form.principal} onChange={(v) => update('principal', v)} />
+          <FormInput label="Notas" value={form.notas} onChange={(v) => update('notas', v)} rows={3} />
+          <ModalFooter onClose={() => setModal({ type: null, data: null })} disabled={saving || !form.nombre?.trim()} />
+        </form>
+      </Modal>
+    );
+  }
+
+  function GranjaModal() {
+    const initial = modal.data || {};
+    const [form, setForm] = useState(initial);
+    const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+    return (
+      <Modal title={form.id ? 'Editar granja' : 'Nueva granja'} onClose={() => setModal({ type: null, data: null })}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveRelacion(
+              () =>
+                form.id
+                  ? actualizarGranjaCrm(form.id, form)
+                  : crearGranjaCrm(selectedEntityId, form),
+              cargarDetalle
+            );
+          }}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="ID externo" value={form.granja_id_externo} onChange={(v) => update('granja_id_externo', v)} />
+            <FormInput label="Nombre" value={form.nombre} onChange={(v) => update('nombre', v)} required />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Tipo" value={form.tipo} onChange={(v) => update('tipo', v)} />
+            <FormInput label="Paso" value={form.paso} onChange={(v) => update('paso', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Contacto" value={form.contacto_nombre} onChange={(v) => update('contacto_nombre', v)} />
+            <FormInput label="Puesto" value={form.contacto_puesto} onChange={(v) => update('contacto_puesto', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Teléfono" value={form.contacto_telefono} onChange={(v) => update('contacto_telefono', v)} />
+            <FormInput label="Correo" value={form.contacto_correo} onChange={(v) => update('contacto_correo', v)} />
+          </div>
+          <FormInput label="Comentarios" value={form.comentarios} onChange={(v) => update('comentarios', v)} rows={3} />
+          <ModalFooter onClose={() => setModal({ type: null, data: null })} disabled={saving || !form.nombre?.trim()} />
+        </form>
+      </Modal>
+    );
+  }
+
+  function UbicacionModal() {
+    const initial = modal.data || { tipo: 'oficina' };
+    const [form, setForm] = useState(initial);
+    const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+    const granjas = detail?.granjas || [];
+
+    return (
+      <Modal title={form.id ? 'Editar domicilio' : 'Nuevo domicilio'} onClose={() => setModal({ type: null, data: null })}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveRelacion(
+              () =>
+                form.id
+                  ? actualizarUbicacionCrm(form.id, form)
+                  : crearUbicacionCrm(selectedEntityId, form),
+              cargarDetalle
+            );
+          }}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Nombre / alias" value={form.nombre} onChange={(v) => update('nombre', v)} />
+            <FormSelect
+              label="Tipo"
+              value={form.tipo || ''}
+              onChange={(v) => update('tipo', v || null)}
+              options={[
+                { value: '', label: '—' },
+                { value: 'oficina', label: 'Oficina' },
+                { value: 'granja', label: 'Granja' },
+                { value: 'bodega', label: 'Bodega' },
+                { value: 'fiscal', label: 'Fiscal' },
+                { value: 'envio', label: 'Envío' },
+                { value: 'otro', label: 'Otro' },
+              ]}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Granja asociada</label>
+            <select
+              value={form.granja_id || ''}
+              onChange={(e) => update('granja_id', e.target.value ? parseInt(e.target.value, 10) : null)}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+            >
+              <option value="">Ninguna</option>
+              {granjas.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Calle" value={form.calle} onChange={(v) => update('calle', v)} />
+            <FormInput label="Número" value={form.numero} onChange={(v) => update('numero', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <FormInput label="Colonia" value={form.colonia} onChange={(v) => update('colonia', v)} />
+            <FormInput label="CP" value={form.cp} onChange={(v) => update('cp', v)} />
+            <FormInput label="Ciudad" value={form.ciudad} onChange={(v) => update('ciudad', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Estado" value={form.estado} onChange={(v) => update('estado', v)} />
+            <FormInput label="País" value={form.pais} onChange={(v) => update('pais', v)} />
+          </div>
+          <FormInput label="Dirección completa" value={form.direccion} onChange={(v) => update('direccion', v)} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Coordenadas" value={form.coordenadas} onChange={(v) => update('coordenadas', v)} />
+            <FormInput label="Link mapa" value={form.link_mapa} onChange={(v) => update('link_mapa', v)} />
+          </div>
+          <FormInput label="Notas" value={form.notas} onChange={(v) => update('notas', v)} rows={3} />
+          <ModalFooter onClose={() => setModal({ type: null, data: null })} disabled={saving} />
+        </form>
+      </Modal>
+    );
+  }
+
+  function PaqueteriaModal() {
+    const initial = modal.data || { status: 'Activo' };
+    const [form, setForm] = useState(initial);
+    const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+    const ubicaciones = detail?.ubicaciones || [];
+
+    return (
+      <Modal title={form.id ? 'Editar paquetería' : 'Nueva paquetería'} onClose={() => setModal({ type: null, data: null })}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveRelacion(
+              () =>
+                form.id
+                  ? actualizarPaqueteriaCrm(form.id, form)
+                  : crearPaqueteriaCrm(selectedEntityId, form),
+              cargarDetalle
+            );
+          }}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="ID externo" value={form.paqueteria_id_externo} onChange={(v) => update('paqueteria_id_externo', v)} />
+            <FormInput label="Paquetería" value={form.paqueteria} onChange={(v) => update('paqueteria', v)} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación asociada</label>
+            <select
+              value={form.ubicacion_id || ''}
+              onChange={(e) => update('ubicacion_id', e.target.value ? parseInt(e.target.value, 10) : null)}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+            >
+              <option value="">Ninguna</option>
+              {ubicaciones.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre || u.direccion || `Ubicación ${u.id}`}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Tipo de envío" value={form.tipo_envio} onChange={(v) => update('tipo_envio', v)} />
+            <FormInput label="Ocurre / Domicilio" value={form.ocurre_domicilio} onChange={(v) => update('ocurre_domicilio', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Atención a" value={form.atencion_a} onChange={(v) => update('atencion_a', v)} />
+            <FormInput label="Teléfono" value={form.telefono} onChange={(v) => update('telefono', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Correo guía" value={form.correo_guia} onChange={(v) => update('correo_guia', v)} />
+            <FormInput label="Tipo de pago" value={form.tipo_pago} onChange={(v) => update('tipo_pago', v)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Facturado a" value={form.facturado_a} onChange={(v) => update('facturado_a', v)} />
+            <FormSelect
+              label="Status"
+              value={form.status || 'Activo'}
+              onChange={(v) => update('status', v)}
+              options={[
+                { value: 'Activo', label: 'Activo' },
+                { value: 'Inactivo', label: 'Inactivo' },
+              ]}
+            />
+          </div>
+          <FormInput label="Comentarios" value={form.comentarios} onChange={(v) => update('comentarios', v)} rows={3} />
+          <ModalFooter onClose={() => setModal({ type: null, data: null })} disabled={saving} />
+        </form>
+      </Modal>
+    );
+  }
+
+  function PortalModal() {
+    const initial = modal.data || {};
+    const [form, setForm] = useState(initial);
+    const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+    return (
+      <Modal title={form.id ? 'Editar portal' : 'Nuevo portal'} onClose={() => setModal({ type: null, data: null })}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveRelacion(
+              () =>
+                form.id
+                  ? actualizarPortalCrm(form.id, form)
+                  : crearPortalCrm(selectedEntityId, form),
+              cargarDetalle
+            );
+          }}
+          className="space-y-4"
+        >
+          <FormInput label="Nombre" value={form.nombre} onChange={(v) => update('nombre', v)} />
+          <FormInput label="URL" value={form.url} onChange={(v) => update('url', v)} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Usuario" value={form.usuario} onChange={(v) => update('usuario', v)} />
+            <FormInput
+              label={form.id ? 'Contraseña (dejar en blanco para no cambiar)' : 'Contraseña *'}
+              value={form.password || ''}
+              onChange={(v) => update('password', v)}
+              required={!form.id}
+            />
+          </div>
+          <FormInput label="Persona de apoyo" value={form.persona_apoyo} onChange={(v) => update('persona_apoyo', v)} />
+          <FormInput label="Notas" value={form.notas} onChange={(v) => update('notas', v)} rows={3} />
+          <ModalFooter onClose={() => setModal({ type: null, data: null })} disabled={saving || (!form.id && !form.password)} />
+        </form>
+      </Modal>
+    );
+  }
+
+  function DescuentoModal() {
+    const initial = modal.data || {};
+    const [form, setForm] = useState(initial);
+    const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+    return (
+      <Modal title={form.id ? 'Editar descuento' : 'Nuevo descuento'} onClose={() => setModal({ type: null, data: null })}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveRelacion(
+              () =>
+                form.id
+                  ? actualizarDescuentoCrm(form.id, form)
+                  : crearDescuentoCrm(selectedEntityId, form),
+              cargarDetalle
+            );
+          }}
+          className="space-y-4"
+        >
+          <FormInput label="Marca" value={form.marca} onChange={(v) => update('marca', v)} />
+          <FormInput label="Descuento" value={form.descuento} onChange={(v) => update('descuento', v)} />
+          <FormInput label="Notas" value={form.notas} onChange={(v) => update('notas', v)} rows={3} />
+          <ModalFooter onClose={() => setModal({ type: null, data: null })} disabled={saving} />
+        </form>
+      </Modal>
+    );
+  }
+
+  function DocumentoModal() {
+    const initial = modal.data || {};
+    const [form, setForm] = useState(initial);
+    const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+    return (
+      <Modal title={form.id ? 'Editar documento' : 'Nuevo documento'} onClose={() => setModal({ type: null, data: null })}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveRelacion(
+              () =>
+                form.id
+                  ? actualizarDocumentoCrm(form.id, form)
+                  : crearDocumentoCrm(selectedEntityId, form),
+              cargarDetalle
+            );
+          }}
+          className="space-y-4"
+        >
+          <FormInput label="Tipo" value={form.tipo} onChange={(v) => update('tipo', v)} />
+          <FormInput label="Nombre archivo" value={form.nombre_archivo} onChange={(v) => update('nombre_archivo', v)} />
+          <FormInput label="Ruta archivo" value={form.ruta_archivo} onChange={(v) => update('ruta_archivo', v)} />
+          <FormInput label="Notas" value={form.notas} onChange={(v) => update('notas', v)} rows={3} />
+          <ModalFooter onClose={() => setModal({ type: null, data: null })} disabled={saving} />
+        </form>
+      </Modal>
+    );
+  }
+
+  function renderModal() {
+    if (!modal.type) return null;
+    switch (modal.type) {
+      case 'entidad':
+        return <EntityModal />;
+      case 'contacto':
+        return <ContactoModal />;
+      case 'granja':
+        return <GranjaModal />;
+      case 'ubicacion':
+        return <UbicacionModal />;
+      case 'paqueteria':
+        return <PaqueteriaModal />;
+      case 'portal':
+        return <PortalModal />;
+      case 'descuento':
+        return <DescuentoModal />;
+      case 'documento':
+        return <DocumentoModal />;
+      default:
+        return null;
+    }
+  }
+
+  function ConfirmDeleteModal() {
+    if (!confirmDelete.type) return null;
+    const actionMap = {
+      entidad: { fn: handleDeleteEntity, label: 'entidad' },
+      contacto: {
+        fn: () => handleDeleteRelacion(() => eliminarContactoCrm(confirmDelete.id), cargarDetalle),
+        label: 'contacto',
+      },
+      granja: {
+        fn: () => handleDeleteRelacion(() => eliminarGranjaCrm(confirmDelete.id), cargarDetalle),
+        label: 'granja',
+      },
+      ubicacion: {
+        fn: () => handleDeleteRelacion(() => eliminarUbicacionCrm(confirmDelete.id), cargarDetalle),
+        label: 'domicilio',
+      },
+      paqueteria: {
+        fn: () => handleDeleteRelacion(() => eliminarPaqueteriaCrm(confirmDelete.id), cargarDetalle),
+        label: 'paquetería',
+      },
+      portal: {
+        fn: () => handleDeleteRelacion(() => eliminarPortalCrm(confirmDelete.id), cargarDetalle),
+        label: 'portal',
+      },
+      descuento: {
+        fn: () => handleDeleteRelacion(() => eliminarDescuentoCrm(confirmDelete.id), cargarDetalle),
+        label: 'descuento',
+      },
+      documento: {
+        fn: () => handleDeleteRelacion(() => eliminarDocumentoCrm(confirmDelete.id), cargarDetalle),
+        label: 'documento',
+      },
+    };
+    const action = actionMap[confirmDelete.type];
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-red-100 text-red-600 rounded-full">
+              <Trash2 size={20} />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Confirmar eliminación</h3>
+          </div>
+          <p className="text-sm text-gray-600 mb-6">
+            ¿Estás seguro de que deseas eliminar el {action.label} <strong>{confirmDelete.name}</strong>? Esta acción no se puede deshacer.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setConfirmDelete({ type: null, id: null, name: '' })}
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={action.fn}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Main render
+  // ---------------------------------------------------------------------------
 
   return (
     <div className="min-h-screen bg-gray-50/70">
@@ -748,9 +2103,15 @@ export default function AdminPage() {
               <LayoutDashboard size={16} />
               <ChevronRight size={14} />
               <span className="capitalize">{activeSection}</span>
+              {view === 'detail' && selectedEntityId && (
+                <>
+                  <ChevronRight size={14} />
+                  <span className="text-gray-700 font-medium">Ficha</span>
+                </>
+              )}
             </div>
 
-            {error && !showModal && (
+            {error && !modal.type && !confirmDelete.type && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm flex items-center gap-2">
                 <X size={18} />
                 {error}
@@ -763,6 +2124,7 @@ export default function AdminPage() {
         </main>
       </div>
       {renderModal()}
+      <ConfirmDeleteModal />
     </div>
   );
 }
