@@ -110,6 +110,25 @@ def _ensure_users_db():
             """
         )
         # Migraciones: columnas agregadas al esquema original
+        _add_column_if_missing(conn, "users", "totp_secret", "TEXT")
+        _add_column_if_missing(conn, "users", "totp_enabled", "INTEGER NOT NULL DEFAULT 0")
+        _add_column_if_missing(conn, "users", "bloqueado_hasta", "TIMESTAMP")
+        _add_column_if_missing(conn, "users", "intentos_fallidos", "INTEGER NOT NULL DEFAULT 0")
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS login_attempts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip TEXT,
+                email TEXT,
+                exito INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip, created_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts(email, created_at)")
+
         _add_column_if_missing(conn, "crm_entidades", "id_externo", "TEXT")
         _add_column_if_missing(conn, "crm_entidades", "razon_social", "TEXT")
         _add_column_if_missing(conn, "crm_entidades", "tipo_persona", "TEXT")

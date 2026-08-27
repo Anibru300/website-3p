@@ -51,15 +51,30 @@ export async function apiFetch(endpoint, options = {}) {
   return data;
 }
 
-export async function loginUser(username, password) {
+export async function loginUser(username, password, remember = false) {
   const params = new URLSearchParams();
   params.append('username', username);
   params.append('password', password);
+  if (remember) {
+    params.append('scope', 'remember');
+  }
 
   const data = await apiFetch('/api/auth/login', {
     method: 'POST',
     body: params.toString(),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+
+  if (data.access_token) {
+    setToken(data.access_token);
+  }
+  return data;
+}
+
+export async function verifyTotp(email, tempToken, code) {
+  const data = await apiFetch('/api/auth/verify-totp', {
+    method: 'POST',
+    body: JSON.stringify({ email, temp_token: tempToken, code }),
   });
 
   if (data.access_token) {

@@ -1,5 +1,11 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { fetchMe, loginUser as apiLogin, removeToken, setToken } from '../utils/api';
+import {
+  fetchMe,
+  loginUser as apiLogin,
+  removeToken,
+  setToken,
+  verifyTotp as apiVerifyTotp,
+} from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -12,10 +18,14 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(() => !!getInitialToken());
   const [error, setError] = useState(null);
+  const [totpStep, setTotpStep] = useState(null);
 
   useEffect(() => {
     const token = getInitialToken();
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     fetchMe()
       .then((data) => setUser(data))
@@ -26,11 +36,15 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = async (username, password) => {
+  const login = async (username, password, remember = false) => {
     setError(null);
+    setTotpStep(null);
     try {
-      const data = await apiLogin(username, password);
-      setToken(data.access_token);
+      const data = await apiLogin(username, password, remember);
+      if (data.requires_totp) {
+        setTotpStep({ email: data.user.email, tempToken: data.temp_token });
+        return { success: false, requiresTotp: true };
+      }
       setUser(data.user);
       return { success: true };
     } catch (err) {
@@ -39,14 +53,48 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const verifyTotp = async (code) => {
+    setError(null);
+    if (!totpStep) {
+      return { success: false, error: 'No hay sesión de verificación activa' };
+    }
+    try {
+      const data = await apiVerifyTotp(totpStep.email, totpStep.tempToken, code);
+      setUser(data.user);
+      setTotpStep(null);
+      return { success: true };
+    } catch (err) {
+      setError(err.message || 'Código incorrecto');
+      return { success: false, error: err.message };
+    }
+  };
+
+  const cancelTotp = () => {
+    setTotpStep(null);
+    setError(null);
+  };
+
   const logout = () => {
     removeToken();
     setUser(null);
+    setTotpStep(null);
     window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        error,
+        login,
+        verifyTotp,
+        cancelTotp,
+        logout,
+        totpStep,
+        isAuthenticated: !!user,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

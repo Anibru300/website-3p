@@ -1,4 +1,4 @@
-﻿# Script de preparacion del backend del portal 3P
+# Script de preparacion del backend del portal 3P
 # Lee credenciales de PostgreSQL desde C:\Projects\CJ_Assistant\.env
 # y configura C:\Projects\PAGINA WEB 3P\api\.env
 
@@ -81,7 +81,7 @@ POSTGRES_USER=$pgUser
 POSTGRES_PASSWORD=$pgPassword
 
 # Users DB (SQLite local, no va al repo)
-USERS_DB_PATH=./data/users.db
+USERS_DB_PATH=C:/Projects/PAGINA WEB 3P/data/users.db
 
 # San Antonio Excel
 SAN_ANTONIO_EXCEL_PATH=C:/Users/Ventas-3P/Desktop/SAN ANTONIO/SAN_ANTONIO_SEGUIMIENTO.xlsx
