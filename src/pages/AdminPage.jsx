@@ -77,7 +77,6 @@ const ENTITY_TABS = [
   { id: 'granjas', label: 'Granjas', icon: Warehouse },
   { id: 'ubicaciones', label: 'Domicilios', icon: Home },
   { id: 'paqueterias', label: 'Paqueterías', icon: Truck },
-  { id: 'portales', label: 'Portales', icon: Lock },
   { id: 'descuentos', label: 'Descuentos', icon: Percent },
   { id: 'documentos', label: 'Documentos', icon: FileText },
 ];
@@ -803,7 +802,6 @@ export default function AdminPage() {
             {activeEntityTab === 'granjas' && renderTabGranjas()}
             {activeEntityTab === 'ubicaciones' && renderTabUbicaciones()}
             {activeEntityTab === 'paqueterias' && renderTabPaqueterias()}
-            {activeEntityTab === 'portales' && renderTabPortales()}
             {activeEntityTab === 'descuentos' && renderTabDescuentos()}
             {activeEntityTab === 'documentos' && renderTabDocumentos()}
           </div>
