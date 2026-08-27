@@ -1912,7 +1912,7 @@ export default function AdminPage() {
     useEffect(() => {
       if (!isGlobal) return;
       let cancelled = false;
-      fetchCrmEntidades('limit=1000')
+      fetchCrmEntidades('limit=100')
         .then((res) => {
           if (!cancelled) setEntidadesSelect(res.data || []);
         })
