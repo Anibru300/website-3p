@@ -582,8 +582,8 @@ export function trackEvent(eventType, { path, section, metadata } = {}) {
   });
 }
 
-export async function fetchAnalyticsResumen(dias = 30) {
-  return apiFetch(`/api/analytics/resumen?dias=${dias}`);
+export async function fetchAnalyticsResumen(dias = 30, tipo = 'todos') {
+  return apiFetch(`/api/analytics/resumen?dias=${dias}&tipo=${tipo}`);
 }
 
 export async function fetchAnalyticsVisitas(query = '') {

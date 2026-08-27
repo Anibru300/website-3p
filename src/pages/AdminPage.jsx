@@ -172,6 +172,7 @@ export default function AdminPage() {
   // Analytics
   const [analyticsData, setAnalyticsData] = useState(null);
   const [analyticsDias, setAnalyticsDias] = useState(30);
+  const [analyticsTipo, setAnalyticsTipo] = useState('todos');
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   const tipoQuery = useMemo(() => {
@@ -265,7 +266,7 @@ export default function AdminPage() {
     setAnalyticsLoading(true);
     setError('');
     try {
-      const data = await fetchAnalyticsResumen(analyticsDias);
+      const data = await fetchAnalyticsResumen(analyticsDias, analyticsTipo);
       setAnalyticsData(data);
     } catch (err) {
       setError(err.message || 'Error al cargar analytics');
@@ -283,7 +284,7 @@ export default function AdminPage() {
       cargarAnalytics();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSection, activeCrmTab, tipoQuery, search, statusFiltro, industriaFiltro, portalesSearch, view, analyticsDias]);
+  }, [activeSection, activeCrmTab, tipoQuery, search, statusFiltro, industriaFiltro, portalesSearch, view, analyticsDias, analyticsTipo]);
 
   useEffect(() => {
     if (activeSection === 'crms' && view === 'list') {
@@ -1490,23 +1491,44 @@ export default function AdminPage() {
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-gray-900">Analytics del portal</h2>
               <p className="text-xs text-gray-500">
                 Últimos {analyticsDias} días · información privada, no se comparte con terceros.
               </p>
             </div>
-            <select
-              value={analyticsDias}
-              onChange={(e) => setAnalyticsDias(Number(e.target.value))}
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
-            >
-              <option value={7}>Últimos 7 días</option>
-              <option value={30}>Últimos 30 días</option>
-              <option value={90}>Últimos 3 meses</option>
-              <option value={365}>Último año</option>
-            </select>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                {[
+                  { id: 'todos', label: 'Todo' },
+                  { id: 'publico', label: 'Sitio público' },
+                  { id: 'admin', label: 'Panel admin' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setAnalyticsTipo(tab.id)}
+                    className={`px-3 py-2 text-xs font-medium transition-colors ${
+                      analyticsTipo === tab.id
+                        ? 'bg-p3-red text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <select
+                value={analyticsDias}
+                onChange={(e) => setAnalyticsDias(Number(e.target.value))}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+              >
+                <option value={7}>Últimos 7 días</option>
+                <option value={30}>Últimos 30 días</option>
+                <option value={90}>Últimos 3 meses</option>
+                <option value={365}>Último año</option>
+              </select>
+            </div>
           </div>
         </div>
 

@@ -92,58 +92,86 @@ def track_event(
     return {"detail": "Evento registrado"}
 
 
+def _tipo_path_clause(tipo: str) -> tuple[str, list]:
+    """Devuelve cláusula WHERE y parámetros para filtrar por tipo de tráfico."""
+    if tipo == "publico":
+        return """
+            AND (
+                path IS NULL OR path = '/' OR path = ''
+                OR (
+                    path NOT LIKE '/admin%'
+                    AND path NOT LIKE '/dashboard%'
+                    AND path NOT LIKE '/cotizador%'
+                    AND path NOT LIKE '/login%'
+                )
+            )
+        """, []
+    if tipo == "admin":
+        return """
+            AND (
+                path LIKE '/admin%'
+                OR path LIKE '/dashboard%'
+                OR path LIKE '/cotizador%'
+                OR path LIKE '/login%'
+            )
+        """, []
+    return "", []
+
+
 @router.get("/resumen")
 def resumen(
     dias: int = Query(default=30, ge=1, le=365),
+    tipo: str = Query(default="todos", pattern="^(todos|publico|admin)$"),
     user: dict = Depends(require_admin),
 ):
     """Resumen de analytics para el panel de admin."""
     since = (_now() - timedelta(days=dias)).isoformat()
+    tipo_clause, tipo_params = _tipo_path_clause(tipo)
 
     with users_connection() as conn:
         total_visitas = conn.execute(
-            "SELECT COUNT(*) FROM analytics_events WHERE created_at > ?",
-            (since,),
+            f"SELECT COUNT(*) FROM analytics_events WHERE created_at > ? {tipo_clause}",
+            (since, *tipo_params),
         ).fetchone()[0]
 
         visitantes_unicos = conn.execute(
-            """
+            f"""
             SELECT COUNT(DISTINCT session_id) FROM analytics_events
-            WHERE created_at > ?
+            WHERE created_at > ? {tipo_clause}
             """,
-            (since,),
+            (since, *tipo_params),
         ).fetchone()[0]
 
         usuarios_unicos = conn.execute(
-            """
+            f"""
             SELECT COUNT(DISTINCT user_email) FROM analytics_events
-            WHERE created_at > ? AND user_email IS NOT NULL
+            WHERE created_at > ? AND user_email IS NOT NULL {tipo_clause}
             """,
-            (since,),
+            (since, *tipo_params),
         ).fetchone()[0]
 
         secciones = conn.execute(
-            """
+            f"""
             SELECT section, COUNT(*) AS total
             FROM analytics_events
-            WHERE created_at > ? AND section IS NOT NULL AND section != ''
+            WHERE created_at > ? AND section IS NOT NULL AND section != '' {tipo_clause}
             GROUP BY section
             ORDER BY total DESC
             LIMIT 10
             """,
-            (since,),
+            (since, *tipo_params),
         ).fetchall()
 
         paginas = conn.execute(
-            """
+            f"""
             SELECT path, COUNT(*) AS total
             FROM analytics_events
-            WHERE created_at > ? AND path IS NOT NULL AND path != ''
+            WHERE created_at > ? AND path IS NOT NULL AND path != '' {tipo_clause}
             GROUP BY path
             ORDER BY total DESC
             LIMIT 10
             """,
-            (since,),
+            (since, *tipo_params),
         ).fetchall()
 
         usuarios = conn.execute(
@@ -159,18 +187,18 @@ def resumen(
         ).fetchall()
 
         por_mes = conn.execute(
-            """
+            f"""
             SELECT strftime('%Y-%m', created_at) AS mes, COUNT(*) AS total
             FROM analytics_events
-            WHERE created_at > ?
+            WHERE created_at > ? {tipo_clause}
             GROUP BY mes
             ORDER BY mes ASC
             """,
-            (since,),
+            (since, *tipo_params),
         ).fetchall()
 
         ultimos = conn.execute(
-            """
+            f"""
             SELECT
                 id,
                 session_id,
@@ -182,13 +210,16 @@ def resumen(
                 user_agent,
                 created_at
             FROM analytics_events
+            WHERE created_at > ? {tipo_clause}
             ORDER BY created_at DESC
             LIMIT 50
             """,
+            (since, *tipo_params),
         ).fetchall()
 
     return {
         "dias": dias,
+        "tipo": tipo,
         "total_eventos": total_visitas,
         "visitantes_unicos": visitantes_unicos,
         "usuarios_unicos": usuarios_unicos,
@@ -205,12 +236,15 @@ def listar_visitas(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
     dias: int = Query(default=30, ge=1, le=365),
+    tipo: str = Query(default="todos", pattern="^(todos|publico|admin)$"),
     user: dict = Depends(require_admin),
 ):
     since = (_now() - timedelta(days=dias)).isoformat()
+    tipo_clause, tipo_params = _tipo_path_clause(tipo)
+
     with users_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT
                 id,
                 session_id,
@@ -222,16 +256,16 @@ def listar_visitas(
                 user_agent,
                 created_at
             FROM analytics_events
-            WHERE created_at > ?
+            WHERE created_at > ? {tipo_clause}
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
             """,
-            (since, limit, skip),
+            (since, *tipo_params, limit, skip),
         ).fetchall()
 
         total = conn.execute(
-            "SELECT COUNT(*) FROM analytics_events WHERE created_at > ?",
-            (since,),
+            f"SELECT COUNT(*) FROM analytics_events WHERE created_at > ? {tipo_clause}",
+            (since, *tipo_params),
         ).fetchone()[0]
 
-    return {"total": total, "skip": skip, "limit": limit, "data": [dict(r) for r in rows]}
+    return {"total": total, "skip": skip, "limit": limit, "tipo": tipo, "data": [dict(r) for r in rows]}
