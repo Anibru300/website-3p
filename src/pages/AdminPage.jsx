@@ -29,6 +29,9 @@ import {
   crearDocumentoCrm,
   actualizarDocumentoCrm,
   eliminarDocumentoCrm,
+  trackEvent,
+  fetchAnalyticsResumen,
+  fetchAnalyticsVisitas,
 } from '../utils/api';
 import {
   LayoutDashboard,
@@ -58,11 +61,13 @@ import {
   Tag,
   ExternalLink,
   Globe,
+  BarChart3,
 } from 'lucide-react';
 
 const SIDEBAR_ITEMS = [
   { id: 'crms', label: 'CRMs', icon: Briefcase },
   { id: 'portales', label: 'Portales', icon: Lock },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
 const CRM_SUBTABS = [
@@ -125,6 +130,13 @@ export default function AdminPage() {
   const [activeCrmTab, setActiveCrmTab] = useState('general');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  useEffect(() => {
+    trackEvent('section_view', {
+      path: window.location.pathname,
+      section: activeSection,
+    });
+  }, [activeSection]);
+
   const [view, setView] = useState(routeEntityId ? 'detail' : 'list');
   const [selectedEntityId, setSelectedEntityId] = useState(routeEntityId);
   const [activeEntityTab, setActiveEntityTab] = useState('general');
@@ -156,6 +168,11 @@ export default function AdminPage() {
   const [portalesSearch, setPortalesSearch] = useState('');
   const [portalesSkip, setPortalesSkip] = useState(0);
   const PORTALES_LIMIT = 20;
+
+  // Analytics
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [analyticsDias, setAnalyticsDias] = useState(30);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   const tipoQuery = useMemo(() => {
     if (activeCrmTab === 'clientes') return 'cliente';
@@ -244,14 +261,29 @@ export default function AdminPage() {
     }
   }
 
+  async function cargarAnalytics() {
+    setAnalyticsLoading(true);
+    setError('');
+    try {
+      const data = await fetchAnalyticsResumen(analyticsDias);
+      setAnalyticsData(data);
+    } catch (err) {
+      setError(err.message || 'Error al cargar analytics');
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (activeSection === 'crms' && view === 'list') {
       cargarDatos(true);
     } else if (activeSection === 'portales') {
       cargarPortales(true);
+    } else if (activeSection === 'analytics') {
+      cargarAnalytics();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSection, activeCrmTab, tipoQuery, search, statusFiltro, industriaFiltro, portalesSearch, view]);
+  }, [activeSection, activeCrmTab, tipoQuery, search, statusFiltro, industriaFiltro, portalesSearch, view, analyticsDias]);
 
   useEffect(() => {
     if (activeSection === 'crms' && view === 'list') {
@@ -1423,6 +1455,188 @@ export default function AdminPage() {
     );
   }
 
+  function renderAnalyticsSection() {
+    if (analyticsLoading) {
+      return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col items-center justify-center h-96">
+          <div className="w-10 h-10 border-4 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-3 text-sm text-gray-500">Cargando analytics...</p>
+        </div>
+      );
+    }
+
+    if (!analyticsData) {
+      return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
+          No hay datos de analytics disponibles.
+        </div>
+      );
+    }
+
+    const {
+      total_eventos,
+      visitantes_unicos,
+      usuarios_unicos,
+      secciones_mas_visitadas,
+      paginas_mas_visitadas,
+      usuarios_mas_activos,
+      eventos_por_mes,
+      actividad_reciente,
+    } = analyticsData;
+
+    const maxMes = Math.max(...eventos_por_mes.map((d) => d.total), 1);
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Analytics del portal</h2>
+              <p className="text-xs text-gray-500">
+                Últimos {analyticsDias} días · información privada, no se comparte con terceros.
+              </p>
+            </div>
+            <select
+              value={analyticsDias}
+              onChange={(e) => setAnalyticsDias(Number(e.target.value))}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+            >
+              <option value={7}>Últimos 7 días</option>
+              <option value={30}>Últimos 30 días</option>
+              <option value={90}>Últimos 3 meses</option>
+              <option value={365}>Último año</option>
+            </select>
+          </div>
+        </div>
+
+        {/* KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <p className="text-xs text-gray-500 uppercase font-semibold">Total eventos</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{total_eventos.toLocaleString()}</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <p className="text-xs text-gray-500 uppercase font-semibold">Visitantes únicos</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{visitantes_unicos.toLocaleString()}</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <p className="text-xs text-gray-500 uppercase font-semibold">Usuarios logueados</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{usuarios_unicos.toLocaleString()}</p>
+          </div>
+        </div>
+
+        {/* Gráfico eventos por mes */}
+        {eventos_por_mes.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">Eventos por mes</h3>
+            <div className="flex items-end gap-3 h-48">
+              {eventos_por_mes.map((d) => {
+                const height = `${Math.round((d.total / maxMes) * 100)}%`;
+                return (
+                  <div key={d.mes} className="flex-1 flex flex-col items-center gap-2 min-w-0">
+                    <div className="w-full bg-gray-100 rounded-t-lg relative h-full">
+                      <div
+                        className="absolute bottom-0 left-0 right-0 bg-p3-red rounded-t-lg transition-all"
+                        style={{ height }}
+                        title={`${d.mes}: ${d.total}`}
+                      ></div>
+                    </div>
+                    <span className="text-[10px] text-gray-500 truncate w-full text-center">
+                      {d.mes.slice(5)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Rankings */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-3">Secciones más visitadas</h3>
+            {secciones_mas_visitadas.length === 0 ? (
+              <p className="text-sm text-gray-500">Sin datos</p>
+            ) : (
+              <ul className="space-y-2">
+                {secciones_mas_visitadas.map((s, i) => (
+                  <li key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700 capitalize">{s.section}</span>
+                    <span className="font-medium text-gray-900">{s.total}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-3">Páginas más visitadas</h3>
+            {paginas_mas_visitadas.length === 0 ? (
+              <p className="text-sm text-gray-500">Sin datos</p>
+            ) : (
+              <ul className="space-y-2">
+                {paginas_mas_visitadas.map((p, i) => (
+                  <li key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700 truncate max-w-[180px]">{p.path || '/'}</span>
+                    <span className="font-medium text-gray-900">{p.total}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-3">Usuarios más activos</h3>
+            {usuarios_mas_activos.length === 0 ? (
+              <p className="text-sm text-gray-500">Sin datos</p>
+            ) : (
+              <ul className="space-y-2">
+                {usuarios_mas_activos.map((u, i) => (
+                  <li key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700 truncate max-w-[180px]">{u.user_email}</span>
+                    <span className="font-medium text-gray-900">{u.total}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* Actividad reciente */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 overflow-hidden">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">Actividad reciente</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
+                  <th className="py-2 px-2 font-semibold">Fecha</th>
+                  <th className="py-2 px-2 font-semibold">Usuario</th>
+                  <th className="py-2 px-2 font-semibold">Evento</th>
+                  <th className="py-2 px-2 font-semibold">Sección</th>
+                  <th className="py-2 px-2 font-semibold">IP</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {actividad_reciente.map((a) => (
+                  <tr key={a.id} className="hover:bg-gray-50/60">
+                    <td className="py-2 px-2 text-gray-600 text-xs">
+                      {new Date(a.created_at).toLocaleString('es-MX')}
+                    </td>
+                    <td className="py-2 px-2 text-gray-700 text-xs">{a.user_email || 'Anónimo'}</td>
+                    <td className="py-2 px-2 text-gray-700 text-xs capitalize">{a.event_type}</td>
+                    <td className="py-2 px-2 text-gray-700 text-xs">{a.section || '-'}</td>
+                    <td className="py-2 px-2 text-gray-500 text-xs font-mono">{a.ip || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function renderPortalesSection() {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:p-6">
@@ -2178,6 +2392,7 @@ export default function AdminPage() {
 
             {activeSection === 'crms' && renderCrmSection()}
             {activeSection === 'portales' && renderPortalesSection()}
+            {activeSection === 'analytics' && renderAnalyticsSection()}
           </div>
         </main>
       </div>

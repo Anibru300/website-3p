@@ -304,6 +304,29 @@ def _ensure_users_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_descuentos_entidad ON crm_descuentos(entidad_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_documentos_entidad ON crm_documentos(entidad_id)")
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS analytics_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT,
+                user_email TEXT,
+                user_id INTEGER,
+                event_type TEXT NOT NULL,
+                path TEXT,
+                section TEXT,
+                metadata TEXT,
+                ip TEXT,
+                user_agent TEXT,
+                referrer TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_created_at ON analytics_events(created_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_user ON analytics_events(user_email)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_type ON analytics_events(event_type)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_section ON analytics_events(section)")
+
         conn.commit()
     finally:
         conn.close()

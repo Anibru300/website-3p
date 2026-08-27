@@ -11,6 +11,7 @@ import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
+import { trackEvent } from './utils/api';
 
 function AdminGuard({ children }) {
   const { user, loading } = useAuth();
@@ -41,6 +42,10 @@ function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  useEffect(() => {
+    trackEvent('page_view', { path: window.location.pathname });
+  }, [route]);
 
   // Parse route: separate path from query string
   const cleanRoute = route || '/';

@@ -5,6 +5,7 @@ import {
   removeToken,
   setToken,
   verifyTotp as apiVerifyTotp,
+  trackEvent,
 } from '../utils/api';
 
 const AuthContext = createContext(null);
@@ -46,6 +47,7 @@ export function AuthProvider({ children }) {
         return { success: false, requiresTotp: true };
       }
       setUser(data.user);
+      trackEvent('login', { path: '/login', metadata: { email: data.user.email } });
       return { success: true };
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión');
@@ -62,6 +64,7 @@ export function AuthProvider({ children }) {
       const data = await apiVerifyTotp(totpStep.email, totpStep.tempToken, code);
       setUser(data.user);
       setTotpStep(null);
+      trackEvent('login', { path: '/login', metadata: { email: data.user.email, totp: true } });
       return { success: true };
     } catch (err) {
       setError(err.message || 'Código incorrecto');
@@ -75,6 +78,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    trackEvent('logout', { path: window.location.pathname });
     removeToken();
     setUser(null);
     setTotpStep(null);

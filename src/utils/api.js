@@ -545,3 +545,47 @@ export async function fetchProductoFotoBlobUrl(codigo) {
   const blob = await response.blob();
   return URL.createObjectURL(blob);
 }
+
+// ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+function getSessionId() {
+  let sessionId = sessionStorage.getItem('cjos_session_id');
+  if (!sessionId) {
+    sessionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem('cjos_session_id', sessionId);
+  }
+  return sessionId;
+}
+
+export function trackEvent(eventType, { path, section, metadata } = {}) {
+  const token = getToken();
+  const payload = {
+    event_type: eventType,
+    path: path || window.location.pathname,
+    section: section || undefined,
+    session_id: getSessionId(),
+    metadata: metadata ? JSON.stringify(metadata) : undefined,
+    referrer: document.referrer || undefined,
+  };
+
+  fetch(`${API_BASE}/api/analytics/event`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  }).catch(() => {
+    // Silenciar errores de analytics para no afectar la experiencia
+  });
+}
+
+export async function fetchAnalyticsResumen(dias = 30) {
+  return apiFetch(`/api/analytics/resumen?dias=${dias}`);
+}
+
+export async function fetchAnalyticsVisitas(query = '') {
+  return apiFetch(`/api/analytics/visitas?${query}`);
+}
