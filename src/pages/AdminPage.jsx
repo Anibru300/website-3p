@@ -1332,12 +1332,13 @@ export default function AdminPage() {
               <th className="py-3 px-3 font-semibold">Contraseña</th>
               <th className="py-3 px-3 font-semibold">Apoyo</th>
               <th className="py-3 px-3 font-semibold">Notas</th>
+              <th className="py-3 px-3 font-semibold text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {portales.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-gray-500">
+                <td colSpan={9} className="py-8 text-center text-gray-500">
                   No se encontraron portales.
                 </td>
               </tr>
@@ -1373,6 +1374,14 @@ export default function AdminPage() {
                   <td className="py-3 px-3 text-gray-700 font-mono text-xs">{p.password || '-'}</td>
                   <td className="py-3 px-3 text-gray-600 text-xs">{p.persona_apoyo || '-'}</td>
                   <td className="py-3 px-3 text-gray-500 text-xs">{p.notas || '-'}</td>
+                  <td className="py-3 px-3 text-right">
+                    <ActionButtons
+                      onEdit={() => setModal({ type: 'portal', data: { ...p, global: true } })}
+                      onDelete={() =>
+                        setConfirmDelete({ type: 'portal', id: p.id, name: p.portal || 'portal' })
+                      }
+                    />
+                  </td>
                 </tr>
               ))
             )}
@@ -1417,11 +1426,12 @@ export default function AdminPage() {
   function renderPortalesSection() {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-gray-100">
-          <div>
-            <h2 className="text-base font-bold text-gray-900">Portales de clientes y proveedores</h2>
-            <p className="text-xs text-gray-500">Usuarios y contraseñas de acceso a portales.</p>
-          </div>
+        <div className="mb-4 pb-3 border-b border-gray-100">
+          <SectionHeader
+            title="Portales de clientes y proveedores"
+            onAdd={() => setModal({ type: 'portal', data: { global: true } })}
+          />
+          <p className="text-xs text-gray-500 mt-1">Usuarios y contraseñas de acceso a portales.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -1894,24 +1904,70 @@ export default function AdminPage() {
 
   function PortalModal() {
     const initial = modal.data || {};
+    const isGlobal = initial.global === true;
     const [form, setForm] = useState(initial);
+    const [entidadesSelect, setEntidadesSelect] = useState([]);
     const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+    useEffect(() => {
+      if (!isGlobal) return;
+      let cancelled = false;
+      fetchCrmEntidades('limit=1000')
+        .then((res) => {
+          if (!cancelled) setEntidadesSelect(res.data || []);
+        })
+        .catch(() => {
+          if (!cancelled) setEntidadesSelect([]);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [isGlobal]);
+
+    const entidadId = isGlobal ? form.entidad_id : selectedEntityId;
+    const puedeGuardar = entidadId && (form.id || form.password);
 
     return (
       <Modal title={form.id ? 'Editar portal' : 'Nuevo portal'} onClose={() => setModal({ type: null, data: null })}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            const payload = {
+              nombre: form.nombre,
+              url: form.url,
+              usuario: form.usuario,
+              password: form.password,
+              persona_apoyo: form.persona_apoyo,
+              notas: form.notas,
+            };
             handleSaveRelacion(
               () =>
                 form.id
-                  ? actualizarPortalCrm(form.id, form)
-                  : crearPortalCrm(selectedEntityId, form),
-              cargarDetalle
+                  ? actualizarPortalCrm(form.id, payload)
+                  : crearPortalCrm(entidadId, payload),
+              isGlobal ? cargarPortales : cargarDetalle
             );
           }}
           className="space-y-4"
         >
+          {isGlobal && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Empresa *</label>
+              <select
+                value={form.entidad_id || ''}
+                onChange={(e) => update('entidad_id', Number(e.target.value))}
+                required
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+              >
+                <option value="">Selecciona una empresa</option>
+                {entidadesSelect.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <FormInput label="Nombre" value={form.nombre} onChange={(v) => update('nombre', v)} />
           <FormInput label="URL" value={form.url} onChange={(v) => update('url', v)} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1925,7 +1981,7 @@ export default function AdminPage() {
           </div>
           <FormInput label="Persona de apoyo" value={form.persona_apoyo} onChange={(v) => update('persona_apoyo', v)} />
           <FormInput label="Notas" value={form.notas} onChange={(v) => update('notas', v)} rows={3} />
-          <ModalFooter onClose={() => setModal({ type: null, data: null })} disabled={saving || (!form.id && !form.password)} />
+          <ModalFooter onClose={() => setModal({ type: null, data: null })} disabled={saving || !puedeGuardar} />
         </form>
       </Modal>
     );
@@ -2035,7 +2091,11 @@ export default function AdminPage() {
         label: 'paquetería',
       },
       portal: {
-        fn: () => handleDeleteRelacion(() => eliminarPortalCrm(confirmDelete.id), cargarDetalle),
+        fn: () =>
+          handleDeleteRelacion(
+            () => eliminarPortalCrm(confirmDelete.id),
+            activeSection === 'portales' ? cargarPortales : cargarDetalle
+          ),
         label: 'portal',
       },
       descuento: {
