@@ -32,6 +32,14 @@ import {
   trackEvent,
   fetchAnalyticsResumen,
   fetchAnalyticsVisitas,
+  fetchAnalyticsPublicoPorDia,
+  fetchAnalyticsPublicoPorHora,
+  fetchAnalyticsPublicoDispositivos,
+  fetchAnalyticsPublicoNavegadores,
+  fetchAnalyticsPublicoSistemasOperativos,
+  fetchAnalyticsPublicoPaises,
+  fetchAnalyticsPublicoReferrers,
+  fetchAnalyticsPublicoPaginas,
 } from '../utils/api';
 import {
   LayoutDashboard,
@@ -174,6 +182,9 @@ export default function AdminPage() {
   const [analyticsDias, setAnalyticsDias] = useState(30);
   const [analyticsTipo, setAnalyticsTipo] = useState('todos');
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsTab, setAnalyticsTab] = useState('general');
+  const [publicoData, setPublicoData] = useState(null);
+  const [publicoLoading, setPublicoLoading] = useState(false);
 
   const tipoQuery = useMemo(() => {
     if (activeCrmTab === 'clientes') return 'cliente';
@@ -275,16 +286,60 @@ export default function AdminPage() {
     }
   }
 
+  async function cargarAnalyticsPublico() {
+    setPublicoLoading(true);
+    setError('');
+    try {
+      const [
+        porDia,
+        porHora,
+        dispositivos,
+        navegadores,
+        sistemas,
+        paises,
+        referrers,
+        paginas,
+      ] = await Promise.all([
+        fetchAnalyticsPublicoPorDia(analyticsDias),
+        fetchAnalyticsPublicoPorHora(analyticsDias),
+        fetchAnalyticsPublicoDispositivos(analyticsDias),
+        fetchAnalyticsPublicoNavegadores(analyticsDias),
+        fetchAnalyticsPublicoSistemasOperativos(analyticsDias),
+        fetchAnalyticsPublicoPaises(analyticsDias),
+        fetchAnalyticsPublicoReferrers(analyticsDias),
+        fetchAnalyticsPublicoPaginas(analyticsDias),
+      ]);
+      setPublicoData({
+        porDia: porDia.data || [],
+        porHora: porHora.data || [],
+        dispositivos: dispositivos.data || [],
+        navegadores: navegadores.data || [],
+        sistemas: sistemas.data || [],
+        paises: paises.data || [],
+        referrers: referrers.data || [],
+        paginas: paginas.data || [],
+      });
+    } catch (err) {
+      setError(err.message || 'Error al cargar analytics público');
+    } finally {
+      setPublicoLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (activeSection === 'crms' && view === 'list') {
       cargarDatos(true);
     } else if (activeSection === 'portales') {
       cargarPortales(true);
     } else if (activeSection === 'analytics') {
-      cargarAnalytics();
+      if (analyticsTab === 'general') {
+        cargarAnalytics();
+      } else {
+        cargarAnalyticsPublico();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSection, activeCrmTab, tipoQuery, search, statusFiltro, industriaFiltro, portalesSearch, view, analyticsDias, analyticsTipo]);
+  }, [activeSection, activeCrmTab, tipoQuery, search, statusFiltro, industriaFiltro, portalesSearch, view, analyticsDias, analyticsTipo, analyticsTab]);
 
   useEffect(() => {
     if (activeSection === 'crms' && view === 'list') {
@@ -1457,6 +1512,56 @@ export default function AdminPage() {
   }
 
   function renderAnalyticsSection() {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Analytics del portal</h2>
+              <p className="text-xs text-gray-500">
+                Información privada, no se comparte con terceros.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                {[
+                  { id: 'general', label: 'General' },
+                  { id: 'publico', label: 'Público detallado' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setAnalyticsTab(tab.id)}
+                    className={`px-3 py-2 text-xs font-medium transition-colors ${
+                      analyticsTab === tab.id
+                        ? 'bg-p3-red text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <select
+                value={analyticsDias}
+                onChange={(e) => setAnalyticsDias(Number(e.target.value))}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+              >
+                <option value={7}>Últimos 7 días</option>
+                <option value={30}>Últimos 30 días</option>
+                <option value={90}>Últimos 3 meses</option>
+                <option value={365}>Último año</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {analyticsTab === 'general' && renderAnalyticsGeneral()}
+        {analyticsTab === 'publico' && renderAnalyticsPublico()}
+      </div>
+    );
+  }
+
+  function renderAnalyticsGeneral() {
     if (analyticsLoading) {
       return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col items-center justify-center h-96">
@@ -1489,46 +1594,25 @@ export default function AdminPage() {
 
     return (
       <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h2 className="text-base font-bold text-gray-900">Analytics del portal</h2>
-              <p className="text-xs text-gray-500">
-                Últimos {analyticsDias} días · información privada, no se comparte con terceros.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
-                {[
-                  { id: 'todos', label: 'Todo' },
-                  { id: 'publico', label: 'Sitio público' },
-                  { id: 'admin', label: 'Panel admin' },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setAnalyticsTipo(tab.id)}
-                    className={`px-3 py-2 text-xs font-medium transition-colors ${
-                      analyticsTipo === tab.id
-                        ? 'bg-p3-red text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-              <select
-                value={analyticsDias}
-                onChange={(e) => setAnalyticsDias(Number(e.target.value))}
-                className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+            {[
+              { id: 'todos', label: 'Todo' },
+              { id: 'publico', label: 'Sitio público' },
+              { id: 'admin', label: 'Panel admin' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setAnalyticsTipo(tab.id)}
+                className={`px-3 py-2 text-xs font-medium transition-colors ${
+                  analyticsTipo === tab.id
+                    ? 'bg-p3-red text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
               >
-                <option value={7}>Últimos 7 días</option>
-                <option value={30}>Últimos 30 días</option>
-                <option value={90}>Últimos 3 meses</option>
-                <option value={365}>Último año</option>
-              </select>
-            </div>
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -1654,6 +1738,179 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderAnalyticsPublico() {
+    if (publicoLoading) {
+      return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col items-center justify-center h-96">
+          <div className="w-10 h-10 border-4 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-3 text-sm text-gray-500">Cargando analytics público...</p>
+        </div>
+      );
+    }
+
+    if (!publicoData) {
+      return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
+          No hay datos de analytics público disponibles.
+        </div>
+      );
+    }
+
+    const {
+      porDia,
+      porHora,
+      dispositivos,
+      navegadores,
+      sistemas,
+      paises,
+      referrers,
+      paginas,
+    } = publicoData;
+
+    const totalEventos = porDia.reduce((sum, d) => sum + d.total, 0);
+    const totalVisitantes = new Set(
+      // Aproximación: no tenemos session_id por endpoint, usamos total de eventos
+      []
+    ).size;
+
+    function SimpleBarChart({ data, labelKey = 'nombre', valueKey = 'total', color = 'bg-p3-red', horizontal = false, height = 'h-48' }) {
+      if (!data || data.length === 0) {
+        return <p className="text-sm text-gray-500">Sin datos</p>;
+      }
+      const max = Math.max(...data.map((d) => d[valueKey]), 1);
+
+      if (horizontal) {
+        return (
+          <div className="space-y-2">
+            {data.map((d, i) => {
+              const pct = Math.round((d[valueKey] / max) * 100);
+              return (
+                <div key={i}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-gray-700 truncate max-w-[70%]">{d[labelKey]}</span>
+                    <span className="font-medium text-gray-900">{d[valueKey].toLocaleString()}</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div
+                      className={`${color} h-2 rounded-full transition-all`}
+                      style={{ width: `${pct}%` }}
+                      title={`${d[labelKey]}: ${d[valueKey]}`}
+                    ></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+
+      return (
+        <div className={`flex items-end gap-2 ${height}`}>
+          {data.map((d, i) => {
+            const pct = Math.round((d[valueKey] / max) * 100) || 5;
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0 h-full justify-end">
+                <div
+                  className={`w-full ${color} rounded-t-md transition-all`}
+                  style={{ height: `${pct}%` }}
+                  title={`${d[labelKey]}: ${d[valueKey]}`}
+                ></div>
+                <span className="text-[10px] text-gray-500 truncate w-full text-center">
+                  {String(d[labelKey]).slice(0, 6)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function RankedList({ data, labelKey = 'nombre', valueKey = 'total', maxItems = 10 }) {
+      if (!data || data.length === 0) {
+        return <p className="text-sm text-gray-500">Sin datos</p>;
+      }
+      return (
+        <ul className="space-y-2 max-h-64 overflow-y-auto pr-1">
+          {data.slice(0, maxItems).map((d, i) => (
+            <li key={i} className="flex items-center justify-between text-sm">
+              <span className="text-gray-700 truncate max-w-[75%]">{d[labelKey]}</span>
+              <span className="font-medium text-gray-900">{d[valueKey].toLocaleString()}</span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <p className="text-xs text-gray-500 uppercase font-semibold">Eventos públicos</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{totalEventos.toLocaleString()}</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <p className="text-xs text-gray-500 uppercase font-semibold">Días con tráfico</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{porDia.length}</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <p className="text-xs text-gray-500 uppercase font-semibold">Dispositivos distintos</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{dispositivos.length}</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <p className="text-xs text-gray-500 uppercase font-semibold">Navegadores distintos</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{navegadores.length}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">Visitas por día</h3>
+            <SimpleBarChart data={porDia} labelKey="dia" valueKey="total" height="h-56" />
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">Visitas por hora (UTC)</h3>
+            <SimpleBarChart data={porHora} labelKey="hora" valueKey="total" color="bg-blue-500" height="h-56" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">Dispositivos</h3>
+            <SimpleBarChart data={dispositivos} color="bg-emerald-500" horizontal />
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">Navegadores</h3>
+            <SimpleBarChart data={navegadores} color="bg-violet-500" horizontal />
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">Sistemas operativos</h3>
+            <SimpleBarChart data={sistemas} color="bg-amber-500" horizontal />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">Países</h3>
+            <RankedList data={paises} />
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">Origen del tráfico (referrers)</h3>
+            <RankedList data={referrers} />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <h3 className="text-sm font-bold text-gray-900 mb-4">Páginas públicas más visitadas</h3>
+          <RankedList data={paginas} maxItems={20} />
         </div>
       </div>
     );

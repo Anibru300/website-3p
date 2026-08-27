@@ -559,15 +559,59 @@ function getSessionId() {
   return sessionId;
 }
 
+function getDeviceInfo() {
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  let device_type = 'desktop';
+  if (/Mobi|Android|iPhone|iPad|iPod/i.test(ua)) {
+    device_type = /iPad|Tablet|Android(?!.*Mobile)/i.test(ua) ? 'tablet' : 'mobile';
+  }
+
+  let browser = 'Otro';
+  if (/Edg\/|Edge\//i.test(ua)) browser = 'Edge';
+  else if (/Chrome\/|CriOS\//i.test(ua)) browser = 'Chrome';
+  else if (/Safari\//i.test(ua) && !/Chrome\/|CriOS\//i.test(ua)) browser = 'Safari';
+  else if (/Firefox\/|FxiOS\//i.test(ua)) browser = 'Firefox';
+  else if (/Opera\/|OPR\//i.test(ua)) browser = 'Opera';
+
+  let os = 'Otro';
+  if (/Windows NT/i.test(ua)) os = 'Windows';
+  else if (/Mac OS X|macOS/i.test(ua)) os = 'macOS';
+  else if (/Android/i.test(ua)) os = 'Android';
+  else if (/iOS|iPhone|iPad|iPod/i.test(ua)) os = 'iOS';
+  else if (/Linux/i.test(ua)) os = 'Linux';
+
+  return {
+    device_type,
+    browser,
+    os,
+    screen_width: window.screen.width,
+    screen_height: window.screen.height,
+    language: navigator.language || 'unknown',
+    platform,
+  };
+}
+
 export function trackEvent(eventType, { path, section, metadata } = {}) {
   const token = getToken();
+  const deviceInfo = getDeviceInfo();
+  const combinedMetadata = {
+    ...deviceInfo,
+    ...(metadata || {}),
+  };
+
   const payload = {
     event_type: eventType,
     path: path || window.location.pathname,
     section: section || undefined,
     session_id: getSessionId(),
-    metadata: metadata ? JSON.stringify(metadata) : undefined,
+    metadata: JSON.stringify(combinedMetadata),
     referrer: document.referrer || undefined,
+    device_type: deviceInfo.device_type,
+    browser: deviceInfo.browser,
+    os: deviceInfo.os,
+    screen_width: deviceInfo.screen_width,
+    screen_height: deviceInfo.screen_height,
   };
 
   fetch(`${API_BASE}/api/analytics/event`, {
@@ -588,4 +632,36 @@ export async function fetchAnalyticsResumen(dias = 30, tipo = 'todos') {
 
 export async function fetchAnalyticsVisitas(query = '') {
   return apiFetch(`/api/analytics/visitas?${query}`);
+}
+
+export async function fetchAnalyticsPublicoPorDia(dias = 30) {
+  return apiFetch(`/api/analytics/publico/por-dia?dias=${dias}`);
+}
+
+export async function fetchAnalyticsPublicoPorHora(dias = 30) {
+  return apiFetch(`/api/analytics/publico/por-hora?dias=${dias}`);
+}
+
+export async function fetchAnalyticsPublicoDispositivos(dias = 30) {
+  return apiFetch(`/api/analytics/publico/dispositivos?dias=${dias}`);
+}
+
+export async function fetchAnalyticsPublicoNavegadores(dias = 30) {
+  return apiFetch(`/api/analytics/publico/navegadores?dias=${dias}`);
+}
+
+export async function fetchAnalyticsPublicoSistemasOperativos(dias = 30) {
+  return apiFetch(`/api/analytics/publico/sistemas-operativos?dias=${dias}`);
+}
+
+export async function fetchAnalyticsPublicoPaises(dias = 30) {
+  return apiFetch(`/api/analytics/publico/paises?dias=${dias}`);
+}
+
+export async function fetchAnalyticsPublicoReferrers(dias = 30) {
+  return apiFetch(`/api/analytics/publico/referrers?dias=${dias}`);
+}
+
+export async function fetchAnalyticsPublicoPaginas(dias = 30) {
+  return apiFetch(`/api/analytics/publico/paginas?dias=${dias}`);
 }

@@ -318,6 +318,13 @@ def _ensure_users_db():
                 ip TEXT,
                 user_agent TEXT,
                 referrer TEXT,
+                device_type TEXT,
+                browser TEXT,
+                os TEXT,
+                country TEXT,
+                city TEXT,
+                screen_width INTEGER,
+                screen_height INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """
@@ -326,6 +333,10 @@ def _ensure_users_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_user ON analytics_events(user_email)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_type ON analytics_events(event_type)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_section ON analytics_events(section)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_device ON analytics_events(device_type)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_browser ON analytics_events(browser)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_os ON analytics_events(os)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_country ON analytics_events(country)")
 
         conn.commit()
     finally:
