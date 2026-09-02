@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchCrmResumen,
@@ -34,6 +34,7 @@ import {
   fetchAnalyticsVisitas,
   fetchAnalyticsPublicoPorDia,
   fetchAnalyticsPublicoPorHora,
+  fetchAnalyticsPublicoPorDiaHora,
   fetchAnalyticsPublicoDispositivos,
   fetchAnalyticsPublicoNavegadores,
   fetchAnalyticsPublicoSistemasOperativos,
@@ -321,6 +322,7 @@ export default function AdminPage() {
       const [
         porDia,
         porHora,
+        porDiaHora,
         dispositivos,
         navegadores,
         sistemas,
@@ -331,6 +333,7 @@ export default function AdminPage() {
       ] = await Promise.all([
         fetchAnalyticsPublicoPorDia(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
         fetchAnalyticsPublicoPorHora(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
+        fetchAnalyticsPublicoPorDiaHora(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
         fetchAnalyticsPublicoDispositivos(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
         fetchAnalyticsPublicoNavegadores(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
         fetchAnalyticsPublicoSistemasOperativos(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
@@ -342,6 +345,7 @@ export default function AdminPage() {
       setPublicoData({
         porDia: porDia.data || [],
         porHora: porHora.data || [],
+        porDiaHora: porDiaHora.data || [],
         dispositivos: dispositivos.data || [],
         navegadores: navegadores.data || [],
         sistemas: sistemas.data || [],
@@ -1772,6 +1776,7 @@ export default function AdminPage() {
       paginas_mas_visitadas,
       usuarios_mas_activos,
       eventos_por_mes,
+      eventos_por_tipo,
       actividad_reciente,
     } = analyticsData;
 
@@ -1816,6 +1821,49 @@ export default function AdminPage() {
             <p className="text-2xl font-bold text-gray-900 mt-1">{usuarios_unicos.toLocaleString()}</p>
           </div>
         </div>
+
+        {/* Embudo de conversión */}
+        {(() => {
+          const porTipo = eventos_por_tipo || [];
+          const totalEvento = (tipo) => {
+            const item = porTipo.find((t) => t.event_type === tipo);
+            return item ? item.total : 0;
+          };
+          const visitas = totalEvento('page_view');
+          const pasos = [
+            { key: 'page_view', label: 'Visitas' },
+            { key: 'login', label: 'Logins' },
+            { key: 'cotizacion_guardar', label: 'Cotizaciones guardadas' },
+            { key: 'cotizacion_pdf', label: 'PDFs generados' },
+          ].map((p) => ({ ...p, total: totalEvento(p.key) }));
+          if (visitas === 0 && pasos.every((p) => p.total === 0)) return null;
+          const maxPaso = Math.max(...pasos.map((p) => p.total), 1);
+          return (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+              <h3 className="text-sm font-bold text-gray-900 mb-4">Embudo de conversión</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {pasos.map((p) => {
+                  const pct = visitas > 0 ? ((p.total / visitas) * 100).toFixed(1) : '0.0';
+                  return (
+                    <div key={p.key} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                      <p className="text-xs text-gray-500 uppercase font-semibold">{p.label}</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-1">{p.total.toLocaleString()}</p>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                        <div
+                          className="bg-p3-red h-1.5 rounded-full"
+                          style={{ width: `${Math.round((p.total / maxPaso) * 100)}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1.5">
+                        {p.key === 'page_view' ? '100%' : `${pct}% de las visitas`}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Gráfico eventos por mes */}
         {eventos_por_mes.length > 0 && (
@@ -1982,21 +2030,23 @@ export default function AdminPage() {
 
       if (horizontal) {
         return (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {data.map((d, i) => {
               const pct = Math.round((d[valueKey] / max) * 100);
               return (
-                <div key={i}>
+                <div key={i} className="group">
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="text-gray-700 truncate max-w-[60%]">{d[labelKey]}</span>
                     <span className="font-medium text-gray-900">{d[valueKey].toLocaleString()}</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2.5">
+                  <div className="w-full bg-gray-100 rounded-full h-3 relative">
                     <div
-                      className={`${color} h-2.5 rounded-full transition-all`}
+                      className={`${color} h-3 rounded-full transition-all group-hover:opacity-80`}
                       style={{ width: `${pct}%` }}
-                      title={`${d[labelKey]}: ${d[valueKey]}`}
                     ></div>
+                    <div className="absolute left-0 -top-8 hidden group-hover:block bg-gray-900 text-white text-xs rounded-lg px-2 py-1 whitespace-nowrap z-10 shadow-lg">
+                      {d[labelKey]}: {d[valueKey].toLocaleString()} ({pct}%)
+                    </div>
                   </div>
                 </div>
               );
@@ -2018,16 +2068,19 @@ export default function AdminPage() {
               const pct = Math.round((d[valueKey] / max) * 100) || 3;
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0 h-full justify-end group">
-                  <div
-                    className={`w-full ${color} rounded-t-md transition-all hover:opacity-90 relative`}
-                    style={{ height: `${pct}%` }}
-                    title={`${d[labelKey]}: ${d[valueKey]}`}
-                  >
-                    {showValue && (
-                      <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-700 whitespace-nowrap">
-                        {d[valueKey].toLocaleString()}
-                      </span>
-                    )}
+                  <div className="relative w-full flex justify-center" style={{ height: `${pct}%` }}>
+                    <div
+                      className={`w-full ${color} rounded-t-md transition-all group-hover:opacity-80 self-end`}
+                    >
+                      {showValue && (
+                        <span className="block text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap -mt-4">
+                          {d[valueKey].toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-xs rounded-lg px-2 py-1 whitespace-nowrap z-10 shadow-lg">
+                      {d[labelKey]}: {d[valueKey].toLocaleString()}
+                    </div>
                   </div>
                   <span className="text-[10px] text-gray-500 truncate w-full text-center leading-tight">
                     {format(d[labelKey])}
@@ -2035,6 +2088,70 @@ export default function AdminPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      );
+    }
+
+    function HeatmapDiaHora({ data }) {
+      if (!data || data.length === 0) {
+        return <p className="text-sm text-gray-500">Sin datos</p>;
+      }
+
+      const max = Math.max(...data.map((d) => d.total), 1);
+      const lookup = {};
+      data.forEach((d) => {
+        lookup[`${d.dia_semana}-${d.hora}`] = d.total;
+      });
+
+      const horas = [...Array(24).keys()];
+      // %w: 0=Dom, 1=Lun ... 6=Sáb. Ordenamos de lunes a domingo.
+      const filas = [1, 2, 3, 4, 5, 6, 0];
+      const nombres = { 0: 'Dom', 1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb' };
+
+      return (
+        <div className="overflow-x-auto pb-1">
+          <div className="min-w-[680px]">
+            <div className="grid gap-[3px]" style={{ gridTemplateColumns: '2.5rem repeat(24, 1fr)' }}>
+              <span></span>
+              {horas.map((h) => (
+                <span key={h} className="text-[9px] text-gray-400 text-center leading-tight">
+                  {h % 3 === 0 ? `${String(h).padStart(2, '0')}` : ''}
+                </span>
+              ))}
+              {filas.map((dia) => (
+                <Fragment key={dia}>
+                  <span className="text-[10px] text-gray-500 pr-1 self-center text-right">{nombres[dia]}</span>
+                  {horas.map((h) => {
+                    const total = lookup[`${dia}-${String(h).padStart(2, '0')}`] || 0;
+                    const intensity = total > 0 ? 0.15 + 0.85 * (total / max) : 0;
+                    return (
+                      <div
+                        key={h}
+                        className="group relative h-6 rounded-[3px] transition-transform hover:scale-110 cursor-default"
+                        style={{
+                          backgroundColor:
+                            total > 0 ? `rgba(196, 30, 58, ${intensity.toFixed(2)})` : '#F3F4F6',
+                        }}
+                      >
+                        {total > 0 && (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-xs rounded-lg px-2 py-1 whitespace-nowrap z-20 shadow-lg pointer-events-none">
+                            {nombres[dia]} {String(h).padStart(2, '0')}:00 — {total.toLocaleString()} eventos
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 mt-3 text-[10px] text-gray-500">
+              <span>Menos</span>
+              {[0.15, 0.35, 0.55, 0.75, 1].map((a) => (
+                <span key={a} className="w-4 h-3 rounded-[2px]" style={{ backgroundColor: `rgba(196, 30, 58, ${a})` }}></span>
+              ))}
+              <span>Más</span>
+            </div>
           </div>
         </div>
       );
@@ -2084,7 +2201,7 @@ export default function AdminPage() {
               data={porDia}
               labelKey="dia"
               valueKey="total"
-              height="h-64"
+              height="h-80"
               formatLabel={(dia) => {
                 if (!dia) return dia;
                 const [y, m, d] = String(dia).split('-');
@@ -2101,10 +2218,15 @@ export default function AdminPage() {
               labelKey="hora"
               valueKey="total"
               color="bg-blue-500"
-              height="h-64"
+              height="h-80"
               formatLabel={(hora) => `${String(hora).padStart(2, '0')}:00`}
             />
           </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <h3 className="text-sm font-bold text-gray-900 mb-4">Heatmap de actividad (día × hora UTC)</h3>
+          <HeatmapDiaHora data={publicoData?.porDiaHora || []} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

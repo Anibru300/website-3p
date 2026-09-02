@@ -354,6 +354,17 @@ def resumen(
             (*date_params, *tipo_params),
         ).fetchall()
 
+        por_tipo = conn.execute(
+            f"""
+            SELECT event_type, COUNT(*) AS total
+            FROM analytics_events
+            WHERE {date_clause} {tipo_clause}
+            GROUP BY event_type
+            ORDER BY total DESC
+            """,
+            (*date_params, *tipo_params),
+        ).fetchall()
+
         ultimos = conn.execute(
             f"""
             SELECT
@@ -389,6 +400,7 @@ def resumen(
         "paginas_mas_visitadas": [dict(r) for r in paginas],
         "usuarios_mas_activos": [dict(r) for r in usuarios],
         "eventos_por_mes": [dict(r) for r in por_mes],
+        "eventos_por_tipo": [dict(r) for r in por_tipo],
         "actividad_reciente": [dict(r) for r in ultimos],
     }
 
@@ -504,6 +516,30 @@ def publico_por_hora(
             WHERE {date_clause} {_public_where_clause()}
             GROUP BY hora
             ORDER BY hora ASC
+            """,
+            (*date_params,),
+        ).fetchall()
+    return {"dias": dias, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "data": [dict(r) for r in rows]}
+
+
+@router.get("/publico/por-dia-hora")
+def publico_por_dia_hora(
+    dias: int = Query(default=30, ge=1, le=365),
+    fecha_desde: Optional[str] = Query(default=None),
+    fecha_hasta: Optional[str] = Query(default=None),
+    user: dict = Depends(require_admin),
+):
+    """Matriz día de la semana (0=domingo) x hora (UTC) para el heatmap."""
+    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
+    with users_connection() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT strftime('%w', created_at) AS dia_semana,
+                   strftime('%H', created_at) AS hora,
+                   COUNT(*) AS total
+            FROM analytics_events
+            WHERE {date_clause} {_public_where_clause()}
+            GROUP BY dia_semana, hora
             """,
             (*date_params,),
         ).fetchall()

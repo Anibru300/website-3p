@@ -651,6 +651,10 @@ export async function fetchAnalyticsPublicoPorHora(dias = 30, fechaDesde = '', f
   return apiFetch(`/api/analytics/publico/por-hora?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
 }
 
+export async function fetchAnalyticsPublicoPorDiaHora(dias = 30, fechaDesde = '', fechaHasta = '') {
+  return apiFetch(`/api/analytics/publico/por-dia-hora?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+}
+
 export async function fetchAnalyticsPublicoDispositivos(dias = 30, fechaDesde = '', fechaHasta = '') {
   return apiFetch(`/api/analytics/publico/dispositivos?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
 }
