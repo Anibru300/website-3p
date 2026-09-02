@@ -626,42 +626,61 @@ export function trackEvent(eventType, { path, section, metadata } = {}) {
   });
 }
 
-export async function fetchAnalyticsResumen(dias = 30, tipo = 'todos') {
-  return apiFetch(`/api/analytics/resumen?dias=${dias}&tipo=${tipo}`);
+function _analyticsQuery(dias, fechaDesde, fechaHasta) {
+  const params = new URLSearchParams();
+  params.set('dias', String(dias));
+  if (fechaDesde) params.set('fecha_desde', fechaDesde);
+  if (fechaHasta) params.set('fecha_hasta', fechaHasta);
+  return params.toString();
+}
+
+export async function fetchAnalyticsResumen(dias = 30, tipo = 'todos', fechaDesde = '', fechaHasta = '') {
+  const query = _analyticsQuery(dias, fechaDesde, fechaHasta);
+  return apiFetch(`/api/analytics/resumen?${query}&tipo=${tipo}`);
 }
 
 export async function fetchAnalyticsVisitas(query = '') {
   return apiFetch(`/api/analytics/visitas?${query}`);
 }
 
-export async function fetchAnalyticsPublicoPorDia(dias = 30) {
-  return apiFetch(`/api/analytics/publico/por-dia?dias=${dias}`);
+export async function fetchAnalyticsPublicoPorDia(dias = 30, fechaDesde = '', fechaHasta = '') {
+  return apiFetch(`/api/analytics/publico/por-dia?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
 }
 
-export async function fetchAnalyticsPublicoPorHora(dias = 30) {
-  return apiFetch(`/api/analytics/publico/por-hora?dias=${dias}`);
+export async function fetchAnalyticsPublicoPorHora(dias = 30, fechaDesde = '', fechaHasta = '') {
+  return apiFetch(`/api/analytics/publico/por-hora?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
 }
 
-export async function fetchAnalyticsPublicoDispositivos(dias = 30) {
-  return apiFetch(`/api/analytics/publico/dispositivos?dias=${dias}`);
+export async function fetchAnalyticsPublicoDispositivos(dias = 30, fechaDesde = '', fechaHasta = '') {
+  return apiFetch(`/api/analytics/publico/dispositivos?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
 }
 
-export async function fetchAnalyticsPublicoNavegadores(dias = 30) {
-  return apiFetch(`/api/analytics/publico/navegadores?dias=${dias}`);
+export async function fetchAnalyticsPublicoNavegadores(dias = 30, fechaDesde = '', fechaHasta = '') {
+  return apiFetch(`/api/analytics/publico/navegadores?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
 }
 
-export async function fetchAnalyticsPublicoSistemasOperativos(dias = 30) {
-  return apiFetch(`/api/analytics/publico/sistemas-operativos?dias=${dias}`);
+export async function fetchAnalyticsPublicoSistemasOperativos(dias = 30, fechaDesde = '', fechaHasta = '') {
+  return apiFetch(`/api/analytics/publico/sistemas-operativos?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
 }
 
-export async function fetchAnalyticsPublicoPaises(dias = 30) {
-  return apiFetch(`/api/analytics/publico/paises?dias=${dias}`);
+export async function fetchAnalyticsPublicoPaises(dias = 30, fechaDesde = '', fechaHasta = '') {
+  return apiFetch(`/api/analytics/publico/paises?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
 }
 
-export async function fetchAnalyticsPublicoReferrers(dias = 30) {
-  return apiFetch(`/api/analytics/publico/referrers?dias=${dias}`);
+export async function fetchAnalyticsPublicoCiudades(dias = 30, fechaDesde = '', fechaHasta = '') {
+  return apiFetch(`/api/analytics/publico/ciudades?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
 }
 
-export async function fetchAnalyticsPublicoPaginas(dias = 30) {
-  return apiFetch(`/api/analytics/publico/paginas?dias=${dias}`);
+export async function fetchAnalyticsPublicoReferrers(dias = 30, fechaDesde = '', fechaHasta = '') {
+  return apiFetch(`/api/analytics/publico/referrers?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+}
+
+export async function fetchAnalyticsPublicoPaginas(dias = 30, fechaDesde = '', fechaHasta = '') {
+  return apiFetch(`/api/analytics/publico/paginas?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+}
+
+export async function fetchAnalyticsAlertas(dias = 30, fechaDesde = '', fechaHasta = '', umbralIntentos = 5) {
+  const params = new URLSearchParams(_analyticsQuery(dias, fechaDesde, fechaHasta));
+  params.set('umbral_intentos', String(umbralIntentos));
+  return apiFetch(`/api/analytics/alertas?${params.toString()}`);
 }

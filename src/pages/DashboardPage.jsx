@@ -14,6 +14,7 @@ import {
   exportarHistorialVentas,
   guardarSnapshotValorInventario,
   fetchHistorialValorInventario,
+  trackEvent,
 } from '../utils/api';
 import {
   Package,
@@ -3133,17 +3134,30 @@ export default function DashboardPage() {
             type="button"
             onClick={async () => {
               try {
+                const filtros = {
+                  busqueda: historialSearch.trim(),
+                  cliente: historialCliente.filter(Boolean),
+                  codigo: historialCodigo.filter(Boolean),
+                  moneda: historialMoneda,
+                  fecha_desde: historialFechaDesde || null,
+                  fecha_hasta: historialFechaHasta || null,
+                };
                 await exportarHistorialVentas(
-                  {
-                    busqueda: historialSearch.trim(),
-                    cliente: historialCliente.filter(Boolean),
-                    codigo: historialCodigo.filter(Boolean),
-                    moneda: historialMoneda,
-                    fecha_desde: historialFechaDesde || null,
-                    fecha_hasta: historialFechaHasta || null,
-                  },
+                  filtros,
                   `historial_ventas_${new Date().toISOString().slice(0, 10)}.xlsx`
                 );
+                trackEvent('export_excel', {
+                  path: '/dashboard',
+                  section: 'ventas',
+                  metadata: {
+                    tiene_busqueda: !!filtros.busqueda,
+                    clientes_count: filtros.cliente.length,
+                    codigos_count: filtros.codigo.length,
+                    moneda: filtros.moneda,
+                    tiene_fecha_desde: !!filtros.fecha_desde,
+                    tiene_fecha_hasta: !!filtros.fecha_hasta,
+                  },
+                });
               } catch (err) {
                 setError(err.message);
               }
@@ -3741,7 +3755,10 @@ export default function DashboardPage() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  trackEvent('section_view', { path: '/dashboard', section: tab.id });
+                  setActiveTab(tab.id);
+                }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all border ${
                   isActive
                     ? 'bg-p3-red text-white border-p3-red shadow-md'

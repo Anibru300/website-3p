@@ -8,6 +8,7 @@ import {
   fetchVendedoresCotizaciones,
   guardarCotizacion,
   verCotizacionPdf,
+  trackEvent,
 } from '../utils/api';
 import {
   ArrowLeft,
@@ -691,10 +692,25 @@ export default function CotizadorPage() {
       console.log('[CotizadorPage] Enviando payload:', data);
       const result = await guardarCotizacion(data);
       console.log('[CotizadorPage] Guardado exitoso:', result);
+      trackEvent('cotizacion_guardar', {
+        path: '/cotizador',
+        metadata: {
+          cotizacion_id: result.id,
+          cliente: data.cliente,
+          moneda: data.moneda,
+          total_lineas: data.lineas.length,
+          con_descuento: conDescuento,
+          con_fotos: conFotos,
+        },
+      });
       setCotizacionGuardada(result);
       // Abrir PDF automáticamente en una nueva pestaña al guardar
       try {
         await verCotizacionPdf(result.id);
+        trackEvent('cotizacion_pdf', {
+          path: '/cotizador',
+          metadata: { cotizacion_id: result.id, origen: 'auto_guardar' },
+        });
       } catch (pdfErr) {
         console.error('[CotizadorPage] Error al abrir PDF tras guardar:', pdfErr);
         setError('Cotización guardada, pero no se pudo abrir el PDF automáticamente.');
@@ -714,6 +730,10 @@ export default function CotizadorPage() {
     setAbriendoPdf(true);
     try {
       await verCotizacionPdf(cotizacionGuardada.id);
+      trackEvent('cotizacion_pdf', {
+        path: '/cotizador',
+        metadata: { cotizacion_id: cotizacionGuardada.id, origen: 'boton_ver_pdf' },
+      });
     } catch (err) {
       console.error('[CotizadorPage] Error al abrir PDF:', err);
       setError(err.message || 'Ocurrió un error al abrir el PDF.');

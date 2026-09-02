@@ -18,9 +18,11 @@ def _now() -> datetime:
 def record_login_attempt(ip: str, email: str, exito: bool):
     """Registra un intento de login en la base de datos."""
     with users_connection() as conn:
+        # Guardar siempre en UTC para que los filtros por fecha funcionen correctamente.
+        created_at = _now().isoformat()
         conn.execute(
-            "INSERT INTO login_attempts (ip, email, exito) VALUES (?, ?, ?)",
-            (ip, email, 1 if exito else 0),
+            "INSERT INTO login_attempts (ip, email, exito, created_at) VALUES (?, ?, ?, ?)",
+            (ip, email, 1 if exito else 0, created_at),
         )
         # Limpiar intentos antiguos para no crecer indefinidamente
         cutoff = (_now() - timedelta(minutes=WINDOW_MINUTES * 4)).isoformat()

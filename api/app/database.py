@@ -329,6 +329,13 @@ def _ensure_users_db():
             )
             """
         )
+        _add_column_if_missing(conn, "analytics_events", "device_type", "TEXT")
+        _add_column_if_missing(conn, "analytics_events", "browser", "TEXT")
+        _add_column_if_missing(conn, "analytics_events", "os", "TEXT")
+        _add_column_if_missing(conn, "analytics_events", "country", "TEXT")
+        _add_column_if_missing(conn, "analytics_events", "city", "TEXT")
+        _add_column_if_missing(conn, "analytics_events", "screen_width", "INTEGER")
+        _add_column_if_missing(conn, "analytics_events", "screen_height", "INTEGER")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_created_at ON analytics_events(created_at)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_user ON analytics_events(user_email)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_type ON analytics_events(event_type)")

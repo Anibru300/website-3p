@@ -38,8 +38,10 @@ import {
   fetchAnalyticsPublicoNavegadores,
   fetchAnalyticsPublicoSistemasOperativos,
   fetchAnalyticsPublicoPaises,
+  fetchAnalyticsPublicoCiudades,
   fetchAnalyticsPublicoReferrers,
   fetchAnalyticsPublicoPaginas,
+  fetchAnalyticsAlertas,
 } from '../utils/api';
 import {
   LayoutDashboard,
@@ -183,8 +185,12 @@ export default function AdminPage() {
   const [analyticsTipo, setAnalyticsTipo] = useState('todos');
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsTab, setAnalyticsTab] = useState('general');
+  const [analyticsFechaDesde, setAnalyticsFechaDesde] = useState('');
+  const [analyticsFechaHasta, setAnalyticsFechaHasta] = useState('');
   const [publicoData, setPublicoData] = useState(null);
   const [publicoLoading, setPublicoLoading] = useState(false);
+  const [alertasData, setAlertasData] = useState(null);
+  const [alertasLoading, setAlertasLoading] = useState(false);
 
   const tipoQuery = useMemo(() => {
     if (activeCrmTab === 'clientes') return 'cliente';
@@ -277,12 +283,34 @@ export default function AdminPage() {
     setAnalyticsLoading(true);
     setError('');
     try {
-      const data = await fetchAnalyticsResumen(analyticsDias, analyticsTipo);
+      const data = await fetchAnalyticsResumen(
+        analyticsDias,
+        analyticsTipo,
+        analyticsFechaDesde,
+        analyticsFechaHasta
+      );
       setAnalyticsData(data);
     } catch (err) {
       setError(err.message || 'Error al cargar analytics');
     } finally {
       setAnalyticsLoading(false);
+    }
+  }
+
+  async function cargarAlertas() {
+    setAlertasLoading(true);
+    try {
+      const data = await fetchAnalyticsAlertas(
+        analyticsDias,
+        analyticsFechaDesde,
+        analyticsFechaHasta,
+        5
+      );
+      setAlertasData(data);
+    } catch (err) {
+      console.error('Error al cargar alertas:', err);
+    } finally {
+      setAlertasLoading(false);
     }
   }
 
@@ -297,17 +325,19 @@ export default function AdminPage() {
         navegadores,
         sistemas,
         paises,
+        ciudades,
         referrers,
         paginas,
       ] = await Promise.all([
-        fetchAnalyticsPublicoPorDia(analyticsDias),
-        fetchAnalyticsPublicoPorHora(analyticsDias),
-        fetchAnalyticsPublicoDispositivos(analyticsDias),
-        fetchAnalyticsPublicoNavegadores(analyticsDias),
-        fetchAnalyticsPublicoSistemasOperativos(analyticsDias),
-        fetchAnalyticsPublicoPaises(analyticsDias),
-        fetchAnalyticsPublicoReferrers(analyticsDias),
-        fetchAnalyticsPublicoPaginas(analyticsDias),
+        fetchAnalyticsPublicoPorDia(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
+        fetchAnalyticsPublicoPorHora(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
+        fetchAnalyticsPublicoDispositivos(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
+        fetchAnalyticsPublicoNavegadores(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
+        fetchAnalyticsPublicoSistemasOperativos(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
+        fetchAnalyticsPublicoPaises(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
+        fetchAnalyticsPublicoCiudades(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
+        fetchAnalyticsPublicoReferrers(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
+        fetchAnalyticsPublicoPaginas(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
       ]);
       setPublicoData({
         porDia: porDia.data || [],
@@ -316,6 +346,7 @@ export default function AdminPage() {
         navegadores: navegadores.data || [],
         sistemas: sistemas.data || [],
         paises: paises.data || [],
+        ciudades: ciudades.data || [],
         referrers: referrers.data || [],
         paginas: paginas.data || [],
       });
@@ -337,9 +368,24 @@ export default function AdminPage() {
       } else {
         cargarAnalyticsPublico();
       }
+      cargarAlertas();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSection, activeCrmTab, tipoQuery, search, statusFiltro, industriaFiltro, portalesSearch, view, analyticsDias, analyticsTipo, analyticsTab]);
+  }, [
+    activeSection,
+    activeCrmTab,
+    tipoQuery,
+    search,
+    statusFiltro,
+    industriaFiltro,
+    portalesSearch,
+    view,
+    analyticsDias,
+    analyticsTipo,
+    analyticsTab,
+    analyticsFechaDesde,
+    analyticsFechaHasta,
+  ]);
 
   useEffect(() => {
     if (activeSection === 'crms' && view === 'list') {
@@ -1551,12 +1597,151 @@ export default function AdminPage() {
                 <option value={90}>Últimos 3 meses</option>
                 <option value={365}>Último año</option>
               </select>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={analyticsFechaDesde}
+                  onChange={(e) => setAnalyticsFechaDesde(e.target.value)}
+                  className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+                  title="Desde"
+                />
+                <span className="text-gray-400">-</span>
+                <input
+                  type="date"
+                  value={analyticsFechaHasta}
+                  onChange={(e) => setAnalyticsFechaHasta(e.target.value)}
+                  className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+                  title="Hasta"
+                />
+                {(analyticsFechaDesde || analyticsFechaHasta) && (
+                  <button
+                    onClick={() => {
+                      setAnalyticsFechaDesde('');
+                      setAnalyticsFechaHasta('');
+                    }}
+                    className="px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                  >
+                    Limpiar fechas
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
+        {renderAlertas()}
+
         {analyticsTab === 'general' && renderAnalyticsGeneral()}
         {analyticsTab === 'publico' && renderAnalyticsPublico()}
+      </div>
+    );
+  }
+
+  function renderAlertas() {
+    if (alertasLoading || !alertasData) return null;
+    if (!alertasData.alertas_activas) {
+      return (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+          <Shield size={18} />
+          No hay alertas de seguridad en el período seleccionado.
+        </div>
+      );
+    }
+
+    const {
+      total_intentos_fallidos,
+      ips_sospechosas,
+      ips_con_intentos_fallidos,
+      emails_con_intentos_fallidos,
+      intentos_recientes,
+    } = alertasData;
+
+    const tieneIpsSospechosas = ips_sospechosas && ips_sospechosas.length > 0;
+
+    return (
+      <div className={`border rounded-xl p-4 ${tieneIpsSospechosas ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+        <div className="flex items-start gap-3">
+          <div className={`p-2 rounded-lg ${tieneIpsSospechosas ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+            <Shield size={20} />
+          </div>
+          <div className="flex-1">
+            <h3 className={`text-sm font-bold ${tieneIpsSospechosas ? 'text-red-800' : 'text-amber-800'}`}>
+              Alerta de seguridad
+            </h3>
+            <p className={`text-sm mt-1 ${tieneIpsSospechosas ? 'text-red-700' : 'text-amber-700'}`}>
+              Se detectaron <strong>{total_intentos_fallidos}</strong> intentos de login fallidos en el período.
+            </p>
+
+            {ips_sospechosas.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-red-700 uppercase">IPs sospechosas (≥5 intentos)</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {ips_sospechosas.map((ip, i) => (
+                    <span key={i} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-md font-mono">
+                      {ip.ip} ({ip.total})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              {ips_con_intentos_fallidos.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 uppercase mb-2">IPs con intentos fallidos</p>
+                  <ul className="space-y-1">
+                    {ips_con_intentos_fallidos.slice(0, 10).map((item, i) => (
+                      <li key={i} className="flex items-center justify-between text-sm">
+                        <span className="font-mono text-gray-700">{item.ip}</span>
+                        <span className="font-medium text-gray-900">{item.total}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {emails_con_intentos_fallidos.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Emails atacados</p>
+                  <ul className="space-y-1">
+                    {emails_con_intentos_fallidos.slice(0, 10).map((item, i) => (
+                      <li key={i} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700 truncate max-w-[180px]">{item.email || 'Anónimo'}</span>
+                        <span className="font-medium text-gray-900">{item.total}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {intentos_recientes.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Intentos recientes</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left text-gray-500">
+                        <th className="py-1 px-2">Fecha</th>
+                        <th className="py-1 px-2">IP</th>
+                        <th className="py-1 px-2">Email</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {intentos_recientes.slice(0, 5).map((item, i) => (
+                        <tr key={i}>
+                          <td className="py-1 px-2 text-gray-600">{new Date(item.created_at).toLocaleString('es-MX')}</td>
+                          <td className="py-1 px-2 font-mono text-gray-700">{item.ip}</td>
+                          <td className="py-1 px-2 text-gray-700">{item.email || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
@@ -1778,11 +1963,22 @@ export default function AdminPage() {
       []
     ).size;
 
-    function SimpleBarChart({ data, labelKey = 'nombre', valueKey = 'total', color = 'bg-p3-red', horizontal = false, height = 'h-48' }) {
+    function SimpleBarChart({
+      data,
+      labelKey = 'nombre',
+      valueKey = 'total',
+      color = 'bg-p3-red',
+      horizontal = false,
+      height = 'h-56',
+      formatLabel,
+      showValue = true,
+    }) {
       if (!data || data.length === 0) {
         return <p className="text-sm text-gray-500">Sin datos</p>;
       }
       const max = Math.max(...data.map((d) => d[valueKey]), 1);
+
+      const format = (value) => (formatLabel ? formatLabel(value, data) : String(value));
 
       if (horizontal) {
         return (
@@ -1792,12 +1988,12 @@ export default function AdminPage() {
               return (
                 <div key={i}>
                   <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-gray-700 truncate max-w-[70%]">{d[labelKey]}</span>
+                    <span className="text-gray-700 truncate max-w-[60%]">{d[labelKey]}</span>
                     <span className="font-medium text-gray-900">{d[valueKey].toLocaleString()}</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div className="w-full bg-gray-100 rounded-full h-2.5">
                     <div
-                      className={`${color} h-2 rounded-full transition-all`}
+                      className={`${color} h-2.5 rounded-full transition-all`}
                       style={{ width: `${pct}%` }}
                       title={`${d[labelKey]}: ${d[valueKey]}`}
                     ></div>
@@ -1810,22 +2006,36 @@ export default function AdminPage() {
       }
 
       return (
-        <div className={`flex items-end gap-2 ${height}`}>
-          {data.map((d, i) => {
-            const pct = Math.round((d[valueKey] / max) * 100) || 5;
-            return (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0 h-full justify-end">
-                <div
-                  className={`w-full ${color} rounded-t-md transition-all`}
-                  style={{ height: `${pct}%` }}
-                  title={`${d[labelKey]}: ${d[valueKey]}`}
-                ></div>
-                <span className="text-[10px] text-gray-500 truncate w-full text-center">
-                  {String(d[labelKey]).slice(0, 6)}
-                </span>
-              </div>
-            );
-          })}
+        <div className={`relative ${height}`}>
+          {/* Líneas de cuadrícula horizontales */}
+          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="border-t border-gray-100 w-full"></div>
+            ))}
+          </div>
+          <div className="relative h-full flex items-end gap-2 pl-2 pr-2">
+            {data.map((d, i) => {
+              const pct = Math.round((d[valueKey] / max) * 100) || 3;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0 h-full justify-end group">
+                  <div
+                    className={`w-full ${color} rounded-t-md transition-all hover:opacity-90 relative`}
+                    style={{ height: `${pct}%` }}
+                    title={`${d[labelKey]}: ${d[valueKey]}`}
+                  >
+                    {showValue && (
+                      <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-700 whitespace-nowrap">
+                        {d[valueKey].toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-gray-500 truncate w-full text-center leading-tight">
+                    {format(d[labelKey])}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       );
     }
@@ -1870,12 +2080,30 @@ export default function AdminPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <h3 className="text-sm font-bold text-gray-900 mb-4">Visitas por día</h3>
-            <SimpleBarChart data={porDia} labelKey="dia" valueKey="total" height="h-56" />
+            <SimpleBarChart
+              data={porDia}
+              labelKey="dia"
+              valueKey="total"
+              height="h-64"
+              formatLabel={(dia) => {
+                if (!dia) return dia;
+                const [y, m, d] = String(dia).split('-');
+                if (!d) return dia;
+                return `${d}/${m}`;
+              }}
+            />
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <h3 className="text-sm font-bold text-gray-900 mb-4">Visitas por hora (UTC)</h3>
-            <SimpleBarChart data={porHora} labelKey="hora" valueKey="total" color="bg-blue-500" height="h-56" />
+            <SimpleBarChart
+              data={porHora}
+              labelKey="hora"
+              valueKey="total"
+              color="bg-blue-500"
+              height="h-64"
+              formatLabel={(hora) => `${String(hora).padStart(2, '0')}:00`}
+            />
           </div>
         </div>
 
@@ -1896,10 +2124,15 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <h3 className="text-sm font-bold text-gray-900 mb-4">Países</h3>
             <RankedList data={paises} />
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">Ciudades</h3>
+            <RankedList data={publicoData?.ciudades || []} />
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">

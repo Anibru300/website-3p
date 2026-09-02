@@ -8,6 +8,7 @@ from app.database import users_connection
 
 logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 def _validate_user_from_payload(payload: dict | None) -> dict:
@@ -45,6 +46,19 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     if payload is None:
         logger.warning("[auth] Token invalido o expirado")
     return _validate_user_from_payload(payload)
+
+
+def get_current_user_optional(token: str | None = Depends(oauth2_scheme_optional)) -> dict | None:
+    """Devuelve el usuario si hay token válido, o None si no hay sesión."""
+    if not token:
+        return None
+    payload = decode_access_token(token)
+    if payload is None:
+        return None
+    try:
+        return _validate_user_from_payload(payload)
+    except HTTPException:
+        return None
 
 
 def get_current_user_from_token(token: str) -> dict:
