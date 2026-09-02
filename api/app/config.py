@@ -53,6 +53,22 @@ class Settings(BaseSettings):
     # Excel de vendedores/firmas del cotizador (solo lectura)
     cotizador_vendedores_excel_path: str = "Y:/COTIZACIONES/1. COTIZADOR/2. COTIZADOR 2.0.xlsm"
 
+    # Logo para reportes de analytics (ruta relativa a api/ o absoluta)
+    analytics_logo_path: str = "../public/images/logo-3p-header.png"
+
+    # Notificaciones por correo (vacío = deshabilitado, solo panel/logs)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_tls: bool = True
+    alertas_email_to: str = ""
+
+    # Países considerados esperados en analytics (separados por coma).
+    # Vacío = no se evalúa la alerta de país no esperado.
+    alertas_paises_permitidos: str = ""
+
     @property
     def database_url(self) -> str:
         return (

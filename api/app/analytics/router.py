@@ -4,7 +4,7 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request as UrlRequest
@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_user_optional, require_admin
 from app.database import users_connection
+from app.services.client_ip import cf_country_name, get_client_ip_and_country
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
@@ -38,13 +39,6 @@ class EventPayload(BaseModel):
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
-
-
-def _get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
 
 
 # Caché en memoria para geolocalización por IP.
@@ -145,10 +139,10 @@ def record_analytics_event(
 ):
     """Registra un evento de analytics. Puede usarse desde otros routers."""
     try:
-        ip = _get_client_ip(request)
+        ip, cf_country_code = get_client_ip_and_country(request)
         user_agent = request.headers.get("user-agent", "")
-        # Si no viene país/ciudad del frontend, intentar deducirlo por IP.
-        geo_country = country
+        # Prioridad: país explícito del frontend > CF-IPCountry (vía túnel) > lookup por IP.
+        geo_country = country or cf_country_name(cf_country_code)
         geo_city = city
         if not geo_country or not geo_city:
             lookup_country, lookup_city = _lookup_geo(ip)
@@ -478,26 +472,164 @@ def _public_where_clause() -> str:
     """
 
 
+def _geo_clause(pais: Optional[str] = None, ciudad: Optional[str] = None) -> tuple[str, tuple]:
+    """Cláusula WHERE y parámetros para filtrar por país y/o ciudad."""
+    clauses: list[str] = []
+    params: list = []
+    if pais:
+        clauses.append("COALESCE(country, 'Desconocido') = ?")
+        params.append(pais)
+    if ciudad:
+        clauses.append("COALESCE(city, 'Desconocida') = ?")
+        params.append(ciudad)
+    return (" AND " + " AND ".join(clauses)) if clauses else "", tuple(params)
+
+
+# ---------------------------------------------------------------------------
+# Consultas públicas (compartidas entre endpoints /publico/* y el reporte)
+# ---------------------------------------------------------------------------
+
+
+def _q_publico_por_dia(conn, date_clause: str, date_params: tuple) -> list[dict]:
+    rows = conn.execute(
+        f"""
+        SELECT strftime('%Y-%m-%d', created_at) AS dia, COUNT(*) AS total
+        FROM analytics_events
+        WHERE {date_clause} {_public_where_clause()}
+        GROUP BY dia
+        ORDER BY dia ASC
+        """,
+        (*date_params,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _q_publico_por_hora(conn, date_clause: str, date_params: tuple) -> list[dict]:
+    rows = conn.execute(
+        f"""
+        SELECT strftime('%H', created_at) AS hora, COUNT(*) AS total
+        FROM analytics_events
+        WHERE {date_clause} {_public_where_clause()}
+        GROUP BY hora
+        ORDER BY hora ASC
+        """,
+        (*date_params,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _q_publico_por_dia_hora(conn, date_clause: str, date_params: tuple) -> list[dict]:
+    """Matriz día de la semana (0=domingo) x hora (UTC) para el heatmap."""
+    rows = conn.execute(
+        f"""
+        SELECT strftime('%w', created_at) AS dia_semana,
+               strftime('%H', created_at) AS hora,
+               COUNT(*) AS total
+        FROM analytics_events
+        WHERE {date_clause} {_public_where_clause()}
+        GROUP BY dia_semana, hora
+        """,
+        (*date_params,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _q_publico_agrupado(
+    conn,
+    date_clause: str,
+    date_params: tuple,
+    expresion: str,
+    limite: Optional[int] = None,
+    extra_where: str = "",
+) -> list[dict]:
+    """Agrupa eventos públicos por una expresión SQL fija (no es input del usuario)."""
+    sql = f"""
+        SELECT {expresion} AS nombre, COUNT(*) AS total
+        FROM analytics_events
+        WHERE {date_clause} {_public_where_clause()} {extra_where}
+        GROUP BY nombre
+        ORDER BY total DESC
+    """
+    if limite:
+        sql += f" LIMIT {int(limite)}"
+    rows = conn.execute(sql, (*date_params,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def datos_publicos(
+    dias: int,
+    fecha_desde: Optional[str] = None,
+    fecha_hasta: Optional[str] = None,
+    pais: Optional[str] = None,
+    ciudad: Optional[str] = None,
+) -> dict:
+    """Todas las consultas del dashboard público en una sola pasada.
+
+    La usan los endpoints /publico/* (cada uno toma su rebanada) y la
+    generación del reporte exportable.
+    """
+    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
+    geo_clause, geo_params = _geo_clause(pais, ciudad)
+    date_clause = f"{date_clause}{geo_clause}"
+    date_params = (*date_params, *geo_params)
+    with users_connection() as conn:
+        return {
+            "por_dia": _q_publico_por_dia(conn, date_clause, date_params),
+            "por_hora": _q_publico_por_hora(conn, date_clause, date_params),
+            "por_dia_hora": _q_publico_por_dia_hora(conn, date_clause, date_params),
+            "dispositivos": _q_publico_agrupado(
+                conn, date_clause, date_params, "COALESCE(device_type, 'Desconocido')"
+            ),
+            "navegadores": _q_publico_agrupado(
+                conn, date_clause, date_params, "COALESCE(browser, 'Desconocido')"
+            ),
+            "sistemas": _q_publico_agrupado(
+                conn, date_clause, date_params, "COALESCE(os, 'Desconocido')"
+            ),
+            "paises": _q_publico_agrupado(
+                conn, date_clause, date_params, "COALESCE(country, 'Desconocido')"
+            ),
+            "ciudades": _q_publico_agrupado(
+                conn,
+                date_clause,
+                date_params,
+                "COALESCE(city, 'Desconocida')",
+                limite=20,
+                extra_where="AND city IS NOT NULL AND city != ''",
+            ),
+            "referrers": _q_publico_agrupado(
+                conn,
+                date_clause,
+                date_params,
+                "COALESCE(referrer, 'Directo / Ninguno')",
+                limite=50,
+            ),
+            "paginas": _q_publico_agrupado(
+                conn, date_clause, date_params, "COALESCE(path, '/')", limite=50
+            ),
+        }
+
+
+def _respuesta_publico(datos: list[dict], dias, fecha_desde, fecha_hasta) -> dict:
+    return {
+        "dias": dias,
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
+        "data": datos,
+    }
+
+
 @router.get("/publico/por-dia")
 def publico_por_dia(
     dias: int = Query(default=30, ge=1, le=365),
     fecha_desde: Optional[str] = Query(default=None),
     fecha_hasta: Optional[str] = Query(default=None),
+    pais: Optional[str] = Query(default=None),
+    ciudad: Optional[str] = Query(default=None),
     user: dict = Depends(require_admin),
 ):
-    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
-    with users_connection() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT strftime('%Y-%m-%d', created_at) AS dia, COUNT(*) AS total
-            FROM analytics_events
-            WHERE {date_clause} {_public_where_clause()}
-            GROUP BY dia
-            ORDER BY dia ASC
-            """,
-            (*date_params,),
-        ).fetchall()
-    return {"dias": dias, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "data": [dict(r) for r in rows]}
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta, pais, ciudad)
+    return _respuesta_publico(datos["por_dia"], dias, fecha_desde, fecha_hasta)
 
 
 @router.get("/publico/por-hora")
@@ -505,21 +637,12 @@ def publico_por_hora(
     dias: int = Query(default=30, ge=1, le=365),
     fecha_desde: Optional[str] = Query(default=None),
     fecha_hasta: Optional[str] = Query(default=None),
+    pais: Optional[str] = Query(default=None),
+    ciudad: Optional[str] = Query(default=None),
     user: dict = Depends(require_admin),
 ):
-    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
-    with users_connection() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT strftime('%H', created_at) AS hora, COUNT(*) AS total
-            FROM analytics_events
-            WHERE {date_clause} {_public_where_clause()}
-            GROUP BY hora
-            ORDER BY hora ASC
-            """,
-            (*date_params,),
-        ).fetchall()
-    return {"dias": dias, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "data": [dict(r) for r in rows]}
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta, pais, ciudad)
+    return _respuesta_publico(datos["por_hora"], dias, fecha_desde, fecha_hasta)
 
 
 @router.get("/publico/por-dia-hora")
@@ -527,23 +650,12 @@ def publico_por_dia_hora(
     dias: int = Query(default=30, ge=1, le=365),
     fecha_desde: Optional[str] = Query(default=None),
     fecha_hasta: Optional[str] = Query(default=None),
+    pais: Optional[str] = Query(default=None),
+    ciudad: Optional[str] = Query(default=None),
     user: dict = Depends(require_admin),
 ):
-    """Matriz día de la semana (0=domingo) x hora (UTC) para el heatmap."""
-    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
-    with users_connection() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT strftime('%w', created_at) AS dia_semana,
-                   strftime('%H', created_at) AS hora,
-                   COUNT(*) AS total
-            FROM analytics_events
-            WHERE {date_clause} {_public_where_clause()}
-            GROUP BY dia_semana, hora
-            """,
-            (*date_params,),
-        ).fetchall()
-    return {"dias": dias, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "data": [dict(r) for r in rows]}
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta, pais, ciudad)
+    return _respuesta_publico(datos["por_dia_hora"], dias, fecha_desde, fecha_hasta)
 
 
 @router.get("/publico/dispositivos")
@@ -551,21 +663,12 @@ def publico_dispositivos(
     dias: int = Query(default=30, ge=1, le=365),
     fecha_desde: Optional[str] = Query(default=None),
     fecha_hasta: Optional[str] = Query(default=None),
+    pais: Optional[str] = Query(default=None),
+    ciudad: Optional[str] = Query(default=None),
     user: dict = Depends(require_admin),
 ):
-    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
-    with users_connection() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT COALESCE(device_type, 'Desconocido') AS nombre, COUNT(*) AS total
-            FROM analytics_events
-            WHERE {date_clause} {_public_where_clause()}
-            GROUP BY nombre
-            ORDER BY total DESC
-            """,
-            (*date_params,),
-        ).fetchall()
-    return {"dias": dias, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "data": [dict(r) for r in rows]}
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta, pais, ciudad)
+    return _respuesta_publico(datos["dispositivos"], dias, fecha_desde, fecha_hasta)
 
 
 @router.get("/publico/navegadores")
@@ -573,21 +676,12 @@ def publico_navegadores(
     dias: int = Query(default=30, ge=1, le=365),
     fecha_desde: Optional[str] = Query(default=None),
     fecha_hasta: Optional[str] = Query(default=None),
+    pais: Optional[str] = Query(default=None),
+    ciudad: Optional[str] = Query(default=None),
     user: dict = Depends(require_admin),
 ):
-    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
-    with users_connection() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT COALESCE(browser, 'Desconocido') AS nombre, COUNT(*) AS total
-            FROM analytics_events
-            WHERE {date_clause} {_public_where_clause()}
-            GROUP BY nombre
-            ORDER BY total DESC
-            """,
-            (*date_params,),
-        ).fetchall()
-    return {"dias": dias, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "data": [dict(r) for r in rows]}
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta, pais, ciudad)
+    return _respuesta_publico(datos["navegadores"], dias, fecha_desde, fecha_hasta)
 
 
 @router.get("/publico/sistemas-operativos")
@@ -595,21 +689,12 @@ def publico_sistemas_operativos(
     dias: int = Query(default=30, ge=1, le=365),
     fecha_desde: Optional[str] = Query(default=None),
     fecha_hasta: Optional[str] = Query(default=None),
+    pais: Optional[str] = Query(default=None),
+    ciudad: Optional[str] = Query(default=None),
     user: dict = Depends(require_admin),
 ):
-    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
-    with users_connection() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT COALESCE(os, 'Desconocido') AS nombre, COUNT(*) AS total
-            FROM analytics_events
-            WHERE {date_clause} {_public_where_clause()}
-            GROUP BY nombre
-            ORDER BY total DESC
-            """,
-            (*date_params,),
-        ).fetchall()
-    return {"dias": dias, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "data": [dict(r) for r in rows]}
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta, pais, ciudad)
+    return _respuesta_publico(datos["sistemas"], dias, fecha_desde, fecha_hasta)
 
 
 @router.get("/publico/paises")
@@ -617,21 +702,12 @@ def publico_paises(
     dias: int = Query(default=30, ge=1, le=365),
     fecha_desde: Optional[str] = Query(default=None),
     fecha_hasta: Optional[str] = Query(default=None),
+    pais: Optional[str] = Query(default=None),
+    ciudad: Optional[str] = Query(default=None),
     user: dict = Depends(require_admin),
 ):
-    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
-    with users_connection() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT COALESCE(country, 'Desconocido') AS nombre, COUNT(*) AS total
-            FROM analytics_events
-            WHERE {date_clause} {_public_where_clause()}
-            GROUP BY nombre
-            ORDER BY total DESC
-            """,
-            (*date_params,),
-        ).fetchall()
-    return {"dias": dias, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "data": [dict(r) for r in rows]}
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta, pais, ciudad)
+    return _respuesta_publico(datos["paises"], dias, fecha_desde, fecha_hasta)
 
 
 @router.get("/publico/ciudades")
@@ -639,22 +715,12 @@ def publico_ciudades(
     dias: int = Query(default=30, ge=1, le=365),
     fecha_desde: Optional[str] = Query(default=None),
     fecha_hasta: Optional[str] = Query(default=None),
+    pais: Optional[str] = Query(default=None),
+    ciudad: Optional[str] = Query(default=None),
     user: dict = Depends(require_admin),
 ):
-    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
-    with users_connection() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT COALESCE(city, 'Desconocida') AS nombre, COUNT(*) AS total
-            FROM analytics_events
-            WHERE {date_clause} {_public_where_clause()} AND city IS NOT NULL AND city != ''
-            GROUP BY nombre
-            ORDER BY total DESC
-            LIMIT 20
-            """,
-            (*date_params,),
-        ).fetchall()
-    return {"dias": dias, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "data": [dict(r) for r in rows]}
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta, pais, ciudad)
+    return _respuesta_publico(datos["ciudades"], dias, fecha_desde, fecha_hasta)
 
 
 @router.get("/publico/referrers")
@@ -662,23 +728,12 @@ def publico_referrers(
     dias: int = Query(default=30, ge=1, le=365),
     fecha_desde: Optional[str] = Query(default=None),
     fecha_hasta: Optional[str] = Query(default=None),
+    pais: Optional[str] = Query(default=None),
+    ciudad: Optional[str] = Query(default=None),
     user: dict = Depends(require_admin),
 ):
-    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
-    with users_connection() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT COALESCE(referrer, 'Directo / Ninguno') AS nombre, COUNT(*) AS total
-            FROM analytics_events
-            WHERE {date_clause} {_public_where_clause()}
-            GROUP BY nombre
-            ORDER BY total DESC
-            LIMIT 50
-            """,
-            (*date_params,),
-        ).fetchall()
-    return {"dias": dias, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "data": [dict(r) for r in rows]}
-
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta, pais, ciudad)
+    return _respuesta_publico(datos["referrers"], dias, fecha_desde, fecha_hasta)
 
 
 @router.get("/publico/paginas")
@@ -686,22 +741,136 @@ def publico_paginas(
     dias: int = Query(default=30, ge=1, le=365),
     fecha_desde: Optional[str] = Query(default=None),
     fecha_hasta: Optional[str] = Query(default=None),
+    pais: Optional[str] = Query(default=None),
+    ciudad: Optional[str] = Query(default=None),
     user: dict = Depends(require_admin),
 ):
-    date_clause, date_params = _date_clause(dias, fecha_desde, fecha_hasta)
-    with users_connection() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT COALESCE(path, '/') AS nombre, COUNT(*) AS total
-            FROM analytics_events
-            WHERE {date_clause} {_public_where_clause()}
-            GROUP BY nombre
-            ORDER BY total DESC
-            LIMIT 50
-            """,
-            (*date_params,),
-        ).fetchall()
-    return {"dias": dias, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "data": [dict(r) for r in rows]}
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta, pais, ciudad)
+    return _respuesta_publico(datos["paginas"], dias, fecha_desde, fecha_hasta)
+
+
+@router.get("/reporte/excel")
+def reporte_excel(
+    dias: int = Query(default=30, ge=1, le=365),
+    fecha_desde: Optional[str] = Query(default=None),
+    fecha_hasta: Optional[str] = Query(default=None),
+    user: dict = Depends(require_admin),
+):
+    """Reporte de tráfico en Excel, con los datos del período seleccionado."""
+    from fastapi.responses import Response
+
+    from app.analytics.reporte import generar_reporte_excel
+    from app.config import get_settings
+
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta)
+    logo = get_settings().analytics_logo_path
+    contenido = generar_reporte_excel(datos, dias, fecha_desde, fecha_hasta, logo_path=logo)
+    nombre = f"reporte_trafico_{_now().strftime('%Y%m%d')}.xlsx"
+    return Response(
+        content=contenido,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
+
+
+@router.get("/reporte/pdf")
+def reporte_pdf(
+    dias: int = Query(default=30, ge=1, le=365),
+    fecha_desde: Optional[str] = Query(default=None),
+    fecha_hasta: Optional[str] = Query(default=None),
+    user: dict = Depends(require_admin),
+):
+    """Reporte de tráfico en PDF, con los datos del período seleccionado."""
+    from fastapi.responses import Response
+
+    from app.analytics.reporte import generar_reporte_pdf
+    from app.config import get_settings
+
+    datos = datos_publicos(dias, fecha_desde, fecha_hasta)
+    logo = get_settings().analytics_logo_path
+    contenido = generar_reporte_pdf(datos, dias, fecha_desde, fecha_hasta, logo_path=logo)
+    nombre = f"reporte_trafico_{_now().strftime('%Y%m%d')}.pdf"
+    return Response(
+        content=contenido,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
+
+
+@router.get("/publico/comparativa")
+def publico_comparativa(
+    dias: int = Query(default=30, ge=1, le=365),
+    fecha_desde: Optional[str] = Query(default=None),
+    fecha_hasta: Optional[str] = Query(default=None),
+    pais: Optional[str] = Query(default=None),
+    ciudad: Optional[str] = Query(default=None),
+    user: dict = Depends(require_admin),
+):
+    """Compara el período seleccionado con el período anterior del mismo tamaño.
+
+    Si se dan fechas, el período anterior es el rango inmediato previo de igual
+    duración; si no, los `dias` días anteriores a la ventana de `dias`.
+    """
+    hoy = date.today()
+    if fecha_desde or fecha_hasta:
+        # Se acepta "YYYY-MM-DD" o ISO con hora; se toma solo la parte fecha.
+        inicio = date.fromisoformat(fecha_desde[:10]) if fecha_desde else hoy - timedelta(days=dias)
+        fin = date.fromisoformat(fecha_hasta[:10]) if fecha_hasta else hoy
+    else:
+        fin = hoy
+        inicio = fin - timedelta(days=dias)
+    duracion = max((fin - inicio).days, 1)
+    ant_fin = inicio - timedelta(days=1)
+    ant_inicio = inicio - timedelta(days=duracion)
+
+    geo_clause, geo_params = _geo_clause(pais, ciudad)
+
+    def _rango(inicio_d, fin_d):
+        where = f"created_at >= ? AND created_at <= ?{geo_clause} {_public_where_clause()}"
+        params = (f"{inicio_d} 00:00:00", f"{fin_d} 23:59:59", *geo_params)
+        with users_connection() as conn:
+            total = conn.execute(
+                f"SELECT COUNT(*) FROM analytics_events WHERE {where}", params
+            ).fetchone()[0]
+            por_dia = conn.execute(
+                f"""
+                SELECT strftime('%Y-%m-%d', created_at) AS dia, COUNT(*) AS total
+                FROM analytics_events
+                WHERE {where}
+                GROUP BY dia
+                ORDER BY dia ASC
+                """,
+                params,
+            ).fetchall()
+        return {
+            "inicio": inicio_d.isoformat(),
+            "fin": fin_d.isoformat(),
+            "total": total,
+            "por_dia": [dict(r) for r in por_dia],
+        }
+
+    actual = _rango(inicio, fin)
+    anterior = _rango(ant_inicio, ant_fin)
+    diferencia = actual["total"] - anterior["total"]
+    variacion = round(diferencia / anterior["total"] * 100, 1) if anterior["total"] > 0 else None
+
+    return {
+        "actual": actual,
+        "anterior": anterior,
+        "diferencia_absoluta": diferencia,
+        "variacion_porcentual": variacion,
+    }
+
+
+@router.get("/alertas/avanzadas")
+def alertas_avanzadas(
+    user: dict = Depends(require_admin),
+):
+    """Evalúa alertas avanzadas (pico de tráfico, países no esperados) y,
+    si hay SMTP configurado, notifica por correo con deduplicación de 24h."""
+    from app.analytics.alertas import evaluar_alertas
+
+    return evaluar_alertas(notificar=True)
 
 
 @router.get("/alertas")

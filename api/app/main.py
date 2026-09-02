@@ -75,6 +75,22 @@ def create_app() -> FastAPI:
         thread = threading.Thread(target=precargar_historial_cache, daemon=True)
         thread.start()
 
+        # Evaluar alertas avanzadas de analytics cada hora (pico de tráfico,
+        # países no esperados) y notificar por correo si está configurado.
+        def _vigilante_alertas():
+            import time
+
+            from app.analytics.alertas import evaluar_alertas
+
+            while True:
+                try:
+                    evaluar_alertas(notificar=True)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("[alertas] Error en la evaluación periódica: %s", exc)
+                time.sleep(3600)
+
+        threading.Thread(target=_vigilante_alertas, daemon=True).start()
+
     return app
 
 

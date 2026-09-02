@@ -58,3 +58,6 @@ data/
 
 
 
+
+# Base de datos temporal de pruebas
+api/tests/_test_users.db*

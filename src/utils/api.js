@@ -626,11 +626,13 @@ export function trackEvent(eventType, { path, section, metadata } = {}) {
   });
 }
 
-function _analyticsQuery(dias, fechaDesde, fechaHasta) {
+function _analyticsQuery(dias, fechaDesde, fechaHasta, pais = '', ciudad = '') {
   const params = new URLSearchParams();
   params.set('dias', String(dias));
   if (fechaDesde) params.set('fecha_desde', fechaDesde);
   if (fechaHasta) params.set('fecha_hasta', fechaHasta);
+  if (pais) params.set('pais', pais);
+  if (ciudad) params.set('ciudad', ciudad);
   return params.toString();
 }
 
@@ -643,48 +645,79 @@ export async function fetchAnalyticsVisitas(query = '') {
   return apiFetch(`/api/analytics/visitas?${query}`);
 }
 
-export async function fetchAnalyticsPublicoPorDia(dias = 30, fechaDesde = '', fechaHasta = '') {
-  return apiFetch(`/api/analytics/publico/por-dia?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+export async function fetchAnalyticsPublicoPorDia(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
+  return apiFetch(`/api/analytics/publico/por-dia?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
 }
 
-export async function fetchAnalyticsPublicoPorHora(dias = 30, fechaDesde = '', fechaHasta = '') {
-  return apiFetch(`/api/analytics/publico/por-hora?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+export async function fetchAnalyticsPublicoPorHora(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
+  return apiFetch(`/api/analytics/publico/por-hora?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
 }
 
-export async function fetchAnalyticsPublicoPorDiaHora(dias = 30, fechaDesde = '', fechaHasta = '') {
-  return apiFetch(`/api/analytics/publico/por-dia-hora?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+export async function fetchAnalyticsPublicoPorDiaHora(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
+  return apiFetch(`/api/analytics/publico/por-dia-hora?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
 }
 
-export async function fetchAnalyticsPublicoDispositivos(dias = 30, fechaDesde = '', fechaHasta = '') {
-  return apiFetch(`/api/analytics/publico/dispositivos?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+export async function fetchAnalyticsPublicoComparativa(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
+  return apiFetch(`/api/analytics/publico/comparativa?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
 }
 
-export async function fetchAnalyticsPublicoNavegadores(dias = 30, fechaDesde = '', fechaHasta = '') {
-  return apiFetch(`/api/analytics/publico/navegadores?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+export async function fetchAnalyticsPublicoDispositivos(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
+  return apiFetch(`/api/analytics/publico/dispositivos?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
 }
 
-export async function fetchAnalyticsPublicoSistemasOperativos(dias = 30, fechaDesde = '', fechaHasta = '') {
-  return apiFetch(`/api/analytics/publico/sistemas-operativos?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+export async function fetchAnalyticsPublicoNavegadores(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
+  return apiFetch(`/api/analytics/publico/navegadores?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
 }
 
-export async function fetchAnalyticsPublicoPaises(dias = 30, fechaDesde = '', fechaHasta = '') {
-  return apiFetch(`/api/analytics/publico/paises?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+export async function fetchAnalyticsPublicoSistemasOperativos(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
+  return apiFetch(`/api/analytics/publico/sistemas-operativos?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
 }
 
-export async function fetchAnalyticsPublicoCiudades(dias = 30, fechaDesde = '', fechaHasta = '') {
-  return apiFetch(`/api/analytics/publico/ciudades?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+export async function fetchAnalyticsPublicoPaises(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
+  return apiFetch(`/api/analytics/publico/paises?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
 }
 
-export async function fetchAnalyticsPublicoReferrers(dias = 30, fechaDesde = '', fechaHasta = '') {
-  return apiFetch(`/api/analytics/publico/referrers?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+export async function fetchAnalyticsPublicoCiudades(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
+  return apiFetch(`/api/analytics/publico/ciudades?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
 }
 
-export async function fetchAnalyticsPublicoPaginas(dias = 30, fechaDesde = '', fechaHasta = '') {
-  return apiFetch(`/api/analytics/publico/paginas?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`);
+export async function fetchAnalyticsPublicoReferrers(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
+  return apiFetch(`/api/analytics/publico/referrers?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
+}
+
+export async function fetchAnalyticsPublicoPaginas(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
+  return apiFetch(`/api/analytics/publico/paginas?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
 }
 
 export async function fetchAnalyticsAlertas(dias = 30, fechaDesde = '', fechaHasta = '', umbralIntentos = 5) {
   const params = new URLSearchParams(_analyticsQuery(dias, fechaDesde, fechaHasta));
   params.set('umbral_intentos', String(umbralIntentos));
   return apiFetch(`/api/analytics/alertas?${params.toString()}`);
+}
+
+export async function fetchAnalyticsAlertasAvanzadas() {
+  return apiFetch('/api/analytics/alertas/avanzadas');
+}
+
+export async function descargarReporteAnalytics(formato, dias = 30, fechaDesde = '', fechaHasta = '') {
+  const response = await fetch(
+    `${API_BASE}/api/analytics/reporte/${formato}?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`,
+    {
+      headers: {
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Error ${response.status} al generar el reporte`);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = `reporte_trafico_${new Date().toISOString().slice(0, 10)}.${formato}`;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  URL.revokeObjectURL(url);
 }

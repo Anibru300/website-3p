@@ -1,0 +1,250 @@
+"""Alertas avanzadas de analytics: pico de tráfico y países no esperados.
+
+Estrategia:
+- Pico de tráfico: compara las últimas 24h contra el promedio diario y la
+  desviación estándar de los 30 días anteriores (mismo filtro de tráfico
+  público que el dashboard). Dispara solo si hay volumen mínimo absoluto y
+  el pico supera max(3x promedio, promedio + 3 desviaciones), para no
+  alertar por variaciones normales.
+- Países no esperados: si ALERTAS_PAISES_PERMITIDOS está configurado,
+  reporta tráfico de países fuera de esa lista.
+
+Notificaciones por correo con deduplicación: la tabla alertas_enviadas
+guarda (tipo, dedupe_key) y se respeta un cooldown de 24h para no enviar
+correos repetidos por el mismo evento.
+"""
+
+import logging
+from datetime import datetime, timedelta, timezone
+from statistics import pstdev
+from typing import Optional
+
+from app.config import get_settings
+from app.database import users_connection
+from app.services.email import correo_configurado, enviar_correo
+
+logger = logging.getLogger(__name__)
+
+
+def _public_where() -> str:
+    # Import perezoso para evitar circularidad con app.analytics.router.
+    from app.analytics.router import _public_where_clause
+
+    return _public_where_clause()
+
+COOLDOWN_HORAS = 24
+MINIMO_EVENTOS_24H = 50
+FACTOR_MULTIPLO = 3.0
+FACTOR_DESVIACION = 3.0
+DIAS_HISTORICOS = 30
+
+
+def _ahora() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _evaluar_pico(conn) -> Optional[dict]:
+    ahora = _ahora()
+    limite_24h = (ahora - timedelta(hours=24)).isoformat()
+    hoy = ahora.strftime("%Y-%m-%d")
+
+    ultimas_24h = conn.execute(
+        f"SELECT COUNT(*) FROM analytics_events WHERE created_at >= ? {_public_where()}",
+        (limite_24h,),
+    ).fetchone()[0]
+
+    filas = conn.execute(
+        f"""
+        SELECT strftime('%Y-%m-%d', created_at) AS dia, COUNT(*) AS total
+        FROM analytics_events
+        WHERE created_at >= ? {_public_where()}
+        GROUP BY dia
+        """,
+        ((ahora - timedelta(days=DIAS_HISTORICOS)).isoformat(),),
+    ).fetchall()
+    historicos = [r["total"] for r in filas if r["dia"] != hoy]
+
+    if not historicos:
+        return None
+
+    promedio = sum(historicos) / len(historicos)
+    desviacion = pstdev(historicos) if len(historicos) > 1 else 0.0
+    umbral = max(promedio * FACTOR_MULTIPLO, promedio + FACTOR_DESVIACION * desviacion)
+
+    if ultimas_24h >= MINIMO_EVENTOS_24H and ultimas_24h > umbral:
+        return {
+            "tipo": "pico_trafico",
+            "activa": True,
+            "eventos_24h": ultimas_24h,
+            "promedio_diario_historico": round(promedio, 1),
+            "desviacion_estandar": round(desviacion, 1),
+            "umbral": round(umbral, 1),
+            "dias_historicos": len(historicos),
+            "motivo": (
+                f"{ultimas_24h} eventos en las últimas 24h superan el umbral "
+                f"({umbral:.1f} = máx(3x promedio {promedio:.1f}, promedio + 3σ {desviacion:.1f}))"
+            ),
+        }
+    return {
+        "tipo": "pico_trafico",
+        "activa": False,
+        "eventos_24h": ultimas_24h,
+        "promedio_diario_historico": round(promedio, 1),
+        "desviacion_estandar": round(desviacion, 1),
+        "umbral": round(umbral, 1),
+    }
+
+
+def _evaluar_paises(conn) -> Optional[dict]:
+    permitidos = {
+        p.strip()
+        for p in get_settings().alertas_paises_permitidos.split(",")
+        if p.strip()
+    }
+    if not permitidos:
+        return None  # Sin configuración no se evalúa esta alerta.
+
+    filas = conn.execute(
+        f"""
+        SELECT COALESCE(country, 'Desconocido') AS pais, COUNT(*) AS total
+        FROM analytics_events
+        WHERE created_at >= ? {_public_where()}
+          AND country IS NOT NULL AND country != '' AND country != 'Desconocido'
+        GROUP BY pais
+        ORDER BY total DESC
+        """,
+        ((_ahora() - timedelta(days=7)).isoformat(),),
+    ).fetchall()
+
+    no_esperados = [dict(r) for r in filas if r["pais"] not in permitidos]
+    if not no_esperados:
+        return {
+            "tipo": "pais_no_esperado",
+            "activa": False,
+            "paises_no_esperados": [],
+            "paises_permitidos": sorted(permitidos),
+        }
+
+    # Detalle por país no esperado: ciudades e IPs principales.
+    detalle = []
+    for p in no_esperados[:5]:
+        top = conn.execute(
+            """
+            SELECT COALESCE(city, 'Desconocida') AS ciudad, ip, COUNT(*) AS total
+            FROM analytics_events
+            WHERE country = ? AND created_at >= ?
+            GROUP BY ciudad, ip
+            ORDER BY total DESC
+            LIMIT 5
+            """,
+            (p["pais"], (_ahora() - timedelta(days=7)).isoformat()),
+        ).fetchall()
+        detalle.append({
+            "pais": p["pais"],
+            "total": p["total"],
+            "top_ciudades_ips": [dict(r) for r in top],
+        })
+
+    return {
+        "tipo": "pais_no_esperado",
+        "activa": True,
+        "paises_no_esperados": [p["pais"] for p in no_esperados],
+        "paises_permitidos": sorted(permitidos),
+        "detalle": detalle,
+        "motivo": (
+            f"Tráfico en los últimos 7 días desde países fuera de la lista "
+            f"esperada: {', '.join(p['pais'] for p in no_esperados)}"
+        ),
+    }
+
+
+def _notificacion_reciente(conn, tipo: str, dedupe_key: str) -> bool:
+    """True si ya se notificó este evento dentro del cooldown."""
+    limite = (_ahora() - timedelta(hours=COOLDOWN_HORAS)).isoformat()
+    row = conn.execute(
+        "SELECT enviado_at FROM alertas_enviadas WHERE tipo = ? AND dedupe_key = ?",
+        (tipo, dedupe_key),
+    ).fetchone()
+    if not row:
+        return False
+    try:
+        enviado = datetime.fromisoformat(row["enviado_at"])
+        if enviado.tzinfo is None:
+            enviado = enviado.replace(tzinfo=timezone.utc)
+        return enviado >= datetime.fromisoformat(limite)
+    except ValueError:
+        return False
+
+
+def _marcar_notificado(conn, tipo: str, dedupe_key: str):
+    conn.execute(
+        """
+        INSERT INTO alertas_enviadas (tipo, dedupe_key, enviado_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(tipo, dedupe_key) DO UPDATE SET enviado_at = excluded.enviado_at
+        """,
+        (tipo, dedupe_key, _ahora().isoformat()),
+    )
+    conn.commit()
+
+
+def _intentar_notificar(conn, alerta: dict, dedupe_key: str):
+    """Envía correo si aplica y respeta cooldown. Nunca lanza excepciones."""
+    try:
+        if not alerta.get("activa"):
+            return
+        if _notificacion_reciente(conn, alerta["tipo"], dedupe_key):
+            logger.info("[alertas] %s (%s) ya notificado dentro del cooldown", alerta["tipo"], dedupe_key)
+            return
+        s = get_settings()
+        destinatarios = [d.strip() for d in s.alertas_email_to.split(",") if d.strip()]
+        if not correo_configurado():
+            logger.info("[alertas] %s activa pero SMTP no configurado; solo panel.", alerta["tipo"])
+            _marcar_notificado(conn, alerta["tipo"], dedupe_key)
+            return
+        cuerpo = (
+            f"Alerta de analytics: {alerta['tipo']}\n"
+            f"Fecha: {_ahora().astimezone().strftime('%d/%m/%Y %H:%M')}\n"
+            f"Motivo: {alerta.get('motivo', 'N/D')}\n\n"
+            f"Detalle:\n{_formatear_detalle(alerta)}\n"
+        )
+        if enviar_correo(destinatarios, f"[3P Analytics] Alerta: {alerta['tipo']}", cuerpo):
+            _marcar_notificado(conn, alerta["tipo"], dedupe_key)
+    except Exception as exc:
+        logger.warning("[alertas] Error al notificar %s: %s", alerta.get("tipo"), exc)
+
+
+def _formatear_detalle(alerta: dict) -> str:
+    lineas = []
+    for clave, valor in alerta.items():
+        if clave in ("tipo", "activa", "motivo", "detalle"):
+            continue
+        lineas.append(f"- {clave}: {valor}")
+    for item in alerta.get("detalle", []):
+        lineas.append(f"- {item['pais']}: {item['total']} eventos")
+        for t in item.get("top_ciudades_ips", []):
+            lineas.append(f"    * {t['ciudad']} / {t['ip']}: {t['total']}")
+    return "\n".join(lineas) or "Sin detalle"
+
+
+def evaluar_alertas(notificar: bool = True) -> dict:
+    """Evalúa las alertas avanzadas. Si notificar=True intenta enviar correos
+    (con deduplicación de 24h). Devuelve el estado completo para el panel."""
+    with users_connection() as conn:
+        pico = _evaluar_pico(conn)
+        paises = _evaluar_paises(conn)
+
+        if notificar:
+            if pico and pico.get("activa"):
+                _intentar_notificar(conn, pico, dedupe_key="pico_24h")
+            if paises and paises.get("activa"):
+                clave = ",".join(sorted(paises["paises_no_esperados"]))
+                _intentar_notificar(conn, paises, dedupe_key=f"paises:{clave}")
+
+    activas = [a for a in (pico, paises) if a and a.get("activa")]
+    return {
+        "evaluado_en": _ahora().isoformat(),
+        "alertas_activas": len(activas),
+        "pico_trafico": pico,
+        "pais_no_esperado": paises,
+    }

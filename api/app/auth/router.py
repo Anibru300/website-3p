@@ -20,6 +20,7 @@ from app.auth.security import (
 from app.auth.utils import create_access_token, verify_password
 from app.config import get_settings
 from app.database import users_connection
+from app.services.client_ip import get_client_ip
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["auth"])
@@ -49,13 +50,6 @@ class LoginResponse(BaseModel):
     user: dict | None = None
 
 
-def _get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
-
-
 def _create_temp_token(email: str) -> str:
     """Token de corta duración para el flujo de 2FA."""
     return create_access_token(
@@ -77,7 +71,7 @@ def _verify_temp_token(token: str) -> str | None:
 
 @router.post("/auth/login", response_model=LoginResponse)
 def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
-    ip = _get_client_ip(request)
+    ip = get_client_ip(request)
     email = form_data.username.lower().strip()
 
     # Rate limiting por IP

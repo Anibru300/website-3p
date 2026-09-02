@@ -6,6 +6,13 @@ from app.database import users_connection
 logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS_IP = 5
+# Umbral duro por IP: se bloquea sin importar a cuántas cuentas apuntaron.
+MAX_ATTEMPTS_IP_ABSOLUTO = 15
+# El umbral MAX_ATTEMPTS_IP solo aplica si los fallos se reparten entre al
+# menos estas cuentas distintas (patrón de password spraying). Así, varios
+# usuarios legítimos detrás de un NAT corporativo que fallen cada uno pocas
+# veces NO bloquean la IP compartida.
+MIN_EMAILS_DISTINTOS_IP = 3
 MAX_ATTEMPTS_ACCOUNT = 10
 WINDOW_MINUTES = 15
 LOCKOUT_MINUTES = 30
@@ -42,9 +49,33 @@ def _count_failed_attempts(conn, field: str, value: str) -> int:
     return row[0] if row else 0
 
 
+def _ip_failed_stats(conn, ip: str) -> tuple[int, int]:
+    """Devuelve (intentos fallidos, emails distintos) de una IP en la ventana."""
+    cutoff = (_now() - timedelta(minutes=WINDOW_MINUTES)).isoformat()
+    row = conn.execute(
+        """
+        SELECT COUNT(*), COUNT(DISTINCT email) FROM login_attempts
+        WHERE ip = ? AND exito = 0 AND created_at > ?
+          AND email IS NOT NULL AND email != ''
+        """,
+        (ip, cutoff),
+    ).fetchone()
+    return (row[0] if row else 0), (row[1] if row else 0)
+
+
 def is_ip_blocked(ip: str) -> bool:
+    """Bloqueo por IP con tolerancia a NAT corporativo.
+
+    - Bloquea siempre al umbral absoluto (15 fallos, sin importar dispersión).
+    - Antes de eso, solo bloquea si los fallos apuntan a >=3 cuentas
+      distintas (password spraying), no por fallos concentrados en una sola
+      cuenta (eso ya lo cubre el bloqueo por cuenta).
+    """
     with users_connection() as conn:
-        return _count_failed_attempts(conn, "ip", ip) >= MAX_ATTEMPTS_IP
+        failed, distinct_emails = _ip_failed_stats(conn, ip)
+        if failed >= MAX_ATTEMPTS_IP_ABSOLUTO:
+            return True
+        return failed >= MAX_ATTEMPTS_IP and distinct_emails >= MIN_EMAILS_DISTINTOS_IP
 
 
 def is_account_blocked(email: str) -> tuple[bool, datetime | None]:
@@ -97,9 +128,9 @@ def increment_failed_login(email: str):
 
 def get_remaining_attempts(ip: str, email: str) -> dict[str, int]:
     with users_connection() as conn:
-        ip_failed = _count_failed_attempts(conn, "ip", ip)
+        ip_failed, _ = _ip_failed_stats(conn, ip)
         email_failed = _count_failed_attempts(conn, "email", email)
     return {
-        "ip": max(0, MAX_ATTEMPTS_IP - ip_failed),
+        "ip": max(0, MAX_ATTEMPTS_IP_ABSOLUTO - ip_failed),
         "account": max(0, MAX_ATTEMPTS_ACCOUNT - email_failed),
     }

@@ -42,7 +42,10 @@ import {
   fetchAnalyticsPublicoCiudades,
   fetchAnalyticsPublicoReferrers,
   fetchAnalyticsPublicoPaginas,
+  fetchAnalyticsPublicoComparativa,
   fetchAnalyticsAlertas,
+  fetchAnalyticsAlertasAvanzadas,
+  descargarReporteAnalytics,
 } from '../utils/api';
 import {
   LayoutDashboard,
@@ -51,6 +54,7 @@ import {
   MapPin,
   Lock,
   FileText,
+  FileSpreadsheet,
   Search,
   Plus,
   X,
@@ -73,6 +77,7 @@ import {
   ExternalLink,
   Globe,
   BarChart3,
+  TrendingUp,
 } from 'lucide-react';
 
 const SIDEBAR_ITEMS = [
@@ -192,6 +197,28 @@ export default function AdminPage() {
   const [publicoLoading, setPublicoLoading] = useState(false);
   const [alertasData, setAlertasData] = useState(null);
   const [alertasLoading, setAlertasLoading] = useState(false);
+  const [alertasAvanzadasData, setAlertasAvanzadasData] = useState(null);
+  const [analyticsPais, setAnalyticsPais] = useState('');
+  const [analyticsCiudad, setAnalyticsCiudad] = useState('');
+  const [opcionesGeo, setOpcionesGeo] = useState({ paises: [], ciudades: [] });
+  const [compararActivo, setCompararActivo] = useState(false);
+  const [comparativaData, setComparativaData] = useState(null);
+  const [comparativaCargando, setComparativaCargando] = useState(false);
+  const [porDiaAcumulado, setPorDiaAcumulado] = useState(false);
+  const [reporteExportando, setReporteExportando] = useState('');
+
+  async function handleExportarReporte(formato) {
+    if (reporteExportando) return;
+    setReporteExportando(formato);
+    setError('');
+    try {
+      await descargarReporteAnalytics(formato, analyticsDias, analyticsFechaDesde, analyticsFechaHasta);
+    } catch (err) {
+      setError(err.message || 'Error al exportar el reporte');
+    } finally {
+      setReporteExportando('');
+    }
+  }
 
   const tipoQuery = useMemo(() => {
     if (activeCrmTab === 'clientes') return 'cliente';
@@ -315,6 +342,15 @@ export default function AdminPage() {
     }
   }
 
+  async function cargarAlertasAvanzadas() {
+    try {
+      const data = await fetchAnalyticsAlertasAvanzadas();
+      setAlertasAvanzadasData(data);
+    } catch (err) {
+      console.error('Error al cargar alertas avanzadas:', err);
+    }
+  }
+
   async function cargarAnalyticsPublico() {
     setPublicoLoading(true);
     setError('');
@@ -330,17 +366,22 @@ export default function AdminPage() {
         ciudades,
         referrers,
         paginas,
+        opcionesPaises,
+        opcionesCiudades,
       ] = await Promise.all([
-        fetchAnalyticsPublicoPorDia(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
-        fetchAnalyticsPublicoPorHora(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
-        fetchAnalyticsPublicoPorDiaHora(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
-        fetchAnalyticsPublicoDispositivos(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
-        fetchAnalyticsPublicoNavegadores(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
-        fetchAnalyticsPublicoSistemasOperativos(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
+        fetchAnalyticsPublicoPorDia(analyticsDias, analyticsFechaDesde, analyticsFechaHasta, analyticsPais, analyticsCiudad),
+        fetchAnalyticsPublicoPorHora(analyticsDias, analyticsFechaDesde, analyticsFechaHasta, analyticsPais, analyticsCiudad),
+        fetchAnalyticsPublicoPorDiaHora(analyticsDias, analyticsFechaDesde, analyticsFechaHasta, analyticsPais, analyticsCiudad),
+        fetchAnalyticsPublicoDispositivos(analyticsDias, analyticsFechaDesde, analyticsFechaHasta, analyticsPais, analyticsCiudad),
+        fetchAnalyticsPublicoNavegadores(analyticsDias, analyticsFechaDesde, analyticsFechaHasta, analyticsPais, analyticsCiudad),
+        fetchAnalyticsPublicoSistemasOperativos(analyticsDias, analyticsFechaDesde, analyticsFechaHasta, analyticsPais, analyticsCiudad),
+        fetchAnalyticsPublicoPaises(analyticsDias, analyticsFechaDesde, analyticsFechaHasta, analyticsPais, analyticsCiudad),
+        fetchAnalyticsPublicoCiudades(analyticsDias, analyticsFechaDesde, analyticsFechaHasta, analyticsPais, analyticsCiudad),
+        fetchAnalyticsPublicoReferrers(analyticsDias, analyticsFechaDesde, analyticsFechaHasta, analyticsPais, analyticsCiudad),
+        fetchAnalyticsPublicoPaginas(analyticsDias, analyticsFechaDesde, analyticsFechaHasta, analyticsPais, analyticsCiudad),
+        // Opciones de filtro siempre sin filtro geo para no perder valores.
         fetchAnalyticsPublicoPaises(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
         fetchAnalyticsPublicoCiudades(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
-        fetchAnalyticsPublicoReferrers(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
-        fetchAnalyticsPublicoPaginas(analyticsDias, analyticsFechaDesde, analyticsFechaHasta),
       ]);
       setPublicoData({
         porDia: porDia.data || [],
@@ -354,10 +395,32 @@ export default function AdminPage() {
         referrers: referrers.data || [],
         paginas: paginas.data || [],
       });
+      setOpcionesGeo({
+        paises: (opcionesPaises.data || []).map((p) => p.nombre),
+        ciudades: (opcionesCiudades.data || []).map((c) => c.nombre),
+      });
     } catch (err) {
       setError(err.message || 'Error al cargar analytics público');
     } finally {
       setPublicoLoading(false);
+    }
+  }
+
+  async function cargarComparativa() {
+    setComparativaCargando(true);
+    try {
+      const data = await fetchAnalyticsPublicoComparativa(
+        analyticsDias,
+        analyticsFechaDesde,
+        analyticsFechaHasta,
+        analyticsPais,
+        analyticsCiudad
+      );
+      setComparativaData(data);
+    } catch (err) {
+      console.error('Error al cargar comparativa:', err);
+    } finally {
+      setComparativaCargando(false);
     }
   }
 
@@ -373,6 +436,8 @@ export default function AdminPage() {
         cargarAnalyticsPublico();
       }
       cargarAlertas();
+      cargarAlertasAvanzadas();
+      if (compararActivo) cargarComparativa();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -389,7 +454,17 @@ export default function AdminPage() {
     analyticsTab,
     analyticsFechaDesde,
     analyticsFechaHasta,
+    analyticsPais,
+    analyticsCiudad,
+    compararActivo,
   ]);
+
+  useEffect(() => {
+    if (compararActivo && activeSection === 'analytics') {
+      cargarComparativa();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compararActivo]);
 
   useEffect(() => {
     if (activeSection === 'crms' && view === 'list') {
@@ -1573,6 +1648,24 @@ export default function AdminPage() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleExportarReporte('excel')}
+                  disabled={!!reporteExportando}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <FileSpreadsheet size={14} />
+                  {reporteExportando === 'excel' ? 'Generando...' : 'Excel'}
+                </button>
+                <button
+                  onClick={() => handleExportarReporte('pdf')}
+                  disabled={!!reporteExportando}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <FileText size={14} />
+                  {reporteExportando === 'pdf' ? 'Generando...' : 'PDF'}
+                </button>
+              </div>
               <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
                 {[
                   { id: 'general', label: 'General' },
@@ -1629,11 +1722,51 @@ export default function AdminPage() {
                   </button>
                 )}
               </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={analyticsPais}
+                  onChange={(e) => {
+                    setAnalyticsPais(e.target.value);
+                    setAnalyticsCiudad('');
+                  }}
+                  className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+                  title="Filtrar por país"
+                >
+                  <option value="">Todos los países</option>
+                  {opcionesGeo.paises.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+                <select
+                  value={analyticsCiudad}
+                  onChange={(e) => setAnalyticsCiudad(e.target.value)}
+                  className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-p3-red/20 focus:border-p3-red"
+                  title="Filtrar por ciudad"
+                >
+                  <option value="">Todas las ciudades</option>
+                  {opcionesGeo.ciudades.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                {(analyticsPais || analyticsCiudad) && (
+                  <button
+                    onClick={() => {
+                      setAnalyticsPais('');
+                      setAnalyticsCiudad('');
+                    }}
+                    className="px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                  >
+                    Limpiar filtros
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {renderAlertas()}
+
+        {renderAlertasAvanzadas()}
 
         {analyticsTab === 'general' && renderAnalyticsGeneral()}
         {analyticsTab === 'publico' && renderAnalyticsPublico()}
@@ -1746,6 +1879,84 @@ export default function AdminPage() {
             )}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  function renderAlertasAvanzadas() {
+    if (!alertasAvanzadasData) return null;
+
+    const pico = alertasAvanzadasData.pico_trafico;
+    const paises = alertasAvanzadasData.pais_no_esperado;
+
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {pico && (
+          <div
+            className={`border rounded-xl p-4 ${
+              pico.activa ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <TrendingUp size={18} className={pico.activa ? 'text-red-600' : 'text-gray-400'} />
+              <h3 className={`text-sm font-bold ${pico.activa ? 'text-red-800' : 'text-gray-700'}`}>
+                Pico de tráfico {pico.activa ? 'detectado' : ''}
+              </h3>
+            </div>
+            <p className={`text-sm mt-2 ${pico.activa ? 'text-red-700' : 'text-gray-500'}`}>
+              <strong>{pico.eventos_24h?.toLocaleString()}</strong> eventos en las últimas 24h
+              {pico.promedio_diario_historico != null && (
+                <>
+                  {' '}· promedio histórico <strong>{pico.promedio_diario_historico.toLocaleString()}</strong>/día
+                  {' '}· umbral <strong>{pico.umbral?.toLocaleString()}</strong>
+                </>
+              )}
+            </p>
+            {pico.activa && <p className="text-xs text-red-600 mt-1">{pico.motivo}</p>}
+          </div>
+        )}
+
+        {paises && (
+          <div
+            className={`border rounded-xl p-4 ${
+              paises.activa ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Globe size={18} className={paises.activa ? 'text-amber-600' : 'text-gray-400'} />
+              <h3 className={`text-sm font-bold ${paises.activa ? 'text-amber-800' : 'text-gray-700'}`}>
+                Países no esperados
+              </h3>
+            </div>
+            {paises.activa ? (
+              <>
+                <p className="text-sm mt-2 text-amber-700">
+                  Tráfico desde: <strong>{paises.paises_no_esperados.join(', ')}</strong>
+                </p>
+                {paises.detalle?.map((d, i) => (
+                  <div key={i} className="mt-2">
+                    <p className="text-xs font-semibold text-amber-800">
+                      {d.pais} ({d.total.toLocaleString()} eventos)
+                    </p>
+                    <ul className="text-xs text-amber-700 mt-0.5 space-y-0.5">
+                      {d.top_ciudades_ips.slice(0, 3).map((t, j) => (
+                        <li key={j}>
+                          {t.ciudad} · <span className="font-mono">{t.ip}</span> ({t.total})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <p className="text-sm mt-2 text-gray-500">
+                {paises.paises_permitidos?.length
+                  ? `Sin tráfico fuera de: ${paises.paises_permitidos.join(', ')}`
+                  : 'Sin configurar (ALERTAS_PAISES_PERMITIDOS vacío).'}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -2006,6 +2217,82 @@ export default function AdminPage() {
     } = publicoData;
 
     const totalEventos = porDia.reduce((sum, d) => sum + d.total, 0);
+
+    const porDiaGrafica = porDiaAcumulado
+      ? porDia.reduce((acum, d, i) => {
+          const prev = i > 0 ? acum[i - 1].total : 0;
+          acum.push({ ...d, total: prev + d.total });
+          return acum;
+        }, [])
+      : porDia;
+
+    function renderComparativa() {
+      return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h3 className="text-sm font-bold text-gray-900">Comparativa con período anterior</h3>
+            <button
+              onClick={() => setCompararActivo(!compararActivo)}
+              className={`px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                compararActivo
+                  ? 'bg-p3-red text-white border-p3-red'
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {compararActivo ? 'Ocultar comparativa' : 'Comparar con período anterior'}
+            </button>
+          </div>
+          {compararActivo && (
+            comparativaCargando ? (
+              <p className="text-sm text-gray-500">Cargando comparativa...</p>
+            ) : comparativaData ? (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Visitas actuales</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                    {comparativaData.actual?.total?.toLocaleString() ?? '-'}
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {comparativaData.actual?.inicio} a {comparativaData.actual?.fin}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Período anterior</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                    {comparativaData.anterior?.total?.toLocaleString() ?? '-'}
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {comparativaData.anterior?.inicio} a {comparativaData.anterior?.fin}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Diferencia</p>
+                  <p className={`text-2xl font-bold mt-1 ${
+                    (comparativaData.diferencia_absoluta ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'
+                  }`}>
+                    {(comparativaData.diferencia_absoluta ?? 0) >= 0 ? '+' : ''}
+                    {comparativaData.diferencia_absoluta?.toLocaleString() ?? '-'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Variación</p>
+                  <p className={`text-2xl font-bold mt-1 ${
+                    (comparativaData.variacion_porcentual ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'
+                  }`}>
+                    {comparativaData.variacion_porcentual != null
+                      ? `${comparativaData.variacion_porcentual >= 0 ? '+' : ''}${comparativaData.variacion_porcentual}%`
+                      : 'N/D'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">Sin datos de comparativa.</p>
+            )
+          )}
+        </div>
+      );
+    }
+
     const totalVisitantes = new Set(
       // Aproximación: no tenemos session_id por endpoint, usamos total de eventos
       []
@@ -2175,6 +2462,8 @@ export default function AdminPage() {
 
     return (
       <div className="space-y-6">
+        {renderComparativa()}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <p className="text-xs text-gray-500 uppercase font-semibold">Eventos públicos</p>
@@ -2196,9 +2485,29 @@ export default function AdminPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <h3 className="text-sm font-bold text-gray-900 mb-4">Visitas por día</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <h3 className="text-sm font-bold text-gray-900">Visitas por día</h3>
+              <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                {[
+                  { id: false, label: 'Diario' },
+                  { id: true, label: 'Acumulado' },
+                ].map((modo) => (
+                  <button
+                    key={String(modo.id)}
+                    onClick={() => setPorDiaAcumulado(modo.id)}
+                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                      porDiaAcumulado === modo.id
+                        ? 'bg-p3-red text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {modo.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <SimpleBarChart
-              data={porDia}
+              data={porDiaGrafica}
               labelKey="dia"
               valueKey="total"
               height="h-80"

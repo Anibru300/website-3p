@@ -345,6 +345,18 @@ def _ensure_users_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_os ON analytics_events(os)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_country ON analytics_events(country)")
 
+        # Deduplicación de notificaciones de alertas avanzadas (cooldown por correo)
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS alertas_enviadas (
+                tipo TEXT NOT NULL,
+                dedupe_key TEXT NOT NULL,
+                enviado_at TEXT NOT NULL,
+                PRIMARY KEY (tipo, dedupe_key)
+            )
+            """
+        )
+
         conn.commit()
     finally:
         conn.close()
