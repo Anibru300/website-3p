@@ -158,6 +158,100 @@ def _evaluar_paises(conn) -> Optional[dict]:
     }
 
 
+def _evaluar_fuentes() -> Optional[dict]:
+    """Revisa la salud de las fuentes de datos (Excel y espejo SAE).
+
+    Alerta cuando una fuente crítica es inaccesible, tiene el esquema
+    inválido (hojas/columnas renombradas) o lleva demasiado tiempo sin
+    actualizarse respecto a su ritmo operativo (ver MAX_AGE_HORAS).
+    """
+    from app.services.fuentes import MAX_AGE_HORAS, estado_fuentes
+
+    estado = estado_fuentes()
+    problemas = []
+
+    for nombre, fuente in estado["excel"].items():
+        if fuente["estado"] in ("inaccesible", "esquema_invalido"):
+            problemas.append({
+                "fuente": nombre,
+                "problema": fuente["estado"],
+                "detalle": fuente["detalle"],
+            })
+            continue
+        max_age = MAX_AGE_HORAS.get(nombre)
+        edad = fuente.get("edad_horas")
+        if max_age is not None and edad is not None and edad > max_age:
+            problemas.append({
+                "fuente": nombre,
+                "problema": "desactualizada",
+                "detalle": f"Última modificación hace {edad}h (máx {max_age}h)",
+            })
+
+    if get_settings().use_sync_tables:
+        try:
+            from app.sync.db import ultimo_sync, ultimo_sync_ok
+
+            with users_connection() as conn:
+                for fuente in ("vales", "pedidos"):
+                    ultimo = ultimo_sync(conn, fuente)
+                    if ultimo and ultimo.get("estado") == "error":
+                        problemas.append({
+                            "fuente": fuente,
+                            "problema": "sync_fallido",
+                            "detalle": f"Último sync con error: {ultimo.get('error', 'N/D')}",
+                        })
+                        continue
+                    ok = ultimo_sync_ok(conn, fuente)
+                    if not ok:
+                        problemas.append({
+                            "fuente": fuente,
+                            "problema": "sync_desactualizado",
+                            "detalle": "No hay ningún sync exitoso registrado",
+                        })
+                        continue
+                    try:
+                        fin = datetime.fromisoformat(ok["fin"])
+                        if fin.tzinfo is None:
+                            fin = fin.replace(tzinfo=timezone.utc)
+                        edad_h = (_ahora() - fin).total_seconds() / 3600
+                    except ValueError:
+                        continue
+                    if edad_h > 24:
+                        problemas.append({
+                            "fuente": fuente,
+                            "problema": "sync_desactualizado",
+                            "detalle": f"Último sync exitoso hace {round(edad_h, 1)}h",
+                        })
+        except Exception:  # noqa: BLE001
+            pass
+
+    sae = estado.get("sae", {})
+    if sae.get("estado") != "ok":
+        problemas.append({
+            "fuente": "sae_postgres",
+            "problema": sae.get("estado", "desconocido"),
+            "detalle": sae.get("detalle", ""),
+        })
+
+    if not problemas:
+        return {
+            "tipo": "fuentes_datos",
+            "activa": False,
+            "fuentes_ok": True,
+        }
+
+    return {
+        "tipo": "fuentes_datos",
+        "activa": True,
+        "fuentes_ok": False,
+        "problemas": problemas,
+        "motivo": (
+            "Problemas detectados en fuentes de datos: "
+            + "; ".join(f"{p['fuente']} ({p['problema']})" for p in problemas)
+        ),
+    }
+
+
 def _notificacion_reciente(conn, tipo: str, dedupe_key: str) -> bool:
     """True si ya se notificó este evento dentro del cooldown."""
     limite = (_ahora() - timedelta(hours=COOLDOWN_HORAS)).isoformat()
@@ -233,6 +327,7 @@ def evaluar_alertas(notificar: bool = True) -> dict:
     with users_connection() as conn:
         pico = _evaluar_pico(conn)
         paises = _evaluar_paises(conn)
+        fuentes = _evaluar_fuentes()
 
         if notificar:
             if pico and pico.get("activa"):
@@ -240,11 +335,17 @@ def evaluar_alertas(notificar: bool = True) -> dict:
             if paises and paises.get("activa"):
                 clave = ",".join(sorted(paises["paises_no_esperados"]))
                 _intentar_notificar(conn, paises, dedupe_key=f"paises:{clave}")
+            if fuentes and fuentes.get("activa"):
+                clave = ",".join(
+                    f"{p['fuente']}:{p['problema']}" for p in fuentes.get("problemas", [])
+                )
+                _intentar_notificar(conn, fuentes, dedupe_key=f"fuentes:{clave}")
 
-    activas = [a for a in (pico, paises) if a and a.get("activa")]
+    activas = [a for a in (pico, paises, fuentes) if a and a.get("activa")]
     return {
         "evaluado_en": _ahora().isoformat(),
         "alertas_activas": len(activas),
         "pico_trafico": pico,
         "pais_no_esperado": paises,
+        "fuentes_datos": fuentes,
     }

@@ -31,7 +31,6 @@ import {
   eliminarDocumentoCrm,
   trackEvent,
   fetchAnalyticsResumen,
-  fetchAnalyticsVisitas,
   fetchAnalyticsPublicoPorDia,
   fetchAnalyticsPublicoPorHora,
   fetchAnalyticsPublicoPorDiaHora,
@@ -47,6 +46,7 @@ import {
   fetchAnalyticsAlertasAvanzadas,
   descargarReporteAnalytics,
 } from '../utils/api';
+import DataSourcesPanel from '../components/admin/DataSourcesPanel';
 import {
   LayoutDashboard,
   Users,
@@ -74,6 +74,7 @@ import {
   Phone,
   Warehouse,
   Tag,
+  Database,
   ExternalLink,
   Globe,
   BarChart3,
@@ -84,6 +85,7 @@ const SIDEBAR_ITEMS = [
   { id: 'crms', label: 'CRMs', icon: Briefcase },
   { id: 'portales', label: 'Portales', icon: Lock },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'fuentes', label: 'Fuentes', icon: Database },
 ];
 
 const CRM_SUBTABS = [
@@ -1363,60 +1365,6 @@ export default function AdminPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Portales
-  // ---------------------------------------------------------------------------
-
-  function renderTabPortales() {
-    const items = detail?.portales || [];
-    return (
-      <div>
-        <SectionHeader
-          title="Portales"
-          onAdd={() => setModal({ type: 'portal', data: null })}
-        />
-        {items.length === 0 ? (
-          <EmptyState message="No hay portales registrados." />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {items.map((item) => (
-              <div key={item.id} className="border border-gray-100 rounded-xl p-4 bg-white shadow-sm">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Globe size={16} className="text-p3-red" />
-                    <p className="font-medium text-gray-900">{item.nombre || 'Portal'}</p>
-                  </div>
-                  <ActionButtons
-                    onEdit={() => setModal({ type: 'portal', data: item })}
-                    onDelete={() =>
-                      setConfirmDelete({ type: 'portal', id: item.id, name: item.nombre || 'portal' })
-                    }
-                  />
-                </div>
-                <div className="space-y-1 text-sm text-gray-600">
-                  {item.url && (
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-p3-blue hover:underline break-all"
-                    >
-                      {item.url}
-                    </a>
-                  )}
-                  <p>Usuario: <span className="font-mono text-xs">{item.usuario || '-'}</span></p>
-                  <p>Contraseña: <span className="font-mono text-xs">{item.password || '-'}</span></p>
-                  {item.persona_apoyo && <p>Apoyo: {item.persona_apoyo}</p>}
-                  {item.notas && <p className="text-xs text-gray-500 mt-2">{item.notas}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
   // Descuentos
   // ---------------------------------------------------------------------------
 
@@ -2293,11 +2241,6 @@ export default function AdminPage() {
       );
     }
 
-    const totalVisitantes = new Set(
-      // Aproximación: no tenemos session_id por endpoint, usamos total de eventos
-      []
-    ).size;
-
     function SimpleBarChart({
       data,
       labelKey = 'nombre',
@@ -2513,7 +2456,7 @@ export default function AdminPage() {
               height="h-80"
               formatLabel={(dia) => {
                 if (!dia) return dia;
-                const [y, m, d] = String(dia).split('-');
+                const [, m, d] = String(dia).split('-');
                 if (!d) return dia;
                 return `${d}/${m}`;
               }}
@@ -3336,6 +3279,7 @@ export default function AdminPage() {
             {activeSection === 'crms' && renderCrmSection()}
             {activeSection === 'portales' && renderPortalesSection()}
             {activeSection === 'analytics' && renderAnalyticsSection()}
+            {activeSection === 'fuentes' && <DataSourcesPanel />}
           </div>
         </main>
       </div>

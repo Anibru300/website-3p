@@ -61,3 +61,7 @@ data/
 
 # Base de datos temporal de pruebas
 api/tests/_test_users.db*
+
+# Respaldo temporal de api/data (Fase 1) y caché de pruebas de sync
+api/data_respaldo-*/
+api/tests/cache/

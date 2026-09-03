@@ -68,6 +68,14 @@ def create_app() -> FastAPI:
     def health_check():
         return {"status": "ok"}
 
+    @app.get("/health/datos")
+    def health_datos():
+        # Estado de las fuentes de datos externas (Excel + espejo SAE).
+        # Info operativa no sensible: no expone datos de negocio, solo salud.
+        from app.services.fuentes import estado_fuentes
+
+        return estado_fuentes()
+
     @app.on_event("startup")
     def startup_precargar_cache():
         # Precargar el historial de ventas en segundo plano para que la

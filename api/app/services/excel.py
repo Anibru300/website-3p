@@ -8,6 +8,8 @@ from pathlib import Path
 from openpyxl import load_workbook
 
 from app.config import get_settings
+from app.database import users_connection
+from app.sync.db import cargar_sheets, sync_fresco
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +84,105 @@ def _load_vales_excel():
     return cabeceras, detalles
 
 
+# ---------------------------------------------------------------------------
+# Sync Excel -> SQLite (Fase 2): cargadores de rows con feature flag.
+# Cuando USE_SYNC_TABLES=true y hay un sync fresco, los datos salen de las
+# tablas sync_*; en cualquier otro caso se lee el Excel en vivo (fallback).
+# ---------------------------------------------------------------------------
+
+
+def _sync_disponible(fuente: str) -> bool:
+    if not get_settings().use_sync_tables:
+        return False
+    try:
+        from app.services.fuentes import MAX_AGE_HORAS
+
+        with users_connection() as conn:
+            return sync_fresco(conn, fuente, MAX_AGE_HORAS.get(fuente) or 24)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _vales_rows():
+    """(cabeceras, detalles) de VALES/DETALLE_VALES: sync_* si aplica, si no Excel en vivo."""
+    if _sync_disponible("vales"):
+        try:
+            with users_connection() as conn:
+                sheets = cargar_sheets(conn, "vales")
+            if (
+                sheets is not None
+                and sheets.get("VALES") is not None
+                and sheets.get("DETALLE_VALES") is not None
+            ):
+                return sheets["VALES"], sheets["DETALLE_VALES"]
+        except Exception:  # noqa: BLE001
+            pass
+    return _load_vales_excel()
+
+
+def _load_pedidos_excel():
+    settings = get_settings()
+    excel_path = Path(settings.pedidos_pendientes_facturar_excel_path)
+    if not excel_path.exists():
+        return [], []
+    try:
+        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+    except Exception:
+        return [], []
+    try:
+        cabeceras = read_excel_sheet(wb, "PEDIDOS")
+        detalles = read_excel_sheet(wb, "DETALLE_PEDIDOS")
+    finally:
+        wb.close()
+    return cabeceras, detalles
+
+
+def _pedidos_rows():
+    """(cabeceras, detalles) de PEDIDOS/DETALLE_PEDIDOS: sync_* si aplica, si no Excel en vivo."""
+    if _sync_disponible("pedidos"):
+        try:
+            with users_connection() as conn:
+                sheets = cargar_sheets(conn, "pedidos")
+            if (
+                sheets is not None
+                and sheets.get("PEDIDOS") is not None
+                and sheets.get("DETALLE_PEDIDOS") is not None
+            ):
+                return sheets["PEDIDOS"], sheets["DETALLE_PEDIDOS"]
+        except Exception:  # noqa: BLE001
+            pass
+    return _load_pedidos_excel()
+
+
+def _load_fotos_rows_excel():
+    excel_path = _vales_excel_path()
+    if not excel_path.exists():
+        return []
+    try:
+        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+    except Exception:
+        return []
+    try:
+        if "FOTOS_PRODUCTOS" not in wb.sheetnames:
+            return []
+        return read_excel_sheet(wb, "FOTOS_PRODUCTOS")
+    finally:
+        wb.close()
+
+
+def _fotos_rows():
+    """Rows de FOTOS_PRODUCTOS: sync_* si aplica, si no Excel en vivo."""
+    if _sync_disponible("vales"):
+        try:
+            with users_connection() as conn:
+                sheets = cargar_sheets(conn, "vales")
+            if sheets is not None and sheets.get("FOTOS_PRODUCTOS") is not None:
+                return sheets["FOTOS_PRODUCTOS"]
+        except Exception:  # noqa: BLE001
+            pass
+    return _load_fotos_rows_excel()
+
+
 def _index_cabeceras_by_folio(cabeceras):
     by_folio = {}
     for c in cabeceras:
@@ -103,9 +204,7 @@ def _cantidad_viva(detail_row, cabecera):
     return cantidad_viva, status_val
 
 
-def get_material_en_vales_by_code():
-    """Devuelve dict {codigo: cantidad_viva_total} desde el Excel de vales."""
-    cabeceras, detalles = _load_vales_excel()
+def _material_en_vales_from_rows(cabeceras, detalles):
     cabeceras_by_folio = _index_cabeceras_by_folio(cabeceras)
     material = {}
     for d in detalles:
@@ -120,9 +219,13 @@ def get_material_en_vales_by_code():
     return material
 
 
-def get_vales_abiertos_count():
-    """Cuenta folios de vale distintos con cantidad viva > 0."""
-    cabeceras, detalles = _load_vales_excel()
+def get_material_en_vales_by_code():
+    """Devuelve dict {codigo: cantidad_viva_total} desde sync_* o el Excel de vales."""
+    cabeceras, detalles = _vales_rows()
+    return _material_en_vales_from_rows(cabeceras, detalles)
+
+
+def _vales_abiertos_from_rows(cabeceras, detalles):
     cabeceras_by_folio = _index_cabeceras_by_folio(cabeceras)
     folios_abiertos = set()
     for d in detalles:
@@ -135,30 +238,18 @@ def get_vales_abiertos_count():
     return len(folios_abiertos)
 
 
+def get_vales_abiertos_count():
+    """Cuenta folios de vale distintos con cantidad viva > 0."""
+    cabeceras, detalles = _vales_rows()
+    return _vales_abiertos_from_rows(cabeceras, detalles)
+
+
 # ---------------------------------------------------------------------------
 # Pedidos vivos
 # ---------------------------------------------------------------------------
 
 
-def get_pedidos_vivos_excel(busqueda: str = "", limit: int | None = None):
-    """Lee los pedidos vivos reales desde el Excel de pendientes por facturar."""
-    settings = get_settings()
-    excel_path = Path(settings.pedidos_pendientes_facturar_excel_path)
-
-    if not excel_path.exists():
-        return []
-
-    try:
-        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
-    except Exception:
-        return []
-
-    try:
-        cabeceras = read_excel_sheet(wb, "PEDIDOS")
-        detalles = read_excel_sheet(wb, "DETALLE_PEDIDOS")
-    finally:
-        wb.close()
-
+def _pedidos_vivos_from_rows(cabeceras, detalles, busqueda: str = "", limit: int | None = None):
     agg = {}
     for d in detalles:
         folio = normalize_text(d.get("FOLIO_PEDIDO"))
@@ -241,28 +332,13 @@ def get_pedidos_vivos_excel(busqueda: str = "", limit: int | None = None):
     return resultados
 
 
-def get_pedido_detalle_excel(folio_pedido: str = ""):
-    """Lee el detalle de un pedido desde el Excel de pendientes por facturar.
+def get_pedidos_vivos_excel(busqueda: str = "", limit: int | None = None):
+    """Lee los pedidos vivos reales desde sync_* o el Excel de pendientes por facturar."""
+    cabeceras, detalles = _pedidos_rows()
+    return _pedidos_vivos_from_rows(cabeceras, detalles, busqueda, limit)
 
-    Funciona como fallback cuando la vista v_seguimiento_documental no está
-    disponible en PostgreSQL.
-    """
-    settings = get_settings()
-    excel_path = Path(settings.pedidos_pendientes_facturar_excel_path)
 
-    if not excel_path.exists():
-        return []
-
-    try:
-        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
-    except Exception:
-        return []
-
-    try:
-        detalles = read_excel_sheet(wb, "DETALLE_PEDIDOS")
-    finally:
-        wb.close()
-
+def _pedido_detalle_from_rows(detalles, folio_pedido: str = ""):
     folio_lower = folio_pedido.lower().strip()
     resultados = []
     for d in detalles:
@@ -295,6 +371,13 @@ def get_pedido_detalle_excel(folio_pedido: str = ""):
     return resultados
 
 
+def get_pedido_detalle_excel(folio_pedido: str = ""):
+    """Detalle de un pedido desde sync_* o el Excel (fallback cuando la vista
+    v_seguimiento_documental no está disponible en PostgreSQL)."""
+    _, detalles = _pedidos_rows()
+    return _pedido_detalle_from_rows(detalles, folio_pedido)
+
+
 # ---------------------------------------------------------------------------
 # Fotos de productos
 # ---------------------------------------------------------------------------
@@ -303,10 +386,20 @@ _FOTOS_CACHE = {"map": None, "ts": 0}
 _FOTOS_TTL_SECONDS = 300
 
 
-def get_fotos_map():
-    """Lee la hoja FOTOS_PRODUCTOS del Excel de almacén y devuelve un dict.
+def _fotos_from_rows(rows):
+    fotos = {}
+    for item in rows:
+        codigo = normalize_text(item.get("CODIGO"))
+        ruta = normalize_text(item.get("RUTA_FOTO"))
+        if codigo and ruta:
+            fotos[codigo] = ruta
+    return fotos
 
-    Si el archivo no existe o no se puede abrir, devuelve dict vacío.
+
+def get_fotos_map():
+    """Lee la hoja FOTOS_PRODUCTOS (sync_* o Excel de almacén) y devuelve un dict.
+
+    Si la fuente no existe o no se puede abrir, devuelve dict vacío.
     La última versión del mapa se conserva en memoria por _FOTOS_TTL_SECONDS.
     """
     global _FOTOS_CACHE
@@ -314,38 +407,7 @@ def get_fotos_map():
     if _FOTOS_CACHE["map"] is not None and (now - _FOTOS_CACHE["ts"]) < _FOTOS_TTL_SECONDS:
         return _FOTOS_CACHE["map"]
 
-    excel_path = _vales_excel_path()
-    if not excel_path.exists():
-        _FOTOS_CACHE = {"map": {}, "ts": now}
-        return {}
-
-    try:
-        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
-    except Exception:
-        _FOTOS_CACHE = {"map": {}, "ts": now}
-        return {}
-
-    try:
-        fotos = {}
-        if "FOTOS_PRODUCTOS" not in wb.sheetnames:
-            _FOTOS_CACHE = {"map": {}, "ts": now}
-            return {}
-        ws = wb["FOTOS_PRODUCTOS"]
-        headers = [normalize_text(cell.value) for cell in ws[1]]
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not row or all(v is None for v in row):
-                continue
-            item = {}
-            for h, v in zip(headers, row):
-                if h:
-                    item[h] = v
-            codigo = normalize_text(item.get("CODIGO"))
-            ruta = normalize_text(item.get("RUTA_FOTO"))
-            if codigo and ruta:
-                fotos[codigo] = ruta
-    finally:
-        wb.close()
-
+    fotos = _fotos_from_rows(_fotos_rows())
     _FOTOS_CACHE = {"map": fotos, "ts": now}
     return fotos
 

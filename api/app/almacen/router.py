@@ -18,6 +18,7 @@ from app.services.excel import (
     normalize_text,
     read_excel_sheet,
     to_date,
+    _vales_rows,
 )
 
 router = APIRouter(prefix="/api/almacen", tags=["almacen"])
@@ -174,28 +175,32 @@ def vales(
     almacen: str = Query("", description="Filtrar por almacén origen"),
     user: dict = Depends(get_current_user),
 ):
-    settings = get_settings()
-    excel_path = Path(settings.vales_excel_path)
+    if get_settings().use_sync_tables:
+        # Fase 2: rows desde sync_* (con fallback interno al Excel en vivo).
+        cabeceras, detalles = _vales_rows()
+    else:
+        settings = get_settings()
+        excel_path = Path(settings.vales_excel_path)
 
-    if not excel_path.exists():
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se encontró el archivo de vales: {excel_path}",
-        )
+        if not excel_path.exists():
+            raise HTTPException(
+                status_code=503,
+                detail=f"No se encontró el archivo de vales: {excel_path}",
+            )
 
-    try:
-        wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se pudo abrir el archivo de vales. Puede estar abierto en Excel. Error: {exc}",
-        )
+        try:
+            wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=f"No se pudo abrir el archivo de vales. Puede estar abierto en Excel. Error: {exc}",
+            )
 
-    try:
-        cabeceras = read_excel_sheet(wb, "VALES")
-        detalles = read_excel_sheet(wb, "DETALLE_VALES")
-    finally:
-        wb.close()
+        try:
+            cabeceras = read_excel_sheet(wb, "VALES")
+            detalles = read_excel_sheet(wb, "DETALLE_VALES")
+        finally:
+            wb.close()
 
     # Indexar cabeceras por folio
     cabeceras_by_folio = {}

@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     # Vacío = no se evalúa la alerta de país no esperado.
     alertas_paises_permitidos: str = ""
 
+    # Sync Excel -> SQLite (Fase 2). Cuando está activo, los getters de vales,
+    # pedidos y fotos leen las tablas sync_* (pobladas por el job programado
+    # app.sync.job) en lugar de abrir el Excel en cada petición.
+    # false = lectura en vivo del Excel (comportamiento anterior).
+    use_sync_tables: bool = False
+
     @property
     def database_url(self) -> str:
         return (
