@@ -276,23 +276,37 @@ _QUERY_STOCK_BAJO = """
     FROM sae_existencias e
     LEFT JOIN sae_productos p ON p.cve_art = e.cve_art
     GROUP BY e.cve_art
-    HAVING SUM(e.exist) <= MAX(e.stock_min)
-    ORDER BY (MAX(e.stock_min) - SUM(e.exist)) DESC
-    LIMIT %(limit)s
 """
 
 
 def consultar_productos_bajo_minimo(limit: int = 100) -> dict:
-    """Agregación de productos con existencia total <= stock mínimo (SAE)."""
-    with postgres_cursor() as cur:
-        cur.execute(_QUERY_STOCK_BAJO, {"limit": limit})
-        rows = cur.fetchall()
+    """Productos con existencia total en o bajo el mínimo efectivo.
 
-    productos = [dict(row) for row in rows]
-    for p in productos:
-        p["existencia"] = float(p["existencia"] or 0)
-        p["stock_min"] = float(p["stock_min"] or 0)
-    return {"total": len(productos), "productos": productos}
+    Mínimo efectivo: personalizado (panel) > stock_min de SAE (> 0) > sin
+    mínimo (no alerta). Ver app/services/stock_config.py.
+    """
+    from app.services.stock_config import merge_config, obtener_configs
+
+    configs = obtener_configs()
+
+    with postgres_cursor() as cur:
+        cur.execute(_QUERY_STOCK_BAJO, {})
+        rows = [dict(r) for r in cur.fetchall()]
+
+    filas = merge_config(rows, configs)
+    bajo = [f for f in filas if f["bajo_minimo"]]
+    bajo.sort(key=lambda f: (f["minimo_efectivo"] - f["existencia"]), reverse=True)
+
+    productos = [
+        {
+            "codigo": f["codigo"],
+            "descripcion": f["descripcion"],
+            "existencia": f["existencia"],
+            "stock_min": f["minimo_efectivo"],
+        }
+        for f in bajo[:limit]
+    ]
+    return {"total": len(bajo), "productos": productos}
 
 
 @router.get("/alertas-stock")

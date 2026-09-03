@@ -47,6 +47,7 @@ import {
   descargarReporteAnalytics,
 } from '../utils/api';
 import DataSourcesPanel from '../components/admin/DataSourcesPanel';
+import StockConfigPanel from '../components/admin/StockConfigPanel';
 import {
   LayoutDashboard,
   Users,
@@ -84,6 +85,7 @@ import {
 
 const SIDEBAR_ITEMS = [
   { id: 'crms', label: 'CRMs', icon: Briefcase },
+  { id: 'stock', label: 'Stock', icon: Package },
   { id: 'portales', label: 'Portales', icon: Lock },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'fuentes', label: 'Fuentes', icon: Database },
@@ -3325,6 +3327,7 @@ export default function AdminPage() {
             {activeSection === 'portales' && renderPortalesSection()}
             {activeSection === 'analytics' && renderAnalyticsSection()}
             {activeSection === 'fuentes' && <DataSourcesPanel />}
+            {activeSection === 'stock' && <StockConfigPanel />}
           </div>
         </main>
       </div>

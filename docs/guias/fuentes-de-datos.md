@@ -1,6 +1,6 @@
 # Guía de fuentes de datos
 
-**Última actualización:** 2026-09-03 (Fase 3 del plan de consolidación)
+**Última actualización:** 2026-09-03 (Fase 3 + configuración de stock mínimo)
 **Regla de oro:** los Excel son fuentes maestras operativas. El sistema **nunca** escribe
 en ellos, solo lee. `BD_ALMACEN_3P.xlsx` (E1) es la base de almacén: **NO EDITARLA NUNCA,
 solo consulta**, ni desde Excel ni desde ningún proceso del sistema.
@@ -121,11 +121,16 @@ cd api && .venv/Scripts/python.exe tools/validar_sync.py
   Con `--actualizar` recupera el comportamiento anterior de pisar datos.
   Editar el CRM en el panel y re-correr el import ya no pierde cambios.
 - **Alertas de stock bajo:** los mínimos los manda SAE (`stock_min` en
-  `sae_existencias`); no hay configuración local. `GET /api/inventario/alertas-stock`
-  (cualquier usuario logueado) lista los productos agregados en/bajo el mínimo y
-  alimenta la tarjeta del Resumen del dashboard. El vigilante horario incluye la
-  alerta `stock_bajo` en `GET /api/analytics/alertas/avanzadas` (tarjeta en el
+  `sae_existencias`), pero no todos los productos lo tienen. Desde
+  **Admin → Stock** se configura un mínimo personalizado por código (tabla
+  `stock_config` en `users.db`) que **manda sobre SAE**. Regla del mínimo
+  efectivo (única en todo el sistema, ver `app/services/stock_config.py`):
+  personalizado > `stock_min` de SAE (solo si > 0) > sin mínimo (no alerta).
+  `GET /api/inventario/alertas-stock` (cualquier usuario logueado) alimenta la
+  tarjeta del Resumen del dashboard; el vigilante horario incluye la alerta
+  `stock_bajo` en `GET /api/analytics/alertas/avanzadas` (tarjeta en el
   panel de admin, visible sin SMTP; correo solo si algún día se configura SMTP).
+  KPI "Bajo mínimo" del resumen usa la misma regla efectiva.
 - **Snapshot de valor de inventario:** refactor en `app/inventario/router.py`
   (`ejecutar_snapshot_valor_inventario()`); el endpoint POST lo delega. El
   schedule diario ya existía (`3P-Inventario-Snapshot-Diario`, 08:00 + al logon,

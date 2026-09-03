@@ -370,6 +370,19 @@ def _ensure_users_db():
             """
         )
 
+        # Stock mínimo personalizado por producto (override al stock_min de SAE).
+        # Un solo mínimo por código; el filtro por almacén solo aplica a la vista.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS stock_config (
+                codigo TEXT PRIMARY KEY,
+                stock_min REAL NOT NULL,
+                notas TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
         conn.commit()
     finally:
         conn.close()

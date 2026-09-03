@@ -40,10 +40,6 @@ def dashboard_resumen(user: dict = Depends(get_current_user)):
         resumen["vales_abiertos"] = 0
 
     queries = {
-        "productos_bajo_minimo": """
-            SELECT COUNT(*) FROM sae_existencias
-            WHERE exist <= stock_min
-        """,
         "movimientos_90d": """
             SELECT COUNT(*) FROM sae_movimientos_inventario
             WHERE fecha_doc >= CURRENT_DATE - INTERVAL '90 days'
@@ -67,5 +63,14 @@ def dashboard_resumen(user: dict = Depends(get_current_user)):
     except Exception:
         # Si no hay conexión a PostgreSQL, devolver estructura vacía
         pass
+
+    # Bajo mínimo con la misma regla efectiva que las alertas
+    # (personalizado > SAE > 0; sin mínimo no cuenta)
+    try:
+        from app.inventario.router import consultar_productos_bajo_minimo
+
+        resumen["productos_bajo_minimo"] = consultar_productos_bajo_minimo(limit=1)["total"]
+    except Exception:
+        resumen["productos_bajo_minimo"] = 0
 
     return {"resumen": resumen}
