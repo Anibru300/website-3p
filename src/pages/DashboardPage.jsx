@@ -14,6 +14,7 @@ import {
   exportarHistorialVentas,
   guardarSnapshotValorInventario,
   fetchHistorialValorInventario,
+  fetchAlertasStock,
   trackEvent,
 } from '../utils/api';
 import {
@@ -1418,6 +1419,7 @@ export default function DashboardPage() {
 
   // Data states
   const [resumen, setResumen] = useState(null);
+  const [alertasStock, setAlertasStock] = useState(null);
   const [existencias, setExistencias] = useState([]);
   const [subalmacenes, setSubalmacenes] = useState([]);
   const [vales, setVales] = useState([]);
@@ -1685,6 +1687,10 @@ export default function DashboardPage() {
       setVales(v.data || []);
       setAllVales(v.data || []);
       setPedidos(p.data || []);
+      // Alertas de stock bajo: independiente, si SAE falla no rompe el resumen
+      fetchAlertasStock()
+        .then((a) => setAlertasStock(a))
+        .catch(() => setAlertasStock(null));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -2036,6 +2042,43 @@ export default function DashboardPage() {
           subtext="Actividad de inventario"
         />
       </div>
+
+      {/* Alerta de stock bajo (mínimos de SAE) */}
+      {alertasStock && alertasStock.total > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-red-100 text-red-600">
+              <AlertCircle size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-bold text-red-800">
+                Productos bajo el mínimo ({alertasStock.total})
+              </h3>
+              <p className="text-xs text-red-600 mt-0.5">
+                Existencia total en o bajo el stock mínimo definido en SAE.
+              </p>
+              <ul className="mt-2 divide-y divide-red-100">
+                {alertasStock.productos.slice(0, 8).map((p) => (
+                  <li key={p.codigo} className="flex items-center justify-between gap-2 py-1 text-sm">
+                    <span className="text-gray-700 truncate">
+                      <span className="font-mono text-xs text-gray-500">{p.codigo}</span>{' '}
+                      {p.descripcion || 'Sin descripción'}
+                    </span>
+                    <span className="font-medium text-red-700 whitespace-nowrap">
+                      {p.existencia} / {p.stock_min}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {alertasStock.total > 8 && (
+                <p className="text-xs text-red-600 mt-1">
+                  …y {alertasStock.total - 8} más.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filtros globales del dashboard */}
       <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5">

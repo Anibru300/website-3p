@@ -274,6 +274,10 @@ export async function fetchHistorialValorInventario({ fecha_desde, fecha_hasta }
   return apiFetch(`/api/inventario/valor-historico${query ? `?${query}` : ''}`);
 }
 
+export async function fetchAlertasStock() {
+  return apiFetch('/api/inventario/alertas-stock');
+}
+
 export async function fetchSanAntonioOrdenes(query = '') {
   return apiFetch(`/api/san-antonio/ordenes?${query}`);
 }

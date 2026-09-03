@@ -79,6 +79,7 @@ import {
   Globe,
   BarChart3,
   TrendingUp,
+  Package,
 } from 'lucide-react';
 
 const SIDEBAR_ITEMS = [
@@ -1901,6 +1902,50 @@ export default function AdminPage() {
                 {paises.paises_permitidos?.length
                   ? `Sin tráfico fuera de: ${paises.paises_permitidos.join(', ')}`
                   : 'Sin configurar (ALERTAS_PAISES_PERMITIDOS vacío).'}
+              </p>
+            )}
+          </div>
+        )}
+
+        {alertasAvanzadasData.stock_bajo && (
+          <div
+            className={`border rounded-xl p-4 ${
+              alertasAvanzadasData.stock_bajo.activa
+                ? 'bg-red-50 border-red-200'
+                : 'bg-white border-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Package
+                size={18}
+                className={alertasAvanzadasData.stock_bajo.activa ? 'text-red-600' : 'text-gray-400'}
+              />
+              <h3
+                className={`text-sm font-bold ${
+                  alertasAvanzadasData.stock_bajo.activa ? 'text-red-800' : 'text-gray-700'
+                }`}
+              >
+                Stock bajo
+              </h3>
+            </div>
+            {alertasAvanzadasData.stock_bajo.activa ? (
+              <>
+                <p className="text-sm mt-2 text-red-700">
+                  <strong>{alertasAvanzadasData.stock_bajo.total}</strong> productos en o bajo el
+                  stock mínimo definido en SAE.
+                </p>
+                <ul className="text-xs text-red-700 mt-1 space-y-0.5">
+                  {alertasAvanzadasData.stock_bajo.productos?.slice(0, 5).map((p) => (
+                    <li key={p.codigo}>
+                      <span className="font-mono">{p.codigo}</span> {p.descripcion || '—'} ·{' '}
+                      {p.existencia} / {p.stock_min}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="text-sm mt-2 text-gray-500">
+                Sin productos bajo el stock mínimo.
               </p>
             )}
           </div>

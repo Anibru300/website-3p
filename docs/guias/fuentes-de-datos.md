@@ -1,6 +1,6 @@
 # Guía de fuentes de datos
 
-**Última actualización:** 2026-09-03 (Fase 1 del plan de consolidación)
+**Última actualización:** 2026-09-03 (Fase 3 del plan de consolidación)
 **Regla de oro:** los Excel son fuentes maestras operativas. El sistema **nunca** escribe
 en ellos, solo lee. `BD_ALMACEN_3P.xlsx` (E1) es la base de almacén: **NO EDITARLA NUNCA,
 solo consulta**, ni desde Excel ni desde ningún proceso del sistema.
@@ -75,7 +75,8 @@ curl http://localhost:8000/health/datos
 # Respaldo manual
 cd api && .venv/Scripts/python.exe tools/backup_sqlite.py
 
-# Importar CRM desde Excel (manual; OJO: sobrescribe cambios hechos en el panel — Fase 3 lo corrige)
+# Importar CRM desde Excel (manual; MODO SOLO-ALTAS: respeta ediciones del panel admin.
+# Agregar --actualizar solo si se quiere volver a pisar con lo que diga el Excel)
 cd api && .venv/Scripts/python.exe scripts/importar_crm_excel.py
 
 # Sync manual de vales/pedidos a tablas sync_*
@@ -99,7 +100,7 @@ cd api && .venv/Scripts/python.exe tools/validar_sync.py
   alerta `fuentes_datos` (vigilante horario, panel de alertas).
 - **Tarea programada:** cada 30 min (comando `app.sync.job`), verificable en `sync_log`.
 
-## 6. Riesgos conocidos y estado
+## 7. Riesgos conocidos y estado
 
 | Riesgo | Mitigación actual | Fase que lo resuelve |
 |--------|-------------------|----------------------|
@@ -108,9 +109,27 @@ cd api && .venv/Scripts/python.exe tools/validar_sync.py
 | Doble copia de SQLite (R7) | `api/data/` renombrada con respaldo | ✅ Fase 1 |
 | Sin respaldos (R10) | `backup_sqlite.py` + schedule recomendado | ✅ Fase 1 |
 | Dependencia de red en vivo (R2) | Sync programado E1/E2 + flag `USE_SYNC_TABLES` | ✅ Fase 2 |
-| Conflicto CRM bidireccional (R6) | Detectado (latente: sin ediciones en panel al 2026-09-03) | Fase 3 (import solo-altas) |
-| Snapshots históricos con huecos (R9) | Detectado | Fase 3 (schedule diario) |
+| Conflicto CRM bidireccional (R6) | Import en modo **solo-altas** (default); `--actualizar` para pisar | ✅ Fase 3 |
+| Snapshots históricos con huecos (R9) | Ya existía tarea `3P-Inventario-Snapshot-Diario` (08:00 diario, log en `api/logs/inventario-snapshot.log`, verificada 2026-09-03) | ✅ Fase 3 |
 | Rutas al puesto Ventas-3P (R12) | Detectado (E5) | Fase 2/3 (mover a red) |
+
+## 8. Verdad única CRM y alertas de stock (Fase 3)
+
+- **CRM: el panel admin es la fuente de verdad.** `scripts/importar_crm_excel.py`
+  corre por defecto en **modo solo-altas**: inserta lo que no existe, no toca lo
+  existente (respeta ediciones del panel) y evita duplicados al re-correrlo.
+  Con `--actualizar` recupera el comportamiento anterior de pisar datos.
+  Editar el CRM en el panel y re-correr el import ya no pierde cambios.
+- **Alertas de stock bajo:** los mínimos los manda SAE (`stock_min` en
+  `sae_existencias`); no hay configuración local. `GET /api/inventario/alertas-stock`
+  (cualquier usuario logueado) lista los productos agregados en/bajo el mínimo y
+  alimenta la tarjeta del Resumen del dashboard. El vigilante horario incluye la
+  alerta `stock_bajo` en `GET /api/analytics/alertas/avanzadas` (tarjeta en el
+  panel de admin, visible sin SMTP; correo solo si algún día se configura SMTP).
+- **Snapshot de valor de inventario:** refactor en `app/inventario/router.py`
+  (`ejecutar_snapshot_valor_inventario()`); el endpoint POST lo delega. El
+  schedule diario ya existía (`3P-Inventario-Snapshot-Diario`, 08:00 + al logon,
+  reintentos y log). Idempotente: re-correrlo el mismo día actualiza esa fecha.
 
 > **Nota 2026-09-03:** la tabla `sae_movimientos_inventario` del espejo SAE lleva
 > sin sincronizar desde el 2026-07-17 (mientras `sae_existencias` sí está al día).

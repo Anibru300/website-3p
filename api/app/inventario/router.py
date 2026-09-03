@@ -169,11 +169,12 @@ def _calcular_valor_inventario_actual():
     }
 
 
-@router.post("/valor-historico/snapshot")
-def guardar_snapshot_valor_inventario(
-    auth: dict = Depends(_require_snapshot_auth),
-):
-    """Calcula y guarda el valor del inventario para el día actual."""
+def ejecutar_snapshot_valor_inventario() -> dict:
+    """Calcula y guarda el valor del inventario para el día actual.
+
+    Idempotente: re-correrlo el mismo día actualiza los registros de esa
+    fecha. Lo usa el endpoint POST y la tarea programada (tools).
+    """
     _init_inventario_historico_db()
     hoy = datetime.date.today().isoformat()
 
@@ -219,6 +220,14 @@ def guardar_snapshot_valor_inventario(
     }
 
 
+@router.post("/valor-historico/snapshot")
+def guardar_snapshot_valor_inventario(
+    auth: dict = Depends(_require_snapshot_auth),
+):
+    """Calcula y guarda el valor del inventario para el día actual."""
+    return ejecutar_snapshot_valor_inventario()
+
+
 @router.get("/valor-historico")
 def obtener_historial_valor_inventario(
     fecha_desde: datetime.date | None = Query(None, description="YYYY-MM-DD"),
@@ -252,3 +261,46 @@ def obtener_historial_valor_inventario(
         conn.close()
 
     return {"data": data}
+
+
+# ---------------------------------------------------------------------------
+# Alertas de stock bajo (los mínimos vienen de SAE: stock_min)
+# ---------------------------------------------------------------------------
+
+_QUERY_STOCK_BAJO = """
+    SELECT
+        e.cve_art AS codigo,
+        MAX(COALESCE(p.descripcion, '')) AS descripcion,
+        SUM(e.exist) AS existencia,
+        MAX(e.stock_min) AS stock_min
+    FROM sae_existencias e
+    LEFT JOIN sae_productos p ON p.cve_art = e.cve_art
+    GROUP BY e.cve_art
+    HAVING SUM(e.exist) <= MAX(e.stock_min)
+    ORDER BY (MAX(e.stock_min) - SUM(e.exist)) DESC
+    LIMIT %(limit)s
+"""
+
+
+def consultar_productos_bajo_minimo(limit: int = 100) -> dict:
+    """Agregación de productos con existencia total <= stock mínimo (SAE)."""
+    with postgres_cursor() as cur:
+        cur.execute(_QUERY_STOCK_BAJO, {"limit": limit})
+        rows = cur.fetchall()
+
+    productos = [dict(row) for row in rows]
+    for p in productos:
+        p["existencia"] = float(p["existencia"] or 0)
+        p["stock_min"] = float(p["stock_min"] or 0)
+    return {"total": len(productos), "productos": productos}
+
+
+@router.get("/alertas-stock")
+def obtener_alertas_stock(
+    user: dict = Depends(get_current_user),
+):
+    """Lista productos bajo el stock mínimo definido en SAE.
+
+    Visible para cualquier usuario autenticado (alimenta el dashboard).
+    """
+    return consultar_productos_bajo_minimo()

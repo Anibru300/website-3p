@@ -5,6 +5,15 @@ Importa datos de CRM desde los archivos Excel de Y:/CRM´S/ hacia SQLite.
 Uso:
     .venv/Scripts/python.exe scripts/importar_crm_excel.py
     .venv/Scripts/python.exe scripts/importar_crm_excel.py --dir "Y:/CRM'S"
+    .venv/Scripts/python.exe scripts/importar_crm_excel.py --actualizar
+
+REGLA DE VERDAD ÚNICA (Fase 3): el panel admin es la fuente de verdad del
+CRM. Por defecto este script opera en MODO SOLO-ALTAS:
+- Inserta entidades/registros que no existan en SQLite.
+- NO actualiza registros que ya existan (respeta las ediciones hechas en
+  el panel admin) y evita duplicar INSERTs al re-correrlo.
+Solo con el flag --actualizar recupera el comportamiento anterior de
+pisar los datos existentes con lo que traiga el Excel.
 
 El script:
 - Lee CRM´S FINAL 3P.xlsm (hojas CAT_CLIENTES, CAT_GRANJAS, CAT_DOMICILIOS, CAT_PAQUETERIAS)
@@ -12,7 +21,6 @@ El script:
 - Lee CRM CLIENTES.xlsx (contactos)
 - Lee CRM DESCUENTOS CLIENTES.xlsx (días de crédito y descuentos)
 - Hace matching por nombre de cliente normalizado
-- No duplica entidades; actualiza si ya existen
 """
 
 import argparse
@@ -74,10 +82,13 @@ def valor_celda(ws, fila, letra):
 
 
 def encontrar_o_crear_entidad(conn, nombre, defaults=None):
-    """Busca entidad por nombre normalizado. Si no existe, la crea con defaults."""
+    """Busca entidad por nombre normalizado. Si no existe, la crea con defaults.
+
+    Devuelve (id, creada): creada=True si se insertó en esta corrida.
+    """
     nombre_limpio = limpiar_valor(nombre)
     if not nombre_limpio:
-        return None
+        return None, False
     nombre_str = str(nombre_limpio)
     norm = normalizar_nombre(nombre_str)
 
@@ -87,7 +98,7 @@ def encontrar_o_crear_entidad(conn, nombre, defaults=None):
     ).fetchone()
 
     if row:
-        return row["id"]
+        return row["id"], False
 
     # Intento con normalización flexible
     cursor = conn.execute(
@@ -95,7 +106,7 @@ def encontrar_o_crear_entidad(conn, nombre, defaults=None):
     )
     for r in cursor:
         if normalizar_nombre(r["nombre"]) == norm:
-            return r["id"]
+            return r["id"], False
 
     defaults = defaults or {}
     now = datetime.utcnow().isoformat()
@@ -125,7 +136,7 @@ def encontrar_o_crear_entidad(conn, nombre, defaults=None):
         ),
     )
     conn.commit()
-    return cur.lastrowid
+    return cur.lastrowid, True
 
 
 def buscar_entidad_id(conn, nombre):
@@ -217,8 +228,13 @@ def mapear_columnas(headers, mapeos):
 # ---------------------------------------------------------------------------
 
 
-def procesar_cat_clientes(conn, ruta):
-    """Lee CAT_CLIENTES y crea/actualiza entidades."""
+def procesar_cat_clientes(conn, ruta, actualizar=False):
+    """Lee CAT_CLIENTES y crea entidades nuevas.
+
+    Modo solo-altas (default): las entidades que ya existen no se tocan
+    (respeta ediciones del panel admin). Con actualizar=True recupera el
+    comportamiento anterior de pisar datos.
+    """
     wb = load_workbook(ruta, data_only=True, read_only=True)
     ws = wb["CAT_CLIENTES"]
     headers = obtener_columnas(ws)
@@ -264,27 +280,33 @@ def procesar_cat_clientes(conn, ruta):
             "notas": valor_celda(ws, fila, cols.get("notas")),
         }
 
-        entidad_id = encontrar_o_crear_entidad(conn, nombre, defaults)
+        entidad_id, creada = encontrar_o_crear_entidad(conn, nombre, defaults)
         if entidad_id:
-            # Actualizar campos si la entidad ya existía
-            campos = {k: v for k, v in defaults.items() if k != "tipo" and v is not None}
-            if campos:
-                campos["updated_at"] = datetime.utcnow().isoformat()
-                set_clause = ", ".join(f"{k} = ?" for k in campos.keys())
-                conn.execute(
-                    f"UPDATE crm_entidades SET {set_clause} WHERE id = ?",
-                    (*campos.values(), entidad_id),
-                )
-                conn.commit()
-                actualizadas += 1
-            else:
+            if creada:
                 creadas += 1
+            elif not actualizar:
+                omitidas += 1  # Ya existía: no se pisan ediciones del panel
+            else:
+                # Actualizar campos si la entidad ya existía
+                campos = {k: v for k, v in defaults.items() if k != "tipo" and v is not None}
+                if campos:
+                    campos["updated_at"] = datetime.utcnow().isoformat()
+                    set_clause = ", ".join(f"{k} = ?" for k in campos.keys())
+                    conn.execute(
+                        f"UPDATE crm_entidades SET {set_clause} WHERE id = ?",
+                        (*campos.values(), entidad_id),
+                    )
+                    conn.commit()
+                    actualizadas += 1
+                else:
+                    omitidas += 1
 
     wb.close()
     return {"creadas": creadas, "actualizadas": actualizadas, "omitidas": omitidas}
 
 
-def procesar_cat_granjas(conn, ruta):
+def procesar_cat_granjas(conn, ruta, actualizar=False):
+    """Lee CAT_GRANJAS. Solo-altas: no actualiza granjas existentes."""
     wb = load_workbook(ruta, data_only=True, read_only=True)
     ws = wb["CAT_GRANJAS"]
     headers = obtener_columnas(ws)
@@ -304,6 +326,7 @@ def procesar_cat_granjas(conn, ruta):
     cols = mapear_columnas(headers, mapeos)
 
     creadas = 0
+    actualizadas = 0
     omitidas = 0
 
     for fila in range(2, ws.max_row + 1):
@@ -330,6 +353,9 @@ def procesar_cat_granjas(conn, ruta):
         ).fetchone()
 
         if existente:
+            if not actualizar:
+                omitidas += 1  # Ya existía: no se pisan ediciones del panel
+                continue
             conn.execute(
                 """
                 UPDATE crm_granjas SET
@@ -349,6 +375,7 @@ def procesar_cat_granjas(conn, ruta):
                     existente["id"],
                 ),
             )
+            actualizadas += 1
         else:
             conn.execute(
                 """
@@ -375,10 +402,11 @@ def procesar_cat_granjas(conn, ruta):
         creadas += 1
 
     wb.close()
-    return {"creadas_actualizadas": creadas, "omitidas": omitidas}
+    return {"creadas": creadas, "actualizadas": actualizadas, "omitidas": omitidas}
 
 
-def procesar_cat_domicilios(conn, ruta):
+def procesar_cat_domicilios(conn, ruta, actualizar=False):
+    """Lee CAT_DOMICILIOS. Solo-altas: evita duplicar domicilios al re-correr."""
     wb = load_workbook(ruta, data_only=True, read_only=True)
     ws = wb["CAT_DOMICILIOS"]
     headers = obtener_columnas(ws)
@@ -403,6 +431,7 @@ def procesar_cat_domicilios(conn, ruta):
 
     creadas = 0
     omitidas = 0
+    duplicadas = 0
 
     for fila in range(2, ws.max_row + 1):
         cliente = valor_celda(ws, fila, cols.get("cliente", "A"))
@@ -445,6 +474,20 @@ def procesar_cat_domicilios(conn, ruta):
             partes = [str(p) for p in [calle, numero, colonia, ciudad, estado, pais, cp] if p is not None]
             direccion = ", ".join(partes)
 
+        # Solo-altas: no duplicar el mismo domicilio al re-correr el import
+        duplicado = conn.execute(
+            """
+            SELECT 1 FROM crm_ubicaciones
+            WHERE entidad_id = ? AND granja_id IS ? AND nombre = ?
+              AND direccion IS NOT NULL AND direccion = ?
+            LIMIT 1
+            """,
+            (entidad_id, granja_id, nombre, direccion),
+        ).fetchone()
+        if duplicado:
+            duplicadas += 1
+            continue
+
         conn.execute(
             """
             INSERT INTO crm_ubicaciones (
@@ -462,10 +505,11 @@ def procesar_cat_domicilios(conn, ruta):
         creadas += 1
 
     wb.close()
-    return {"creadas": creadas, "omitidas": omitidas}
+    return {"creadas": creadas, "duplicadas_evitadas": duplicadas, "omitidas": omitidas}
 
 
-def procesar_cat_paqueterias(conn, ruta):
+def procesar_cat_paqueterias(conn, ruta, actualizar=False):
+    """Lee CAT_PAQUETERIAS. Solo-altas: evita duplicar registros al re-correr."""
     wb = load_workbook(ruta, data_only=True, read_only=True)
     ws = wb["CAT_PAQUETERIAS"]
     headers = obtener_columnas(ws)
@@ -488,6 +532,7 @@ def procesar_cat_paqueterias(conn, ruta):
 
     creadas = 0
     omitidas = 0
+    duplicadas = 0
 
     for fila in range(2, ws.max_row + 1):
         cliente = valor_celda(ws, fila, cols.get("cliente", "A"))
@@ -503,6 +548,23 @@ def procesar_cat_paqueterias(conn, ruta):
             omitidas += 1
             continue
 
+        paqueteria = valor_celda(ws, fila, cols.get("paqueteria"))
+        tipo_envio = valor_celda(ws, fila, cols.get("tipo_envio"))
+        atencion_a = valor_celda(ws, fila, cols.get("atencion_a"))
+
+        # Solo-altas: no duplicar la misma paquetería al re-correr el import
+        duplicado = conn.execute(
+            """
+            SELECT 1 FROM crm_paqueterias
+            WHERE entidad_id = ? AND paqueteria IS ? AND tipo_envio IS ? AND atencion_a IS ?
+            LIMIT 1
+            """,
+            (entidad_id, paqueteria, tipo_envio, atencion_a),
+        ).fetchone()
+        if duplicado:
+            duplicadas += 1
+            continue
+
         conn.execute(
             """
             INSERT INTO crm_paqueterias (
@@ -515,10 +577,10 @@ def procesar_cat_paqueterias(conn, ruta):
             (
                 entidad_id,
                 valor_celda(ws, fila, cols.get("paqueteria_id")),
-                valor_celda(ws, fila, cols.get("tipo_envio")),
-                valor_celda(ws, fila, cols.get("paqueteria")),
+                tipo_envio,
+                paqueteria,
                 valor_celda(ws, fila, cols.get("ocurre_domicilio")),
-                valor_celda(ws, fila, cols.get("atencion_a")),
+                atencion_a,
                 valor_celda(ws, fila, cols.get("telefono")),
                 valor_celda(ws, fila, cols.get("correo_guia")),
                 valor_celda(ws, fila, cols.get("tipo_pago")),
@@ -531,10 +593,11 @@ def procesar_cat_paqueterias(conn, ruta):
         creadas += 1
 
     wb.close()
-    return {"creadas": creadas, "omitidas": omitidas}
+    return {"creadas": creadas, "duplicadas_evitadas": duplicadas, "omitidas": omitidas}
 
 
-def procesar_portales(conn, ruta):
+def procesar_portales(conn, ruta, actualizar=False):
+    """Lee portales. Solo-altas: no actualiza portales existentes."""
     wb = load_workbook(ruta, data_only=True, read_only=True)
     ws = wb.active
     headers = obtener_columnas(ws)
@@ -551,6 +614,7 @@ def procesar_portales(conn, ruta):
     cols = mapear_columnas(headers, mapeos)
 
     creados = 0
+    actualizados = 0
     omitidos = 0
 
     for fila in range(2, ws.max_row + 1):
@@ -578,23 +642,28 @@ def procesar_portales(conn, ruta):
         ).fetchone()
 
         if existente:
+            if not actualizar:
+                omitidos += 1  # Ya existía: no se pisan ediciones del panel
+                continue
             conn.execute(
                 "UPDATE crm_portales SET url = ?, usuario = ?, password = ?, persona_apoyo = ?, notas = ? WHERE id = ?",
                 (url, usuario, password, persona_apoyo, notas, existente["id"]),
             )
+            actualizados += 1
         else:
             conn.execute(
                 "INSERT INTO crm_portales (entidad_id, nombre, url, usuario, password, persona_apoyo, notas) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (entidad_id, portal, url, usuario, password, persona_apoyo, notas),
             )
         conn.commit()
-        creados += 1
+        if not existente:
+            creados += 1
 
     wb.close()
-    return {"creados_actualizados": creados, "omitidos": omitidos}
+    return {"creados": creados, "actualizados": actualizados, "omitidos": omitidos}
 
 
-def procesar_contactos(conn, ruta):
+def procesar_contactos(conn, ruta, actualizar=False):
     wb = load_workbook(ruta, data_only=True, read_only=True)
     ws = wb.active
     headers = obtener_columnas(ws)
@@ -615,6 +684,7 @@ def procesar_contactos(conn, ruta):
 
     creados = 0
     omitidos = 0
+    duplicados = 0
 
     for fila in range(2, ws.max_row + 1):
         cliente = valor_celda(ws, fila, cols.get("cliente", "A"))
@@ -625,7 +695,22 @@ def procesar_contactos(conn, ruta):
 
         entidad_id = buscar_entidad_id(conn, cliente)
         if not entidad_id:
-            entidad_id = encontrar_o_crear_entidad(conn, cliente, {"tipo": "cliente"})
+            entidad_id, _ = encontrar_o_crear_entidad(conn, cliente, {"tipo": "cliente"})
+
+        email = valor_celda(ws, fila, cols.get("email"))
+
+        # Solo-altas: no duplicar el mismo contacto al re-correr el import
+        duplicado = conn.execute(
+            """
+            SELECT 1 FROM crm_contactos
+            WHERE entidad_id = ? AND lower(trim(nombre)) = ? AND email IS ?
+            LIMIT 1
+            """,
+            (entidad_id, str(nombre).lower(), email),
+        ).fetchone()
+        if duplicado:
+            duplicados += 1
+            continue
 
         # El primer contacto de cada entidad se marca como principal si no hay otros
         tiene_principal = conn.execute(
@@ -648,7 +733,7 @@ def procesar_contactos(conn, ruta):
                 valor_celda(ws, fila, cols.get("departamento")),
                 valor_celda(ws, fila, cols.get("telefono")),
                 valor_celda(ws, fila, cols.get("whatsapp")),
-                valor_celda(ws, fila, cols.get("email")),
+                email,
                 valor_celda(ws, fila, cols.get("correos_facturas")),
                 valor_celda(ws, fila, cols.get("direccion_entrega")),
                 0 if tiene_principal else 1,
@@ -659,7 +744,7 @@ def procesar_contactos(conn, ruta):
         creados += 1
 
     wb.close()
-    return {"creados": creados, "omitidos": omitidos}
+    return {"creados": creados, "duplicados_evitados": duplicados, "omitidos": omitidos}
 
 
 def procesar_contactos_jerarquico(conn, ruta):
@@ -703,6 +788,7 @@ def procesar_contactos_jerarquico(conn, ruta):
 
     creados = 0
     omitidos = 0
+    duplicados = 0
     cliente_actual = None
     debug_filas = 0
     cliente_actual_id = None
@@ -737,6 +823,21 @@ def procesar_contactos_jerarquico(conn, ruta):
             continue
 
         nombre = primera_celda
+        email = valor_celda(ws, fila, cols.get("email"))
+
+        # Solo-altas: no duplicar el mismo contacto al re-correr el import
+        duplicado = conn.execute(
+            """
+            SELECT 1 FROM crm_contactos
+            WHERE entidad_id = ? AND lower(trim(nombre)) = ? AND email IS ?
+            LIMIT 1
+            """,
+            (cliente_actual_id, str(nombre).lower(), email),
+        ).fetchone()
+        if duplicado:
+            duplicados += 1
+            continue
+
         tiene_principal = conn.execute(
             "SELECT 1 FROM crm_contactos WHERE entidad_id = ? AND principal = 1 LIMIT 1",
             (cliente_actual_id,),
@@ -757,7 +858,7 @@ def procesar_contactos_jerarquico(conn, ruta):
                 valor_celda(ws, fila, cols.get("departamento")),
                 valor_celda(ws, fila, cols.get("telefono")),
                 None,
-                valor_celda(ws, fila, cols.get("email")),
+                email,
                 valor_celda(ws, fila, cols.get("correos_facturas")),
                 valor_celda(ws, fila, cols.get("direccion_entrega")),
                 0 if tiene_principal else 1,
@@ -768,13 +869,17 @@ def procesar_contactos_jerarquico(conn, ruta):
         creados += 1
 
     wb.close()
-    return {"creados": creados, "omitidos": omitidos}
+    return {"creados": creados, "duplicados_evitados": duplicados, "omitidos": omitidos}
 
 
-def procesar_descuentos(conn, ruta):
+def procesar_descuentos(conn, ruta, actualizar=False):
     """Procesa CRM DESCUENTOS CLIENTES.xlsx con dos tablas lado a lado:
     A-B: CLIENTE, DIAS DE CREDITO
     E-K: CLIENTE, LUBING, ROXELL, CHORE T., SBM, FANCOM, GROWER
+
+    Solo-altas (default): no pisa días de crédito ni descuentos ya
+    existentes (los edita el panel admin). Con actualizar=True recupera
+    el comportamiento anterior.
     """
     wb = load_workbook(ruta, data_only=True, read_only=True)
     ws = wb.active
@@ -795,6 +900,8 @@ def procesar_descuentos(conn, ruta):
             if not entidad_id:
                 print(f"  [descuentos] No se encontró entidad para '{cliente_credito}'. Omitiendo crédito.")
                 omitidos += 1
+            elif not actualizar:
+                omitidos += 1  # Ya existía: no se pisan ediciones del panel
             else:
                 conn.execute(
                     "UPDATE crm_entidades SET dias_credito = ?, updated_at = ? WHERE id = ?",
@@ -823,20 +930,24 @@ def procesar_descuentos(conn, ruta):
                     (entidad_id, marca.upper()),
                 ).fetchone()
                 if existente:
+                    if not actualizar:
+                        omitidos += 1  # Ya existía: no se pisan ediciones del panel
+                        continue
                     conn.execute(
                         "UPDATE crm_descuentos SET descuento = ? WHERE id = ?",
                         (str(descuento_val), existente["id"]),
                     )
+                    actualizados += 1
                 else:
                     conn.execute(
                         "INSERT INTO crm_descuentos (entidad_id, marca, descuento, notas) VALUES (?, ?, ?, ?)",
                         (entidad_id, marca, str(descuento_val), None),
                     )
+                    creados += 1
                 conn.commit()
-                creados += 1
 
     wb.close()
-    return {"creados_descuentos": creados, "actualizados_credito": actualizados, "omitidos": omitidos}
+    return {"creados_descuentos": creados, "actualizados": actualizados, "omitidos": omitidos}
 
 
 # ---------------------------------------------------------------------------
@@ -862,7 +973,18 @@ def main():
         default=None,
         help="Directorio donde se encuentran los archivos Excel (por defecto Y:/CRM´S)",
     )
+    parser.add_argument(
+        "--actualizar",
+        action="store_true",
+        help=(
+            "Pisa los datos existentes con lo que traiga el Excel (comportamiento "
+            "anterior). Por defecto el import es SOLO-ALTAS: respeta las ediciones "
+            "hechas en el panel admin, que es la fuente de verdad del CRM."
+        ),
+    )
     args = parser.parse_args()
+
+    actualizar = args.actualizar
 
     base_dir = args.dir
     if not base_dir:
@@ -877,6 +999,7 @@ def main():
     dirs = [base_dir, Path("Y:/1 - CONTROL DE ALMACEN")]
 
     print(f"Importando desde: {base_dir}")
+    print(f"Modo: {'ACTUALIZAR (pisa datos existentes)' if actualizar else 'SOLO-ALTAS (respeta ediciones del panel admin)'}")
     print("=" * 60)
 
     archivos = {
@@ -892,34 +1015,34 @@ def main():
     with users_connection() as conn:
         if archivos["final_3p"] and archivos["final_3p"].exists():
             print(f"\n[1/5] Procesando {archivos['final_3p'].name}")
-            resultados["cat_clientes"] = procesar_cat_clientes(conn, archivos["final_3p"])
-            resultados["cat_granjas"] = procesar_cat_granjas(conn, archivos["final_3p"])
-            resultados["cat_domicilios"] = procesar_cat_domicilios(conn, archivos["final_3p"])
-            resultados["cat_paqueterias"] = procesar_cat_paqueterias(conn, archivos["final_3p"])
+            resultados["cat_clientes"] = procesar_cat_clientes(conn, archivos["final_3p"], actualizar)
+            resultados["cat_granjas"] = procesar_cat_granjas(conn, archivos["final_3p"], actualizar)
+            resultados["cat_domicilios"] = procesar_cat_domicilios(conn, archivos["final_3p"], actualizar)
+            resultados["cat_paqueterias"] = procesar_cat_paqueterias(conn, archivos["final_3p"], actualizar)
         else:
             print(f"\n[1/5] No se encontró CRM´S FINAL 3P.xlsm, se omite.")
 
         if archivos["portales"] and archivos["portales"].exists():
             print(f"\n[2/5] Procesando {archivos['portales'].name}")
-            resultados["portales"] = procesar_portales(conn, archivos["portales"])
+            resultados["portales"] = procesar_portales(conn, archivos["portales"], actualizar)
         else:
             print(f"\n[2/5] No se encontró CRM PORTALES CLIENTES SUBIR FACTURAS.xlsx, se omite.")
 
         if archivos["clientes"] and archivos["clientes"].exists():
             print(f"\n[3/5] Procesando {archivos['clientes'].name}")
-            resultados["contactos"] = procesar_contactos_jerarquico(conn, archivos["clientes"])
+            resultados["contactos"] = procesar_contactos_jerarquico(conn, archivos["clientes"], actualizar)
         else:
             print(f"\n[3/5] No se encontró archivo de contactos, se omite.")
 
         if archivos["clientes_joan"] and archivos["clientes_joan"].exists():
             print(f"\n[3b/5] Procesando {archivos['clientes_joan'].name}")
-            resultados["contactos_joan"] = procesar_contactos(conn, archivos["clientes_joan"])
+            resultados["contactos_joan"] = procesar_contactos(conn, archivos["clientes_joan"], actualizar)
         else:
             print(f"\n[3b/5] No se encontró CRM Clientes Joan.xlsx, se omite.")
 
         if archivos["descuentos"] and archivos["descuentos"].exists():
             print(f"\n[4/5] Procesando {archivos['descuentos'].name}")
-            resultados["descuentos"] = procesar_descuentos(conn, archivos["descuentos"])
+            resultados["descuentos"] = procesar_descuentos(conn, archivos["descuentos"], actualizar)
         else:
             print(f"\n[4/5] No se encontró CRM DESCUENTOS CLIENTES.xlsx, se omite.")
 

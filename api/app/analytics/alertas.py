@@ -252,6 +252,49 @@ def _evaluar_fuentes() -> Optional[dict]:
     }
 
 
+def _evaluar_stock() -> Optional[dict]:
+    """Productos bajo el stock mínimo definido en SAE (stock_min).
+
+    Los mínimos los manda SAE, no hay configuración local. Sin dedupe de
+    ocultamiento: mientras haya productos bajo mínimo la alerta se muestra
+    en el panel. Si el espejo Postgres no responde, no se evalúa (la alerta
+    de fuentes_datos ya reporta ese problema).
+    """
+    try:
+        # Import perezoso para evitar circularidad con app.inventario.router.
+        from app.inventario.router import consultar_productos_bajo_minimo
+
+        resultado = consultar_productos_bajo_minimo(limit=10)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[alertas] No se pudo evaluar stock bajo: %s", exc)
+        return None
+
+    total = resultado["total"]
+    productos = resultado["productos"]
+    if total == 0:
+        return {
+            "tipo": "stock_bajo",
+            "activa": False,
+            "total": 0,
+            "productos": [],
+        }
+
+    return {
+        "tipo": "stock_bajo",
+        "activa": True,
+        "total": total,
+        "productos": productos,
+        "motivo": (
+            f"{total} productos con existencia en o bajo el stock mínimo "
+            f"definido en SAE. Más críticos: "
+            + ", ".join(
+                f"{p['codigo']} ({p['existencia']:g}/{p['stock_min']:g})"
+                for p in productos[:5]
+            )
+        ),
+    }
+
+
 def _notificacion_reciente(conn, tipo: str, dedupe_key: str) -> bool:
     """True si ya se notificó este evento dentro del cooldown."""
     limite = (_ahora() - timedelta(hours=COOLDOWN_HORAS)).isoformat()
@@ -328,6 +371,7 @@ def evaluar_alertas(notificar: bool = True) -> dict:
         pico = _evaluar_pico(conn)
         paises = _evaluar_paises(conn)
         fuentes = _evaluar_fuentes()
+        stock = _evaluar_stock()
 
         if notificar:
             if pico and pico.get("activa"):
@@ -340,12 +384,15 @@ def evaluar_alertas(notificar: bool = True) -> dict:
                     f"{p['fuente']}:{p['problema']}" for p in fuentes.get("problemas", [])
                 )
                 _intentar_notificar(conn, fuentes, dedupe_key=f"fuentes:{clave}")
+            if stock and stock.get("activa"):
+                _intentar_notificar(conn, stock, dedupe_key=f"stock:{stock['total']}")
 
-    activas = [a for a in (pico, paises, fuentes) if a and a.get("activa")]
+    activas = [a for a in (pico, paises, fuentes, stock) if a and a.get("activa")]
     return {
         "evaluado_en": _ahora().isoformat(),
         "alertas_activas": len(activas),
         "pico_trafico": pico,
         "pais_no_esperado": paises,
         "fuentes_datos": fuentes,
+        "stock_bajo": stock,
     }

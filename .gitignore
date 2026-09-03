@@ -65,3 +65,5 @@ api/tests/_test_users.db*
 # Respaldo temporal de api/data (Fase 1) y caché de pruebas de sync
 api/data_respaldo-*/
 api/tests/cache/
+# Firmas generadas por los tests de vendedores
+api/tests/vendedores/
