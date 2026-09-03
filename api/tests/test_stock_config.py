@@ -124,6 +124,36 @@ class TestConsultarBajoMinimo:
         assert [p["codigo"] for p in resultado["productos"]] == ["A2", "A1"]
 
 
+class TestCatalogoPorAlmacen:
+    def test_almacen_excluye_productos_sin_existencia(self, monkeypatch):
+        import app.admin.stock_config as admin_stock
+
+        filas = [
+            {"codigo": "A1", "descripcion": "X", "existencia": 5, "stock_min": 0},
+            {"codigo": "A2", "descripcion": "Y", "existencia": 0, "stock_min": 0},
+        ]
+        monkeypatch.setattr(
+            admin_stock, "postgres_cursor", lambda: _CtxFalso(_CursorFalso(filas))
+        )
+
+        resultado = admin_stock._catalogo_desde_sae(None, 40)
+        assert [f["codigo"] for f in resultado] == ["A1"]
+
+    def test_sin_almacen_incluye_todos(self, monkeypatch):
+        import app.admin.stock_config as admin_stock
+
+        filas = [
+            {"codigo": "A1", "descripcion": "X", "existencia": 5, "stock_min": 0},
+            {"codigo": "A2", "descripcion": "Y", "existencia": 0, "stock_min": 0},
+        ]
+        monkeypatch.setattr(
+            admin_stock, "postgres_cursor", lambda: _CtxFalso(_CursorFalso(filas))
+        )
+
+        resultado = admin_stock._catalogo_desde_sae(None, None)
+        assert [f["codigo"] for f in resultado] == ["A1", "A2"]
+
+
 class TestEndpointsAdmin:
     def _cliente(self, admin=True):
         from fastapi.testclient import TestClient

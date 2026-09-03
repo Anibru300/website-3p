@@ -22,7 +22,11 @@ class StockMinIn(BaseModel):
 
 
 def _catalogo_desde_sae(busqueda: str | None, cve_alm: int | None) -> list:
-    """Productos de SAE con existencia agregada (total o de un almacén)."""
+    """Productos de SAE con existencia agregada (total o de un almacén).
+
+    Cuando se filtra por almacén, solo se devuelven los productos que tienen
+    existencia (> 0) en ese almacén.
+    """
     params = {}
     almacen_filtro = ""
     if cve_alm is not None:
@@ -52,7 +56,11 @@ def _catalogo_desde_sae(busqueda: str | None, cve_alm: int | None) -> list:
 
     with postgres_cursor() as cur:
         cur.execute(sql, params)
-        return [dict(r) for r in cur.fetchall()]
+        filas = [dict(r) for r in cur.fetchall()]
+
+    if cve_alm is not None:
+        filas = [f for f in filas if float(f.get("existencia") or 0) > 0]
+    return filas
 
 
 @router.get("/catalogo")

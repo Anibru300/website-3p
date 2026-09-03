@@ -158,7 +158,8 @@ export default function StockConfigPanel() {
         </div>
         <p className="text-sm text-gray-500">
           El mínimo personalizado manda sobre el de SAE. Los productos sin mínimo (ni
-          personalizado ni en SAE) no generan alertas.
+          personalizado ni en SAE) no generan alertas. Al elegir un almacén solo se
+          muestran los productos que tienen existencia en ese almacén.
         </p>
       </div>
 
