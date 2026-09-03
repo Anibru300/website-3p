@@ -14,7 +14,6 @@ solo consulta**, ni desde Excel ni desde ningún proceso del sistema.
 | E1 | BD_ALMACEN_3P.xlsx | `Y:/ALMACEN/Mejora Continua ALMACEN/Nuevo Control de Almacen/BASE DE DATOS/` | VALES, DETALLE_VALES, FOTOS_PRODUCTOS | Vales, fotos (dashboard) | Almacén | Diario | Cada hora (vigilante) |
 | E2 | BD pedidos pendientes por facturar.xlsx | `Y:/1 - CONTROL DE ALMACEN/BASES DE DATOS/` | PEDIDOS, DETALLE_PEDIDOS | Pedidos abiertos | Ventas/Almacén | Diario | Cada hora |
 | E3 | VENTAS_FACTURACION_BASE.xlsx | `Y:/1 - CONTROL DE ALMACEN/BASES DE DATOS/` | Seguimiento_Documental (headers fila 4) | Historial de ventas | Ventas | Diario | Cada hora |
-| E4 | COTIZADOR 2.0.xlsm | `Y:/COTIZACIONES/1. COTIZADOR/` | FIRMAS | Cotizador (vendedores) | Ventas | Raro | Cada hora |
 | E5 | SAN_ANTONIO_SEGUIMIENTO.xlsx | `C:/Users/Ventas-3P/Desktop/SAN ANTONIO/` | OC_CABECERA, OC_PARTIDAS | Sección San Antonio | Proyecto S.A. | Semanal | Cada hora |
 | E6 | Excel CRM | `Y:/CRM´S/` (con acento) | varias | CRM (import a SQLite) | Ventas | Bajo | Manual (script) |
 | S1 | PostgreSQL `cj_assistant` | localhost | sae_existencias, sae_productos, sae_almacenes, sae_movimientos_inventario | Existencias, valor de inventario, movimientos | ETL externo (usuario) | Según ETL | Cada hora |

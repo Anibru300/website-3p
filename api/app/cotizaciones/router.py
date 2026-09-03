@@ -1,12 +1,15 @@
 import datetime
 import json
 import logging
+import mimetypes
+import shutil
 import sqlite3
 from io import BytesIO
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
+from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
 from pydantic import BaseModel, Field
 from reportlab.lib import colors
@@ -21,8 +24,9 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_admin
 from app.config import get_settings
+from app.database import users_connection
 from app.services.excel import _get_cached_historial, _get_fotos_map
 
 logger = logging.getLogger(__name__)
@@ -175,33 +179,157 @@ def precio_referencia(
     }
 
 
+# ---------------------------------------------------------------------------
+# Vendedores / firmas del cotizador (antes en el Excel COTIZADOR 2.0.xlsm;
+# desde 2026-09 viven en la tabla vendedores de users.db).
+# ---------------------------------------------------------------------------
+
+_VENDEDORES_SEMBRADOS = False
+
+
+def _normalizar_nombre_vendedor(nombre: str) -> str:
+    return " ".join(str(nombre).strip().lower().split())
+
+
+def _firmas_dir() -> Path:
+    base = Path(get_settings().users_db_path).resolve().parent
+    return base / "vendedores" / "firmas"
+
+
+def _migrar_vendedores_iniciales():
+    """Una sola vez: si la tabla está vacía, siembra los vendedores con firma
+    desde los PNG históricos de app/cotizaciones/assets/. Idempotente."""
+    global _VENDEDORES_SEMBRADOS
+    if _VENDEDORES_SEMBRADOS:
+        return
+    base = {
+        "America Ruiz": "firma_america_ruiz.png",
+        "Carlos Urbina": "firma_carlos_urbina.png",
+        "Cynthia Hernandez": "firma_cynthia_hernandez.png",
+    }
+    with users_connection() as conn:
+        n = conn.execute("SELECT COUNT(*) FROM vendedores").fetchone()[0]
+        if n == 0:
+            assets_dir = Path(__file__).parent / "assets"
+            destino_dir = _firmas_dir()
+            destino_dir.mkdir(parents=True, exist_ok=True)
+            for nombre, archivo in base.items():
+                origen = assets_dir / archivo
+                firma_path = None
+                if origen.exists():
+                    destino = destino_dir / archivo
+                    if not destino.exists():
+                        shutil.copy2(origen, destino)
+                    firma_path = str(destino)
+                conn.execute(
+                    "INSERT OR IGNORE INTO vendedores (nombre, firma_path) VALUES (?, ?)",
+                    (nombre, firma_path),
+                )
+            conn.commit()
+            logger.info("[vendedores] migración inicial: %d vendedores sembrados", len(base))
+    _VENDEDORES_SEMBRADOS = True
+
+
 @router.get("/vendedores")
 def listar_vendedores(user: dict = Depends(get_current_user)):
-    """Devuelve la lista de vendedores desde la hoja FIRMAS del Excel del cotizador."""
-    settings = get_settings()
-    excel_path = Path(settings.cotizador_vendedores_excel_path)
-    vendedores = []
-    if excel_path.exists():
-        try:
-            wb = load_workbook(filename=str(excel_path), read_only=True, data_only=True)
-            try:
-                if "FIRMAS" in wb.sheetnames:
-                    ws = wb["FIRMAS"]
-                    for row in ws.iter_rows(min_row=2, values_only=True):
-                        nombre = str(row[0]).strip() if row and row[0] is not None else ""
-                        if nombre and nombre.lower() not in ("none", "nan"):
-                            vendedores.append(nombre)
-            finally:
-                wb.close()
-        except Exception as exc:
-            logger.warning("No se pudieron leer vendedores del Excel: %s", exc)
-
+    """Lista de vendedores desde la tabla vendedores (SQLite)."""
+    _migrar_vendedores_iniciales()
+    with users_connection() as conn:
+        filas = conn.execute(
+            "SELECT id, nombre, firma_path FROM vendedores WHERE activo = 1 ORDER BY nombre"
+        ).fetchall()
+    vendedores = [
+        {"id": f["id"], "nombre": f["nombre"], "tiene_firma": bool(f["firma_path"])}
+        for f in filas
+    ]
     # Siempre incluir al usuario actual como opción si no está en la lista
     usuario_nombre = user.get("nombre", "")
-    if usuario_nombre and usuario_nombre not in vendedores:
-        vendedores.insert(0, usuario_nombre)
-
+    if usuario_nombre and all(
+        v["nombre"].lower() != usuario_nombre.lower() for v in vendedores
+    ):
+        vendedores.insert(0, {"id": None, "nombre": usuario_nombre, "tiene_firma": False})
     return {"vendedores": vendedores}
+
+
+@router.post("/vendedores")
+def crear_vendedor(
+    nombre: str = Form(...),
+    firma: Optional[UploadFile] = File(None),
+    user: dict = Depends(get_current_user),
+):
+    """Crea un vendedor con nombre y, opcionalmente, imagen de firma."""
+    _migrar_vendedores_iniciales()
+    nombre_limpio = " ".join(nombre.strip().split())
+    if not nombre_limpio:
+        raise HTTPException(status_code=422, detail="El nombre es obligatorio")
+
+    contenido = None
+    extension = None
+    if firma is not None and firma.filename:
+        content_type = firma.content_type or ""
+        if not content_type.startswith("image/"):
+            raise HTTPException(status_code=422, detail="La firma debe ser una imagen")
+        contenido = firma.file.read()
+        if len(contenido) > 2 * 1024 * 1024:
+            raise HTTPException(status_code=422, detail="La imagen de firma supera 2 MB")
+        extension = Path(firma.filename).suffix.lower() or ".png"
+
+    try:
+        with users_connection() as conn:
+            cur = conn.execute(
+                "INSERT INTO vendedores (nombre) VALUES (?)", (nombre_limpio,)
+            )
+            conn.commit()
+            vendedor_id = cur.lastrowid
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=409, detail="Ya existe un vendedor con ese nombre")
+
+    firma_path = None
+    if contenido:
+        destino_dir = _firmas_dir()
+        destino_dir.mkdir(parents=True, exist_ok=True)
+        slug = _normalizar_nombre_vendedor(nombre_limpio).replace(" ", "_")
+        destino = destino_dir / f"{vendedor_id}-{slug}{extension}"
+        destino.write_bytes(contenido)
+        firma_path = str(destino)
+        with users_connection() as conn:
+            conn.execute(
+                "UPDATE vendedores SET firma_path = ? WHERE id = ?",
+                (firma_path, vendedor_id),
+            )
+            conn.commit()
+
+    return {"id": vendedor_id, "nombre": nombre_limpio, "tiene_firma": bool(firma_path)}
+
+
+@router.get("/vendedores/{vendedor_id}/firma")
+def firma_vendedor(vendedor_id: int, user: dict = Depends(get_current_user)):
+    """Sirve la imagen de firma de un vendedor (para vista previa y PDF)."""
+    with users_connection() as conn:
+        fila = conn.execute(
+            "SELECT firma_path FROM vendedores WHERE id = ? AND activo = 1",
+            (vendedor_id,),
+        ).fetchone()
+    if not fila or not fila["firma_path"]:
+        return Response(status_code=204)
+    path = Path(fila["firma_path"])
+    if not path.exists():
+        return Response(status_code=204)
+    content_type, _ = mimetypes.guess_type(str(path))
+    return StreamingResponse(open(path, "rb"), media_type=content_type or "image/png")
+
+
+@router.delete("/vendedores/{vendedor_id}")
+def eliminar_vendedor(vendedor_id: int, user: dict = Depends(require_admin)):
+    """Baja lógica de un vendedor (solo admin)."""
+    with users_connection() as conn:
+        cur = conn.execute(
+            "UPDATE vendedores SET activo = 0 WHERE id = ?", (vendedor_id,)
+        )
+        conn.commit()
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Vendedor no encontrado")
+    return {"ok": True}
 
 
 class LineaCotizacionInput(BaseModel):
@@ -699,11 +827,30 @@ def generar_pdf_cotizacion(
 
 
 def _firma_path_para_vendedor(nombre: str) -> Optional[Path]:
+    clave = _normalizar_nombre_vendedor(nombre)
+    # Fuente principal: tabla vendedores (desde 2026-09; antes era un Excel).
+    try:
+        _migrar_vendedores_iniciales()
+        with users_connection() as conn:
+            filas = conn.execute(
+                "SELECT nombre, firma_path FROM vendedores WHERE activo = 1"
+            ).fetchall()
+        for fila in filas:
+            if (
+                fila["firma_path"]
+                and _normalizar_nombre_vendedor(fila["nombre"]) == clave
+            ):
+                path = Path(fila["firma_path"])
+                if path.exists():
+                    return path
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[vendedores] No se pudo resolver firma desde SQLite: %s", exc)
+
+    # Fallback temporal: mapping histórico en assets/ (red de seguridad).
     assets_dir = Path(__file__).parent / "assets"
     mapping = {
         "america ruiz": assets_dir / "firma_america_ruiz.png",
         "carlos urbina": assets_dir / "firma_carlos_urbina.png",
         "cynthia hernandez": assets_dir / "firma_cynthia_hernandez.png",
     }
-    clave = str(nombre).strip().lower()
     return mapping.get(clave)

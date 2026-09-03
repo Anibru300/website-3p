@@ -10,6 +10,7 @@ import {
   verCotizacionPdf,
   trackEvent,
 } from '../utils/api';
+import VendedoresManager from '../components/cotizador/VendedoresManager';
 import {
   ArrowLeft,
   Calculator,
@@ -336,7 +337,7 @@ export default function CotizadorPage() {
 
     fetchVendedoresCotizaciones()
       .then((res) => {
-        const lista = res.vendedores || [];
+        const lista = (res.vendedores || []).map((v) => v.nombre || v);
         setVendedoresOptions(lista);
         // Default al usuario logueado si está en la lista
         const nombreUsuario = user?.nombre || '';
@@ -802,6 +803,9 @@ export default function CotizadorPage() {
               </button>
             </div>
           )}
+
+          {/* Administrar vendedores / firmas */}
+          <VendedoresManager />
 
           {/* Datos generales */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">

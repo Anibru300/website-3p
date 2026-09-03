@@ -59,12 +59,6 @@ FUENTES_EXCEL = {
             "Seguimiento_Documental": ["Tipo de Fila", "Folio Factura", "Codigo Producto"],
         },
     },
-    "cotizador_vendedores": {
-        "setting": "cotizador_vendedores_excel_path",
-        "sheets": {
-            "FIRMAS": ["NOMBRE", "FIRMA"],
-        },
-    },
     "san_antonio": {
         "setting": "san_antonio_excel_path",
         "sheets": {

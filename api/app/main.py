@@ -34,7 +34,6 @@ def create_app() -> FastAPI:
         "VALES_EXCEL_PATH": settings.vales_excel_path,
         "PEDIDOS_PENDIENTES_FACTURAR_EXCEL_PATH": settings.pedidos_pendientes_facturar_excel_path,
         "VENTAS_FACTURACION_EXCEL_PATH": settings.ventas_facturacion_excel_path,
-        "COTIZADOR_VENDEDORES_EXCEL_PATH": settings.cotizador_vendedores_excel_path,
     }
     for name, path in excel_paths.items():
         if not Path(path).exists():

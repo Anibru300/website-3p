@@ -50,9 +50,6 @@ class Settings(BaseSettings):
     # Historial de ventas / facturación Excel (solo lectura)
     ventas_facturacion_excel_path: str = "Y:/1 - CONTROL DE ALMACEN/BASES DE DATOS/VENTAS_FACTURACION_BASE.xlsx"
 
-    # Excel de vendedores/firmas del cotizador (solo lectura)
-    cotizador_vendedores_excel_path: str = "Y:/COTIZACIONES/1. COTIZADOR/2. COTIZADOR 2.0.xlsm"
-
     # Logo para reportes de analytics (ruta relativa a api/ o absoluta)
     analytics_logo_path: str = "../public/images/logo-3p-header.png"
 

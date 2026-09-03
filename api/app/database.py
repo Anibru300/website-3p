@@ -357,6 +357,19 @@ def _ensure_users_db():
             """
         )
 
+        # Vendedores/firmas del cotizador (antes en el Excel COTIZADOR 2.0.xlsm)
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS vendedores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT UNIQUE NOT NULL,
+                firma_path TEXT,
+                activo INTEGER NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
         conn.commit()
     finally:
         conn.close()
