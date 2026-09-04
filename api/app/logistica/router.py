@@ -26,17 +26,20 @@ class DemandaIn(BaseModel):
     prioridad: str = Field("media", pattern="^(baja|media|alta|critica)$")
     fecha_requerida: str | None = None
     observaciones: str | None = None
+    cliente_clave: str = ""
 
 
 class DemandaPatch(BaseModel):
     prioridad: str | None = Field(None, pattern="^(baja|media|alta|critica)$")
     observaciones: str | None = None
+    cliente_clave: str | None = None
 
 
 class AbastecimientoIn(BaseModel):
     material: str = Field(min_length=1)
     cantidad: float = Field(gt=0)
     proveedor: str | None = None
+    proveedor_clave: str = ""
     oc: str | None = None
     fecha_estimada: str | None = None
     fecha_solicitud: str | None = None
@@ -46,6 +49,7 @@ class AbastecimientoIn(BaseModel):
 class AbastecimientoPatch(BaseModel):
     cantidad: float | None = Field(None, gt=0)
     proveedor: str | None = None
+    proveedor_clave: str | None = None
     oc: str | None = None
     fecha_estimada: str | None = None
     observaciones: str | None = None
@@ -103,8 +107,9 @@ def crear_demanda(body: DemandaIn, user: dict = Depends(require_admin)):
         cur = conn.execute(
             """
             INSERT INTO demanda (tipo, material, referencia, cantidad, prioridad,
-                                 fecha_requerida, origen, justificacion, observaciones)
-            VALUES ('OTRA', ?, '', ?, ?, ?, 'manual', ?, ?)
+                                 fecha_requerida, origen, justificacion, observaciones,
+                                 cliente_clave)
+            VALUES ('OTRA', ?, '', ?, ?, ?, 'manual', ?, ?, ?)
             """,
             (
                 body.material.strip(),
@@ -113,6 +118,7 @@ def crear_demanda(body: DemandaIn, user: dict = Depends(require_admin)):
                 body.fecha_requerida,
                 body.justificacion.strip(),
                 body.observaciones,
+                body.cliente_clave.strip(),
             ),
         )
         conn.commit()
@@ -135,10 +141,11 @@ def editar_demanda(demanda_id: int, body: DemandaPatch, user: dict = Depends(req
             UPDATE demanda SET
                 prioridad = COALESCE(?, prioridad),
                 observaciones = COALESCE(?, observaciones),
+                cliente_clave = COALESCE(?, cliente_clave),
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
             """,
-            (body.prioridad, body.observaciones, demanda_id),
+            (body.prioridad, body.observaciones, body.cliente_clave, demanda_id),
         )
         conn.commit()
     return {"id": demanda_id, "actualizado": True}
@@ -182,14 +189,16 @@ def crear_abastecimiento(body: AbastecimientoIn, user: dict = Depends(require_ad
     with logistica_connection() as conn:
         cur = conn.execute(
             """
-            INSERT INTO abastecimiento (material, cantidad, proveedor, oc, fecha_solicitud,
-                                        fecha_estimada, observaciones, created_by)
-            VALUES (?, ?, ?, ?, COALESCE(?, date('now')), ?, ?, ?)
+            INSERT INTO abastecimiento (material, cantidad, proveedor, proveedor_clave,
+                                        oc, fecha_solicitud, fecha_estimada, observaciones,
+                                        created_by)
+            VALUES (?, ?, ?, ?, ?, COALESCE(?, date('now')), ?, ?, ?)
             """,
             (
                 body.material.strip(),
                 body.cantidad,
                 (body.proveedor or "").strip(),
+                body.proveedor_clave.strip(),
                 (body.oc or "").strip(),
                 body.fecha_solicitud,
                 body.fecha_estimada,
@@ -223,6 +232,7 @@ def editar_abastecimiento(
             UPDATE abastecimiento SET
                 cantidad = ?,
                 proveedor = COALESCE(?, proveedor),
+                proveedor_clave = COALESCE(?, proveedor_clave),
                 oc = COALESCE(?, oc),
                 fecha_estimada = COALESCE(?, fecha_estimada),
                 observaciones = COALESCE(?, observaciones),
@@ -233,6 +243,7 @@ def editar_abastecimiento(
             (
                 nueva_cantidad,
                 (body.proveedor or "").strip() or None,
+                (body.proveedor_clave or "").strip() or None,
                 (body.oc or "").strip() or None,
                 body.fecha_estimada,
                 body.observaciones,
@@ -406,3 +417,44 @@ def get_proveedores(
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=503, detail=f"Catálogo de proveedores no disponible: {exc}")
     return {"data": filas}
+
+
+# ---------------------------------------------------------------------------
+# Clientes y proveedores: datos fiscales/contacto desde el espejo SAE
+# ---------------------------------------------------------------------------
+
+
+@router.get("/clientes")
+def get_clientes(
+    busqueda: str | None = Query(None),
+    user: dict = Depends(get_current_user),
+):
+    """Autocomplete de clientes SAE (clave / nombre / RFC)."""
+    try:
+        return {"data": svc.buscar_clientes(busqueda)}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=503, detail=f"Catálogo de clientes no disponible: {exc}")
+
+
+@router.get("/clientes/{clave}")
+def get_cliente(clave: str, user: dict = Depends(get_current_user)):
+    """Detalle fiscal/contacto de un cliente SAE."""
+    try:
+        data = svc.detalle_cliente(clave)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=503, detail=f"Datos del cliente no disponibles: {exc}")
+    if data is None:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    return data
+
+
+@router.get("/proveedores/{clave}")
+def get_proveedor(clave: str, user: dict = Depends(get_current_user)):
+    """Detalle fiscal/contacto/bancario de un proveedor SAE."""
+    try:
+        data = svc.detalle_proveedor(clave)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=503, detail=f"Datos del proveedor no disponibles: {exc}")
+    if data is None:
+        raise HTTPException(status_code=404, detail="Proveedor no encontrado")
+    return data

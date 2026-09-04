@@ -24,6 +24,9 @@ import {
   fetchCandidatasSae,
   vincularRecepcionSae,
   fetchLogisticaProveedores,
+  fetchLogisticaClientes,
+  fetchClienteDetalle,
+  fetchProveedorDetalle,
   buscarCatalogoSae,
   fetchSubalmacenes,
 } from '../utils/api';
@@ -50,6 +53,7 @@ import {
   Info,
   AlertTriangle,
   Link,
+  MessageSquare,
 } from 'lucide-react';
 
 const TABS = [
@@ -80,6 +84,14 @@ const formatNumber = (value) => {
   const num = Number(value);
   if (Number.isNaN(num)) return value;
   return new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 }).format(num);
+};
+
+// Para fichas fiscales: devuelve null cuando no hay valor para omitir el campo.
+const formatMoney = (value) => {
+  if (value == null || value === '') return null;
+  const num = Number(value);
+  if (Number.isNaN(num)) return null;
+  return num.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 };
 
 // apiFetch lanza un Error cuyo mensaje ya contiene el `detail` del servidor
@@ -181,12 +193,58 @@ function Modal({ title, onClose, children, wide = false }) {
 // Modal: alta manual de necesidad (tipo OTRA)
 // ---------------------------------------------------------------------------
 function NecesidadModal({ onClose, onGuardar, guardando }) {
+  const { addToast } = useToast();
   const [material, setMaterial] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [justificacion, setJustificacion] = useState('');
   const [prioridad, setPrioridad] = useState('media');
   const [fechaRequerida, setFechaRequerida] = useState('');
   const [observaciones, setObservaciones] = useState('');
+  const [cliente, setCliente] = useState('');
+  const [clienteClave, setClienteClave] = useState('');
+  const [cliResultados, setCliResultados] = useState([]);
+  const [cliAbierto, setCliAbierto] = useState(false);
+  const cliWrapperRef = useRef(null);
+  const cliTimeout = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (cliWrapperRef.current && !cliWrapperRef.current.contains(e.target)) {
+        setCliAbierto(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (cliTimeout.current) clearTimeout(cliTimeout.current);
+    },
+    []
+  );
+
+  const handleClienteChange = (val) => {
+    setCliente(val);
+    setClienteClave('');
+    if (cliTimeout.current) clearTimeout(cliTimeout.current);
+    if (val.trim().length < 2) {
+      setCliResultados([]);
+      setCliAbierto(false);
+      return;
+    }
+    cliTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetchLogisticaClientes(val.trim());
+        setCliResultados(res.data || []);
+        setCliAbierto(true);
+      } catch (err) {
+        setCliResultados([]);
+        setCliAbierto(false);
+        addToast(errMsg(err), 'error');
+      }
+    }, 300);
+  };
 
   const valido =
     material.trim() !== '' && Number(cantidad) > 0 && justificacion.trim() !== '';
@@ -201,6 +259,8 @@ function NecesidadModal({ onClose, onGuardar, guardando }) {
       prioridad: prioridad || undefined,
       fecha_requerida: fechaRequerida || undefined,
       observaciones: observaciones.trim() || undefined,
+      cliente: cliente.trim() || undefined,
+      cliente_clave: clienteClave || '',
     });
   };
 
@@ -255,6 +315,40 @@ function NecesidadModal({ onClose, onGuardar, guardando }) {
             placeholder="¿Por qué se necesita este material?"
           />
         </div>
+        <div className="relative" ref={cliWrapperRef}>
+          <label className="block text-xs font-medium text-gray-500 mb-1">
+            Cliente (busca en SAE o captura texto libre)
+          </label>
+          <input
+            type="text"
+            value={cliente}
+            onChange={(e) => handleClienteChange(e.target.value)}
+            className={INPUT_CLS}
+            placeholder="Nombre del cliente"
+          />
+          {cliAbierto && cliResultados.length > 0 && (
+            <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-y-auto">
+              {cliResultados.map((c) => (
+                <button
+                  key={c.clave}
+                  type="button"
+                  onClick={() => {
+                    setCliente(c.nombre);
+                    setClienteClave(c.clave);
+                    setCliAbierto(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-gray-700"
+                >
+                  <span className="font-medium">{c.nombre}</span>
+                  <span className="text-gray-500">
+                    {' '}
+                    — {c.rfc || 'sin RFC'} ({c.clave})
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Fecha requerida</label>
           <input
@@ -305,6 +399,7 @@ function AbastecimientoModal({ editando, onClose, onGuardar, guardando }) {
   const [descripcion, setDescripcion] = useState(editando?.descripcion || '');
   const [cantidad, setCantidad] = useState(editando ? String(editando.cantidad ?? '') : '');
   const [proveedor, setProveedor] = useState(editando?.proveedor || '');
+  const [proveedorClave, setProveedorClave] = useState(editando?.proveedor_clave || '');
   const [oc, setOc] = useState(editando?.oc || '');
   const [fechaEstimada, setFechaEstimada] = useState(editando?.fecha_estimada || '');
   const [estatus, setEstatus] = useState(editando?.estatus || 'solicitado');
@@ -361,6 +456,7 @@ function AbastecimientoModal({ editando, onClose, onGuardar, guardando }) {
 
   const handleProveedorChange = (val) => {
     setProveedor(val);
+    setProveedorClave('');
     if (provTimeout.current) clearTimeout(provTimeout.current);
     if (val.trim().length < 2) {
       setProvResultados([]);
@@ -387,6 +483,7 @@ function AbastecimientoModal({ editando, onClose, onGuardar, guardando }) {
       material: material.trim(),
       cantidad: Number(cantidad),
       proveedor: proveedor.trim() || undefined,
+      proveedor_clave: proveedorClave || '',
       oc: oc.trim() || undefined,
       fecha_estimada: fechaEstimada || undefined,
       observaciones: observaciones.trim() || undefined,
@@ -477,6 +574,7 @@ function AbastecimientoModal({ editando, onClose, onGuardar, guardando }) {
                   type="button"
                   onClick={() => {
                     setProveedor(`${p.clave} — ${p.nombre}`);
+                    setProveedorClave(p.clave);
                     setProvAbierto(false);
                   }}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-gray-700"
@@ -645,14 +743,22 @@ function RecepcionModal({ abastecimientos, subalmacenes, onClose, onGuardar, gua
                   {candidatas.slice(0, 8).map((c) => (
                     <li
                       key={c.id}
-                      className="flex items-center gap-2 text-xs text-gray-700 bg-white border border-gray-100 rounded-lg px-2 py-1.5"
+                      className="flex items-start gap-2 text-xs text-gray-700 bg-white border border-gray-100 rounded-lg px-2 py-1.5"
                     >
-                      <span className="flex-1 min-w-0 truncate">
-                        <span className="text-gray-500">{c.fecha_doc || '—'}</span> doc{' '}
-                        <span className="font-medium">{c.referencia || '—'}</span> ·{' '}
-                        {formatNumber(c.cantidad)} pzas · alm {c.almacen ?? '—'} ·{' '}
-                        {c.nombre_tercero || '—'}
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="block truncate">
+                          <span className="text-gray-500">{c.fecha_doc || '—'}</span> doc{' '}
+                          <span className="font-medium">{c.referencia || '—'}</span> ·{' '}
+                          {formatNumber(c.cantidad)} pzas · alm {c.almacen ?? '—'} ·{' '}
+                          {c.nombre_tercero || '—'}
+                        </span>
+                        {c.observacion && (
+                          <span className="flex items-start gap-1 mt-0.5 text-[11px] text-gray-500 whitespace-pre-wrap">
+                            <MessageSquare size={12} className="shrink-0 mt-0.5" />
+                            <span className="min-w-0">{c.observacion}</span>
+                          </span>
+                        )}
+                      </div>
                       {c.mismo_proveedor && (
                         <Badge className="bg-blue-100 text-blue-700 shrink-0">mismo proveedor</Badge>
                       )}
@@ -839,6 +945,263 @@ function VincularSaeModal({ recepcion, onClose, onVincular, vinculando }) {
 }
 
 // ---------------------------------------------------------------------------
+// Modales de detalle de terceros (ficha fiscal SAE de clientes / proveedores)
+// ---------------------------------------------------------------------------
+
+function CamposSection({ title, campos }) {
+  const visibles = campos.filter((c) => c.value != null && c.value !== '');
+  if (visibles.length === 0) return null;
+  return (
+    <div className="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">{title}</h4>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {visibles.map((c) => (
+          <div key={c.label} className="min-w-0">
+            <p className="text-xs text-gray-500">{c.label}</p>
+            <p className="text-sm text-gray-800 break-words">{c.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ObservacionSae({ texto }) {
+  if (!texto) return null;
+  return (
+    <div className="border-t border-gray-100 pt-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+        Observación SAE
+      </h4>
+      <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 border border-gray-100 rounded-xl p-3">
+        {texto}
+      </p>
+    </div>
+  );
+}
+
+function domicilioFiscalLinea(d) {
+  if (!d) return '';
+  return [
+    [d.calle, d.num_ext].filter(Boolean).join(' '),
+    d.colonia,
+    [d.localidad, d.municipio, d.ciudad].filter(Boolean).join(', '),
+    d.estado,
+    d.codigo_postal,
+    d.pais,
+  ]
+    .filter(Boolean)
+    .join(', ');
+}
+
+function domicilioEnvioLinea(d) {
+  if (!d) return '';
+  return [
+    d.calle_envio,
+    d.colonia_envio,
+    d.localidad_envio,
+    d.municipio_envio,
+    d.estado_envio,
+    d.codigo_postal_envio,
+  ]
+    .filter(Boolean)
+    .join(', ');
+}
+
+function creditoBadge(conCredito) {
+  if (conCredito == null) return null;
+  return (
+    <Badge className={conCredito ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}>
+      {conCredito ? 'Sí' : 'No'}
+    </Badge>
+  );
+}
+
+function coordenadasValor(coordenadas) {
+  if (!coordenadas || coordenadas.latitud == null || coordenadas.longitud == null) return null;
+  return `${coordenadas.latitud}, ${coordenadas.longitud}`;
+}
+
+// Shell compartido: hace el fetch al abrir y normaliza estados de carga/error.
+function DetalleTerceroModal({ clave, titulo, fetchDetalle, noEncontradoMsg, onClose, children }) {
+  const [detalle, setDetalle] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelado = false;
+    fetchDetalle(clave)
+      .then((data) => {
+        if (!cancelado) setDetalle(data);
+      })
+      .catch((err) => {
+        if (cancelado) return;
+        if (err?.status === 404) setError(noEncontradoMsg);
+        else if (err?.status === 503) setError('Espejo SAE no disponible. Intenta de nuevo más tarde.');
+        else setError(errMsg(err));
+      })
+      .finally(() => {
+        if (!cancelado) setCargando(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [clave, fetchDetalle, noEncontradoMsg]);
+
+  return (
+    <Modal title={detalle?.nombre || titulo} onClose={onClose} wide>
+      {cargando ? (
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="w-4 h-4 border-2 border-p3-red border-t-transparent rounded-full animate-spin" />
+          Consultando ficha en SAE...
+        </div>
+      ) : error ? (
+        <div className="flex items-center gap-2 text-sm text-red-600">
+          <AlertCircle size={16} className="shrink-0" />
+          {error}
+        </div>
+      ) : (
+        <div className="space-y-4">{children(detalle)}</div>
+      )}
+    </Modal>
+  );
+}
+
+function ClienteDetailModal({ clave, onClose }) {
+  return (
+    <DetalleTerceroModal
+      clave={clave}
+      titulo={`Cliente ${clave}`}
+      fetchDetalle={fetchClienteDetalle}
+      noEncontradoMsg="Cliente no encontrado en SAE"
+      onClose={onClose}
+    >
+      {(d) => (
+        <>
+          <CamposSection
+            title="Identificación"
+            campos={[
+              { label: 'Clave SAE', value: d.clave },
+              { label: 'Nombre comercial', value: d.nombre_comercial },
+              { label: 'RFC', value: d.rfc },
+              { label: 'CURP', value: d.curp },
+              { label: 'Estatus', value: d.status },
+            ]}
+          />
+          <CamposSection
+            title="Contacto"
+            campos={[
+              { label: 'Teléfono', value: d.contacto?.telefono },
+              { label: 'Correo', value: d.contacto?.correo },
+              { label: 'Correo envío de facturas', value: d.contacto?.correo_envio },
+            ]}
+          />
+          <CamposSection
+            title="Domicilio fiscal"
+            campos={[{ label: 'Dirección', value: domicilioFiscalLinea(d.domicilio_fiscal) }]}
+          />
+          <CamposSection
+            title="Domicilio de envío"
+            campos={[{ label: 'Dirección', value: domicilioEnvioLinea(d.domicilio_envio) }]}
+          />
+          <CamposSection
+            title="Facturación (CFDI)"
+            campos={[
+              { label: 'Uso de CFDI', value: d.cfdi?.uso_cfdi },
+              { label: 'Método de pago', value: d.cfdi?.metodo_pago },
+              { label: 'Forma de pago SAT', value: d.cfdi?.forma_pago_sat },
+              { label: 'Núm. cuenta de pago', value: d.cfdi?.num_cta_pago },
+            ]}
+          />
+          <CamposSection
+            title="Crédito"
+            campos={[
+              { label: 'Crédito', value: creditoBadge(d.credito?.con_credito) },
+              { label: 'Saldo', value: formatMoney(d.credito?.saldo) },
+              { label: 'Días de crédito', value: d.credito?.dias_credito },
+              { label: 'Límite de crédito', value: formatMoney(d.credito?.limite_credito) },
+              { label: 'Lista de precios', value: d.credito?.lista_precio },
+              { label: 'Clave de vendedor', value: d.credito?.cve_vend },
+            ]}
+          />
+          <CamposSection
+            title="Coordenadas"
+            campos={[{ label: 'Ubicación', value: coordenadasValor(d.coordenadas) }]}
+          />
+          <ObservacionSae texto={d.observacion} />
+        </>
+      )}
+    </DetalleTerceroModal>
+  );
+}
+
+function ProveedorDetailModal({ clave, onClose }) {
+  return (
+    <DetalleTerceroModal
+      clave={clave}
+      titulo={`Proveedor ${clave}`}
+      fetchDetalle={fetchProveedorDetalle}
+      noEncontradoMsg="Proveedor no encontrado en SAE"
+      onClose={onClose}
+    >
+      {(d) => (
+        <>
+          <CamposSection
+            title="Identificación"
+            campos={[
+              { label: 'Clave SAE', value: d.clave },
+              { label: 'RFC', value: d.rfc },
+              { label: 'CURP', value: d.curp },
+              { label: 'Estatus', value: d.status },
+            ]}
+          />
+          <CamposSection
+            title="Contacto"
+            campos={[
+              { label: 'Teléfono', value: d.contacto?.telefono },
+              { label: 'Correo', value: d.contacto?.correo },
+              { label: 'Correo envío de facturas', value: d.contacto?.correo_envio },
+            ]}
+          />
+          <CamposSection
+            title="Domicilio fiscal"
+            campos={[{ label: 'Dirección', value: domicilioFiscalLinea(d.domicilio_fiscal) }]}
+          />
+          <CamposSection
+            title="Datos bancarios"
+            campos={[
+              { label: 'Beneficiario', value: d.bancario?.beneficiario },
+              { label: 'Titular de cuenta', value: d.bancario?.titular_cuenta },
+              { label: 'Banco', value: d.bancario?.banco },
+              { label: 'Sucursal', value: d.bancario?.sucursal_banco },
+              { label: 'Cuenta', value: d.bancario?.cuenta_banco },
+              { label: 'CLABE', value: d.bancario?.clabe },
+              { label: 'Forma de pago', value: d.bancario?.forma_pago },
+              { label: 'Página web', value: d.bancario?.pag_web },
+            ]}
+          />
+          <CamposSection
+            title="Crédito"
+            campos={[
+              { label: 'Crédito', value: creditoBadge(d.credito?.con_credito) },
+              { label: 'Saldo', value: formatMoney(d.credito?.saldo) },
+              { label: 'Días de crédito', value: d.credito?.dias_credito },
+              { label: 'Límite de crédito', value: formatMoney(d.credito?.limite_credito) },
+              { label: 'Descuento', value: d.credito?.descuento },
+            ]}
+          />
+          <CamposSection
+            title="Coordenadas"
+            campos={[{ label: 'Ubicación', value: coordenadasValor(d.coordenadas) }]}
+          />
+          <ObservacionSae texto={d.observacion} />
+        </>
+      )}
+    </DetalleTerceroModal>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Página principal
 // ---------------------------------------------------------------------------
 export default function LogisticaPage() {
@@ -899,6 +1262,10 @@ export default function LogisticaPage() {
   const [guardandoRecepcion, setGuardandoRecepcion] = useState(false);
   const [vinculandoSae, setVinculandoSae] = useState(null);
   const [vinculandoSaeCargando, setVinculandoSaeCargando] = useState(false);
+
+  // Detalle de terceros SAE (fichas fiscales)
+  const [detalleCliente, setDetalleCliente] = useState(null);
+  const [detalleProveedor, setDetalleProveedor] = useState(null);
 
   // -------------------------------------------------------------------------
   // Cargas por pestaña
@@ -1356,7 +1723,25 @@ export default function LogisticaPage() {
     },
     { key: 'tipo', label: 'Tipo', sortable: true, format: (v) => tipoBadge(v) },
     { key: 'referencia', label: 'Pedido', sortable: true, format: (v) => v || '—' },
-    { key: 'cliente', label: 'Cliente', sortable: true, wrap: true, format: (v) => v || '—' },
+    {
+      key: 'cliente',
+      label: 'Cliente',
+      sortable: true,
+      wrap: true,
+      format: (v, row) =>
+        row.cliente_clave ? (
+          <button
+            type="button"
+            onClick={() => setDetalleCliente({ clave: row.cliente_clave })}
+            className="text-p3-red hover:underline text-left"
+            title={`Ver ficha fiscal (SAE ${row.cliente_clave})`}
+          >
+            {v || row.cliente_clave}
+          </button>
+        ) : (
+          <span title="Sin clave SAE vinculada">{v || '—'}</span>
+        ),
+    },
     {
       key: 'cantidad',
       label: 'Cantidad',
@@ -1679,7 +2064,25 @@ export default function LogisticaPage() {
             format: formatNumber,
           },
           { key: 'oc', label: 'OC', sortable: true, format: (v) => v || '—' },
-          { key: 'proveedor', label: 'Proveedor', sortable: true, wrap: true, format: (v) => v || '—' },
+          {
+            key: 'proveedor',
+            label: 'Proveedor',
+            sortable: true,
+            wrap: true,
+            format: (v, row) =>
+              row.proveedor_clave ? (
+                <button
+                  type="button"
+                  onClick={() => setDetalleProveedor({ clave: row.proveedor_clave })}
+                  className="text-p3-red hover:underline text-left"
+                  title={`Ver ficha fiscal (SAE ${row.proveedor_clave})`}
+                >
+                  {v || row.proveedor_clave}
+                </button>
+              ) : (
+                <span title="Sin clave SAE vinculada">{v || '—'}</span>
+              ),
+          },
           absFechaEstimadaColumn,
           { key: 'destino', label: 'Destino', sortable: true, wrap: true, format: (v) => v || '—' },
           {
@@ -1706,7 +2109,25 @@ export default function LogisticaPage() {
     const ocColumns = [
       { key: 'folio', label: 'Folio', sortable: true, format: (v) => v || '—' },
       { key: 'oc', label: 'OC', sortable: true, format: (v) => v || '—' },
-      { key: 'proveedor', label: 'Proveedor', sortable: true, wrap: true, format: (v) => v || '—' },
+      {
+        key: 'proveedor',
+        label: 'Proveedor',
+        sortable: true,
+        wrap: true,
+        format: (v, row) =>
+          row.proveedor_clave ? (
+            <button
+              type="button"
+              onClick={() => setDetalleProveedor({ clave: row.proveedor_clave })}
+              className="text-p3-red hover:underline text-left"
+              title={`Ver ficha fiscal (SAE ${row.proveedor_clave})`}
+            >
+              {v || row.proveedor_clave}
+            </button>
+          ) : (
+            <span title="Sin clave SAE vinculada">{v || '—'}</span>
+          ),
+      },
       { key: 'material', label: 'Material', sortable: true },
       { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
       {
@@ -2026,7 +2447,7 @@ export default function LogisticaPage() {
     const renderSaeCell = (row) => {
       if (row.cuadrada && !row.discrepancia) {
         return (
-          <span title={`SAE: doc ${row.mov_referencia} · ${formatNumber(row.mov_cantidad)} pzas · ${row.mov_fecha_doc} · alm ${row.mov_almacen}`}>
+          <span title={`SAE: doc ${row.mov_referencia} · ${formatNumber(row.mov_cantidad)} pzas · ${row.mov_fecha_doc} · alm ${row.mov_almacen}${row.mov_observacion ? ` · Obs: ${row.mov_observacion}` : ''}`}>
             <Badge className="bg-emerald-100 text-emerald-700">
               <Check size={12} className="mr-1" />
               Cuadrada
@@ -2036,7 +2457,7 @@ export default function LogisticaPage() {
       }
       if (row.discrepancia) {
         return (
-          <span title={`Logística ${formatNumber(row.cantidad)} vs SAE ${formatNumber(row.mov_cantidad)} (doc ${row.mov_referencia})`}>
+          <span title={`Logística ${formatNumber(row.cantidad)} vs SAE ${formatNumber(row.mov_cantidad)} (doc ${row.mov_referencia})${row.mov_observacion ? ` · Obs: ${row.mov_observacion}` : ''}`}>
             <Badge className="bg-amber-100 text-amber-700">
               <AlertTriangle size={12} className="mr-1" />
               Discrepancia
@@ -2279,6 +2700,18 @@ export default function LogisticaPage() {
           onClose={() => setVinculandoSae(null)}
           onVincular={handleVincularSae}
           vinculando={vinculandoSaeCargando}
+        />
+      )}
+      {detalleCliente && (
+        <ClienteDetailModal
+          clave={detalleCliente.clave}
+          onClose={() => setDetalleCliente(null)}
+        />
+      )}
+      {detalleProveedor && (
+        <ProveedorDetailModal
+          clave={detalleProveedor.clave}
+          onClose={() => setDetalleProveedor(null)}
         />
       )}
     </div>

@@ -413,6 +413,13 @@ def logistica_db_path() -> Path:
     return Path(settings.users_db_path).resolve().parent / "logistica.db"
 
 
+def _agregar_columna_si_falta(conn, tabla: str, columna: str, definicion: str):
+    """ALTER TABLE aditivo idempotente (SQLite no soporta IF NOT EXISTS en ADD COLUMN)."""
+    columnas = {fila[1] for fila in conn.execute(f"PRAGMA table_info({tabla})").fetchall()}
+    if columna not in columnas:
+        conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} {definicion}")
+
+
 def _ensure_logistica_db():
     path = logistica_db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -509,6 +516,10 @@ def _ensure_logistica_db():
             except sqlite3.OperationalError as exc:
                 if "duplicate column name" not in str(exc).lower():
                     raise
+
+        # Claves SAE de cliente/proveedor (enriquecimiento aditivo; texto libre)
+        _agregar_columna_si_falta(conn, "demanda", "cliente_clave", "TEXT NOT NULL DEFAULT ''")
+        _agregar_columna_si_falta(conn, "abastecimiento", "proveedor_clave", "TEXT NOT NULL DEFAULT ''")
 
         conn.commit()
     finally:

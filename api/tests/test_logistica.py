@@ -612,3 +612,257 @@ class TestAlertaEspejoSae:
             if p["fuente"].startswith("sae_")
         ]
         assert sae_problemas == []
+
+
+# ---------------------------------------------------------------------------
+# Claves SAE persistidas (cliente en demanda / proveedor en abastecimiento)
+# ---------------------------------------------------------------------------
+
+
+class TestClavesSae:
+    def test_demanda_persiste_cliente_clave(self, cliente_admin):
+        r = cliente_admin.post("/api/logistica/demanda", json={
+            "material": "X9", "cantidad": 5, "justificacion": "Prueba clave",
+            "cliente_clave": "C4000",
+        })
+        assert r.status_code == 200
+        assert r.json()["cliente_clave"] == "C4000"
+
+        dems = cliente_admin.get("/api/logistica/demanda").json()["data"]
+        assert len(dems) == 1
+        assert dems[0]["cliente_clave"] == "C4000"
+
+        r = cliente_admin.put(f"/api/logistica/demanda/{dems[0]['id']}",
+                              json={"cliente_clave": "C4001"})
+        assert r.status_code == 200
+        dems = cliente_admin.get("/api/logistica/demanda").json()["data"]
+        assert dems[0]["cliente_clave"] == "C4001"
+
+    def test_demanda_sin_cliente_clave_default_vacio(self, cliente_admin):
+        r = cliente_admin.post("/api/logistica/demanda", json={
+            "material": "X8", "cantidad": 2, "justificacion": "Sin clave",
+        })
+        assert r.status_code == 200
+        assert r.json()["cliente_clave"] == ""
+
+    def test_abastecimiento_persiste_proveedor_clave(self, cliente_admin):
+        r = cliente_admin.post("/api/logistica/abastecimientos", json={
+            "material": "P1", "cantidad": 10, "proveedor_clave": "PR001",
+        })
+        assert r.status_code == 200
+        aid = r.json()["id"]
+
+        data = cliente_admin.get("/api/logistica/abastecimientos").json()["data"]
+        assert data[0]["proveedor_clave"] == "PR001"
+
+        r = cliente_admin.put(f"/api/logistica/abastecimientos/{aid}",
+                              json={"proveedor_clave": "PR002"})
+        assert r.status_code == 200
+        data = cliente_admin.get("/api/logistica/abastecimientos").json()["data"]
+        assert data[0]["proveedor_clave"] == "PR002"
+
+
+# ---------------------------------------------------------------------------
+# Clientes y proveedores SAE (autocomplete + detalle fiscal/contacto)
+# ---------------------------------------------------------------------------
+
+
+def _detalle_cliente():
+    return {
+        "clave": "C4000", "nombre": "ACME SA", "nombre_comercial": "ACME",
+        "rfc": "XAXX010101000", "curp": None, "status": "A",
+        "contacto": {"telefono": "5550001", "correo": "a@acme.mx",
+                     "correo_envio": "compras@acme.mx"},
+        "domicilio_fiscal": {"calle": "Av 1", "num_ext": "10", "colonia": "Centro",
+                             "localidad": None, "municipio": "Cuauhtemoc",
+                             "ciudad": "CDMX", "estado": "CDMX",
+                             "codigo_postal": "06000", "pais": "MEXICO"},
+        "domicilio_envio": {"calle_envio": "Calle Entrega", "colonia_envio": "Norte",
+                            "codigo_postal_envio": "06400", "localidad_envio": None,
+                            "municipio_envio": None, "estado_envio": None},
+        "cfdi": {"uso_cfdi": "G01", "metodo_pago": "PPD",
+                 "forma_pago_sat": "99", "num_cta_pago": None},
+        "credito": {"con_credito": 1, "saldo": 100.0, "dias_credito": 30,
+                    "limite_credito": 10000.0, "lista_precio": 1, "cve_vend": "V1"},
+        "coordenadas": {"latitud": None, "longitud": None},
+        "observacion": "CLIENTE REFERENCIA",
+    }
+
+
+def _detalle_proveedor():
+    return {
+        "clave": "PR001", "nombre": "PROVEEDOR X", "rfc": "XXX010101XX1",
+        "curp": None, "status": "A",
+        "contacto": {"telefono": "5550002", "correo": "v@prox.mx"},
+        "domicilio_fiscal": {"calle": "Calle 2", "num_ext": "5", "colonia": "Industrial",
+                             "localidad": None, "municipio": None, "ciudad": "MTY",
+                             "estado": "NL", "codigo_postal": "64000", "pais": "MEXICO"},
+        "bancario": {"forma_pago": "03", "beneficiario": "PROVEEDOR X",
+                     "titular_cuenta": "PROVEEDOR X", "banco": "BBVA",
+                     "sucursal_banco": None, "cuenta_banco": "0123",
+                     "clabe": "012345678901234567", "pag_web": None},
+        "credito": {"con_credito": 0, "saldo": 0.0, "dias_credito": 0,
+                    "limite_credito": 0.0, "descuento": 0.0},
+        "coordenadas": {"latitud": None, "longitud": None},
+        "observacion": "PROV REF",
+    }
+
+
+class TestClientesProveedoresSae:
+    def test_autocomplete_clientes(self, cliente_admin, monkeypatch):
+        monkeypatch.setattr(svc, "buscar_clientes", lambda busqueda=None: [
+            {"clave": "C4000", "nombre": "ACME SA", "rfc": "XAXX010101000",
+             "correo_envio": "compras@acme.mx"},
+        ])
+        r = cliente_admin.get("/api/logistica/clientes", params={"busqueda": "acme"})
+        assert r.status_code == 200
+        data = r.json()["data"]
+        assert len(data) == 1
+        assert data[0]["clave"] == "C4000"
+        assert data[0]["correo_envio"] == "compras@acme.mx"
+
+    def test_autocomplete_clientes_503_si_postgres_cae(self, cliente_admin, monkeypatch):
+        def _boom(busqueda=None):
+            raise ConnectionError("postgres caido")
+
+        monkeypatch.setattr(svc, "buscar_clientes", _boom)
+        r = cliente_admin.get("/api/logistica/clientes")
+        assert r.status_code == 503
+
+    def test_detalle_cliente_200_estructura_completa(self, cliente_admin, monkeypatch):
+        monkeypatch.setattr(svc, "detalle_cliente",
+                            lambda clave: _detalle_cliente() if clave == "C4000" else None)
+        r = cliente_admin.get("/api/logistica/clientes/C4000")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["clave"] == "C4000"
+        for grupo in ("contacto", "domicilio_fiscal", "domicilio_envio",
+                      "cfdi", "credito", "coordenadas"):
+            assert grupo in body
+        assert body["contacto"]["correo_envio"] == "compras@acme.mx"
+        assert body["cfdi"]["uso_cfdi"] == "G01"
+        assert body["observacion"] == "CLIENTE REFERENCIA"
+
+    def test_detalle_cliente_404(self, cliente_admin, monkeypatch):
+        monkeypatch.setattr(svc, "detalle_cliente", lambda clave: None)
+        r = cliente_admin.get("/api/logistica/clientes/NOEXISTE")
+        assert r.status_code == 404
+
+    def test_detalle_cliente_503(self, cliente_admin, monkeypatch):
+        def _boom(clave):
+            raise ConnectionError("postgres caido")
+
+        monkeypatch.setattr(svc, "detalle_cliente", _boom)
+        r = cliente_admin.get("/api/logistica/clientes/C4000")
+        assert r.status_code == 503
+
+    def test_detalle_proveedor_200_estructura_completa(self, cliente_admin, monkeypatch):
+        monkeypatch.setattr(svc, "detalle_proveedor",
+                            lambda clave: _detalle_proveedor() if clave == "PR001" else None)
+        r = cliente_admin.get("/api/logistica/proveedores/PR001")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["clave"] == "PR001"
+        for grupo in ("contacto", "domicilio_fiscal", "bancario",
+                      "credito", "coordenadas"):
+            assert grupo in body
+        assert body["bancario"]["clabe"] == "012345678901234567"
+        assert body["observacion"] == "PROV REF"
+
+    def test_detalle_proveedor_404(self, cliente_admin, monkeypatch):
+        monkeypatch.setattr(svc, "detalle_proveedor", lambda clave: None)
+        r = cliente_admin.get("/api/logistica/proveedores/NOEXISTE")
+        assert r.status_code == 404
+
+    def test_detalle_proveedor_503(self, cliente_admin, monkeypatch):
+        def _boom(clave):
+            raise ConnectionError("postgres caido")
+
+        monkeypatch.setattr(svc, "detalle_proveedor", _boom)
+        r = cliente_admin.get("/api/logistica/proveedores/PR001")
+        assert r.status_code == 503
+
+
+# ---------------------------------------------------------------------------
+# Observaciones SAE en candidatas y recepciones
+# ---------------------------------------------------------------------------
+
+
+def _postgres_caido(monkeypatch):
+    class _Boom:
+        def __enter__(self):
+            raise ConnectionError("postgres caido")
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(svc, "postgres_cursor", lambda: _Boom())
+
+
+class TestObservacionesSae:
+    def test_candidatas_incluyen_observacion(self, cliente_admin, monkeypatch):
+        aid, _ = TestVinculacionSae()._setup_oc_con_recepcion(cliente_admin, monkeypatch)
+        movs = [
+            _mov_compra(1, "2431070", 10, date(2026, 7, 10), "2207085"),
+            _mov_compra(2, "2431070", 5, date(2026, 7, 12), "2207090"),
+        ]
+        _mock_postgres(monkeypatch, movs)
+        monkeypatch.setattr(svc, "_observaciones_por_referencias",
+                            lambda refs: {r: f"OBS-{r}" for r in refs})
+        r = cliente_admin.get(f"/api/logistica/abastecimientos/{aid}/candidatas-sae")
+        assert r.status_code == 200
+        cands = r.json()["candidatas"]
+        assert {c["observacion"] for c in cands} == {"OBS-2207085", "OBS-2207090"}
+
+    def test_recepciones_incluyen_mov_observacion(self, cliente_admin, monkeypatch):
+        _, rec_id = TestVinculacionSae()._setup_oc_con_recepcion(cliente_admin, monkeypatch)
+        mov = _mov_compra(7, "2431070", 10, date(2026, 7, 10), "2207085")
+        monkeypatch.setattr(svc, "_movs_por_ids", lambda ids: {7: mov})
+        monkeypatch.setattr(svc, "_observaciones_por_referencias",
+                            lambda refs: {"2207085": "FACTURA F-123"})
+        r = cliente_admin.post(f"/api/logistica/recepciones/{rec_id}/vincular",
+                               json={"mov_sae_id": 7})
+        assert r.status_code == 200, r.text
+        recs = cliente_admin.get("/api/logistica/recepciones").json()["data"]
+        assert recs[0]["mov_observacion"] == "FACTURA F-123"
+
+    def test_recepciones_sin_mov_tienen_mov_observacion_none(self, cliente_admin, monkeypatch):
+        _mock_pedidos(monkeypatch, [_detalle("2026-001", "2431070", 10)])
+        _mock_postgres(monkeypatch, [])
+        cliente_admin.post("/api/logistica/demanda/regenerar")
+        dem = _demandas_por_tipo(cliente_admin, "PEDIDO")[0]
+        aid = _alta_abastecimiento(cliente_admin, material="2431070", cantidad=10)
+        cliente_admin.post("/api/logistica/asignaciones", json={
+            "abastecimiento_id": aid, "demanda_id": dem["id"], "cantidad": 10,
+        })
+        cliente_admin.post("/api/logistica/recepciones", json={
+            "abastecimiento_id": aid, "cantidad": 10, "fecha_recepcion": "2026-09-04",
+        })
+        recs = cliente_admin.get("/api/logistica/recepciones").json()["data"]
+        assert recs[0]["mov_observacion"] is None
+
+    def test_postgres_caido_degrada_observaciones_sin_excepcion(self, cliente_admin, monkeypatch):
+        aid, _ = TestVinculacionSae()._setup_oc_con_recepcion(cliente_admin, monkeypatch)
+        _postgres_caido(monkeypatch)
+        # candidatas: el error principal del espejo sigue siendo 404 (comportamiento previo)
+        r = cliente_admin.get(f"/api/logistica/abastecimientos/{aid}/candidatas-sae")
+        assert r.status_code == 404
+        # recepciones: el enriquecimiento se degrada y la lista responde normal
+        recs = cliente_admin.get("/api/logistica/recepciones")
+        assert recs.status_code == 200
+        assert recs.json()["data"][0]["mov_observacion"] is None
+
+    def test_observaciones_prioriza_origen_compras(self, monkeypatch):
+        filas = [
+            {"cve_doc": "D1", "str_obs": "obs ventas", "origen": "F"},
+            {"cve_doc": "D1", "str_obs": "obs compras", "origen": "C"},
+            {"cve_doc": "D2", "str_obs": "solo ventas", "origen": "F"},
+        ]
+        _mock_postgres(monkeypatch, filas)
+        res = svc._observaciones_por_referencias(["D1", "D2", "", None])
+        assert res == {"D1": "obs compras", "D2": "solo ventas"}
+
+    def test_observaciones_degradado_si_postgres_cae(self, monkeypatch):
+        _postgres_caido(monkeypatch)
+        assert svc._observaciones_por_referencias(["D1"]) == {}
+        assert svc._observaciones_por_referencias([]) == {}

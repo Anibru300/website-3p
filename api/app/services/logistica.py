@@ -147,6 +147,158 @@ def describir_materiales(codigos: list[str]) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Clientes y proveedores (espejo SAE; datos fiscales/contacto)
+# ---------------------------------------------------------------------------
+
+_QUERY_CLIENTES_BUSQUEDA = """
+    SELECT clave, nombre, rfc, COALESCE(correo_envio, '') AS correo_envio
+    FROM sae_clientes
+    WHERE clave ILIKE %(like)s OR nombre ILIKE %(like)s OR rfc ILIKE %(like)s
+    ORDER BY nombre
+    LIMIT 20
+"""
+
+
+def buscar_clientes(busqueda: str | None = None) -> list[dict]:
+    """Autocomplete de clientes SAE. Sin término devuelve los primeros 20 por nombre."""
+    sql = """
+        SELECT clave, nombre, rfc, COALESCE(correo_envio, '') AS correo_envio
+        FROM sae_clientes
+        ORDER BY nombre
+        LIMIT 20
+    """
+    params: dict = {}
+    termino = (busqueda or "").strip()
+    if termino:
+        sql = _QUERY_CLIENTES_BUSQUEDA
+        params["like"] = f"%{termino}%"
+    with postgres_cursor() as cur:
+        cur.execute(sql, params)
+        return [dict(r) for r in cur.fetchall()]
+
+
+def detalle_cliente(clave: str) -> Optional[dict]:
+    """Detalle completo de un cliente SAE; None si la clave no existe."""
+    with postgres_cursor() as cur:
+        cur.execute("SELECT * FROM sae_clientes WHERE clave = %s", (clave,))
+        fila = cur.fetchone()
+    if not fila:
+        return None
+    f = dict(fila)
+    return {
+        "clave": f.get("clave"),
+        "nombre": f.get("nombre"),
+        "nombre_comercial": f.get("nombre_comercial"),
+        "rfc": f.get("rfc"),
+        "curp": f.get("curp"),
+        "status": f.get("status"),
+        "contacto": {
+            "telefono": f.get("telefono"),
+            "correo": f.get("correo"),
+            "correo_envio": f.get("correo_envio"),
+        },
+        "domicilio_fiscal": {
+            "calle": f.get("calle"),
+            "num_ext": f.get("num_ext"),
+            "colonia": f.get("colonia"),
+            "localidad": f.get("localidad"),
+            "municipio": f.get("municipio"),
+            "ciudad": f.get("ciudad"),
+            "estado": f.get("estado"),
+            "codigo_postal": f.get("codigo_postal"),
+            "pais": f.get("pais"),
+        },
+        "domicilio_envio": {
+            "calle_envio": f.get("calle_envio"),
+            "colonia_envio": f.get("colonia_envio"),
+            "codigo_postal_envio": f.get("codigo_postal_envio"),
+            "localidad_envio": f.get("localidad_envio"),
+            "municipio_envio": f.get("municipio_envio"),
+            "estado_envio": f.get("estado_envio"),
+        },
+        "cfdi": {
+            "uso_cfdi": f.get("uso_cfdi"),
+            "metodo_pago": f.get("metodo_pago"),
+            "forma_pago_sat": f.get("forma_pago_sat"),
+            "num_cta_pago": f.get("num_cta_pago"),
+        },
+        "credito": {
+            "con_credito": f.get("con_credito"),
+            "saldo": f.get("saldo"),
+            "dias_credito": f.get("dias_credito"),
+            "limite_credito": f.get("limite_credito"),
+            "lista_precio": f.get("lista_precio"),
+            "cve_vend": f.get("cve_vend"),
+        },
+        "coordenadas": {"latitud": f.get("latitud"), "longitud": f.get("longitud")},
+        "observacion": _observacion_por_cve(f.get("cve_obs")),
+    }
+
+
+def detalle_proveedor(clave: str) -> Optional[dict]:
+    """Detalle completo de un proveedor SAE; None si la clave no existe."""
+    with postgres_cursor() as cur:
+        cur.execute("SELECT * FROM sae_proveedores WHERE clave = %s", (clave,))
+        fila = cur.fetchone()
+    if not fila:
+        return None
+    f = dict(fila)
+    return {
+        "clave": f.get("clave"),
+        "nombre": f.get("nombre"),
+        "rfc": f.get("rfc"),
+        "curp": f.get("curp"),
+        "status": f.get("status"),
+        "contacto": {"telefono": f.get("telefono"), "correo": f.get("correo")},
+        "domicilio_fiscal": {
+            "calle": f.get("calle"),
+            "num_ext": f.get("num_ext"),
+            "colonia": f.get("colonia"),
+            "localidad": f.get("localidad"),
+            "municipio": f.get("municipio"),
+            "ciudad": f.get("ciudad"),
+            "estado": f.get("estado"),
+            "codigo_postal": f.get("codigo_postal"),
+            "pais": f.get("pais"),
+        },
+        "bancario": {
+            "forma_pago": f.get("forma_pago"),
+            "beneficiario": f.get("beneficiario"),
+            "titular_cuenta": f.get("titular_cuenta"),
+            "banco": f.get("banco"),
+            "sucursal_banco": f.get("sucursal_banco"),
+            "cuenta_banco": f.get("cuenta_banco"),
+            "clabe": f.get("clabe"),
+            "pag_web": f.get("pag_web"),
+        },
+        "credito": {
+            "con_credito": f.get("con_credito"),
+            "saldo": f.get("saldo"),
+            "dias_credito": f.get("dias_credito"),
+            "limite_credito": f.get("limite_credito"),
+            "descuento": f.get("descuento"),
+        },
+        "coordenadas": {"latitud": f.get("latitud"), "longitud": f.get("longitud")},
+        "observacion": _observacion_por_cve(f.get("cve_obs")),
+    }
+
+
+def _observacion_por_cve(cve_obs) -> str:
+    """Texto de una observación SAE por clave; '' si no hay o el espejo no responde."""
+    if cve_obs is None or str(cve_obs).strip() == "":
+        return ""
+    try:
+        with postgres_cursor() as cur:
+            cur.execute(
+                "SELECT str_obs FROM sae_observaciones WHERE cve_obs = %s", (cve_obs,)
+            )
+            fila = cur.fetchone()
+            return (fila["str_obs"] or "").strip() if fila else ""
+    except Exception:  # noqa: BLE001 - enriquecimiento opcional
+        return ""
+
+
+# ---------------------------------------------------------------------------
 # Regeneración de demanda (PEDIDO desde sync/Excel, STOCK desde SAE)
 # ---------------------------------------------------------------------------
 
@@ -508,6 +660,9 @@ def listar_recepciones(abastecimiento_id=None) -> list[dict]:
         filas = [dict(r) for r in conn.execute(sql, params).fetchall()]
     descripciones = describir_materiales([f["material"] for f in filas])
     movs = _movs_por_ids([int(f["mov_sae_id"]) for f in filas if f.get("mov_sae_id")])
+    observaciones = _observaciones_por_referencias(
+        [str(mov["referencia"]) for mov in movs.values()]
+    )
     for f in filas:
         f["descripcion"] = descripciones.get(f["material"], "")
         f["cantidad"] = float(f["cantidad"])
@@ -518,6 +673,7 @@ def listar_recepciones(abastecimiento_id=None) -> list[dict]:
             f["mov_referencia"] = mov["referencia"]
             f["mov_almacen"] = mov["almacen"]
             f["mov_proveedor"] = mov["nombre_tercero"]
+            f["mov_observacion"] = observaciones.get(str(mov["referencia"]).strip(), "")
             f["discrepancia"] = f["cantidad"] != f["mov_cantidad"]
         else:
             f["mov_cantidad"] = None
@@ -525,6 +681,7 @@ def listar_recepciones(abastecimiento_id=None) -> list[dict]:
             f["mov_referencia"] = None
             f["mov_almacen"] = None
             f["mov_proveedor"] = None
+            f["mov_observacion"] = None
             f["discrepancia"] = False
     return filas
 
@@ -589,6 +746,48 @@ _QUERY_ENTRADAS_COMPRA = """
     WHERE cve_cpto = 1
 """
 
+# Las cabeceras con cve_obs no son los movimientos sino sus documentos origen
+# (pedidos/ facturas/ remisiones); la referencia del movimiento es su cve_doc.
+_QUERY_OBSERVACIONES_REF = """
+    SELECT ref.cve_doc, o.str_obs, o.origen
+    FROM (
+        SELECT cve_doc, cve_obs FROM sae_pedidos WHERE cve_doc = ANY(%(refs)s)
+        UNION ALL
+        SELECT cve_doc, cve_obs FROM sae_facturas WHERE cve_doc = ANY(%(refs)s)
+        UNION ALL
+        SELECT cve_doc, cve_obs FROM sae_remisiones WHERE cve_doc = ANY(%(refs)s)
+    ) ref
+    JOIN sae_observaciones o ON o.cve_obs = ref.cve_obs
+    WHERE ref.cve_obs IS NOT NULL
+"""
+
+
+def _observaciones_por_referencias(referencias: list[str]) -> dict[str, str]:
+    """{cve_doc: str_obs} para un lote de referencias de movimientos SAE.
+
+    Si un documento tuviera observaciones de ventas y de compras gana la de
+    compras (origen 'C'); si solo hay otra, se usa igual (mejor algo que nada).
+    Enriquecimiento opcional: si el espejo no responde, {} silencioso.
+    """
+    refs = sorted({str(r).strip() for r in referencias if r and str(r).strip()})
+    if not refs:
+        return {}
+    try:
+        with postgres_cursor() as cur:
+            cur.execute(_QUERY_OBSERVACIONES_REF, {"refs": refs})
+            filas = [dict(r) for r in cur.fetchall()]
+    except Exception:  # noqa: BLE001 - enriquecimiento; no bloquea la operación
+        return {}
+    mejor: dict[str, dict] = {}
+    for f in filas:
+        doc = str(f.get("cve_doc") or "").strip()
+        if not doc:
+            continue
+        actual = mejor.get(doc)
+        if actual is None or (actual.get("origen") != "C" and f.get("origen") == "C"):
+            mejor[doc] = f
+    return {doc: (f.get("str_obs") or "").strip() for doc, f in mejor.items()}
+
 
 def _norm_proveedor(texto: str) -> str:
     """Texto normalizado para comparación floja de nombres de proveedor."""
@@ -651,6 +850,11 @@ def candidatas_sae(abastecimiento_id: int) -> dict:
             objetivo and objetivo in _norm_proveedor(m["nombre_tercero"])
         )
         candidatas.append(m)
+    observaciones = _observaciones_por_referencias(
+        [str(m["referencia"]) for m in candidatas]
+    )
+    for m in candidatas:
+        m["observacion"] = observaciones.get(str(m["referencia"]).strip(), "")
     # Mismo proveedor primero; dentro de cada grupo, las más recientes primero
     candidatas.sort(key=lambda m: m["fecha_doc"], reverse=True)
     candidatas.sort(key=lambda m: not m["mismo_proveedor"])

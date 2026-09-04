@@ -45,7 +45,9 @@ export async function apiFetch(endpoint, options = {}) {
 
   if (!response.ok) {
     console.error('[apiFetch] Error', response.status, 'en', endpoint, 'respuesta:', data);
-    throw new Error(data.detail || `Error ${response.status}`);
+    const error = new Error(data.detail || `Error ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
 
   return data;
@@ -132,11 +134,17 @@ export async function regenerarLogisticaDemanda() {
 }
 
 export async function crearLogisticaDemanda(datos) {
-  return apiFetch('/api/logistica/demanda', { method: 'POST', body: JSON.stringify(datos) });
+  return apiFetch('/api/logistica/demanda', {
+    method: 'POST',
+    body: JSON.stringify({ cliente_clave: '', ...datos }),
+  });
 }
 
 export async function editarLogisticaDemanda(id, datos) {
-  return apiFetch(`/api/logistica/demanda/${id}`, { method: 'PUT', body: JSON.stringify(datos) });
+  return apiFetch(`/api/logistica/demanda/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ cliente_clave: '', ...datos }),
+  });
 }
 
 export async function cerrarLogisticaDemanda(id) {
@@ -148,11 +156,17 @@ export async function fetchLogisticaAbastecimientos(query = '') {
 }
 
 export async function crearLogisticaAbastecimiento(datos) {
-  return apiFetch('/api/logistica/abastecimientos', { method: 'POST', body: JSON.stringify(datos) });
+  return apiFetch('/api/logistica/abastecimientos', {
+    method: 'POST',
+    body: JSON.stringify({ proveedor_clave: '', ...datos }),
+  });
 }
 
 export async function editarLogisticaAbastecimiento(id, datos) {
-  return apiFetch(`/api/logistica/abastecimientos/${id}`, { method: 'PUT', body: JSON.stringify(datos) });
+  return apiFetch(`/api/logistica/abastecimientos/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ proveedor_clave: '', ...datos }),
+  });
 }
 
 export async function eliminarLogisticaAbastecimiento(id) {
@@ -197,6 +211,19 @@ export async function vincularRecepcionSae(recepcionId, movSaeId) {
 export async function fetchLogisticaProveedores(busqueda = '') {
   const query = busqueda ? `?busqueda=${encodeURIComponent(busqueda)}` : '';
   return apiFetch(`/api/logistica/proveedores${query}`);
+}
+
+export async function fetchLogisticaClientes(busqueda = '') {
+  const query = busqueda ? `?busqueda=${encodeURIComponent(busqueda)}` : '';
+  return apiFetch(`/api/logistica/clientes${query}`);
+}
+
+export async function fetchClienteDetalle(clave) {
+  return apiFetch(`/api/logistica/clientes/${encodeURIComponent(clave)}`);
+}
+
+export async function fetchProveedorDetalle(clave) {
+  return apiFetch(`/api/logistica/proveedores/${encodeURIComponent(clave)}`);
 }
 
 export async function buscarCatalogoSae(busqueda = '') {
