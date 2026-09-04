@@ -183,6 +183,17 @@ export async function fetchLogisticaCobertura(material) {
   return apiFetch(`/api/logistica/cobertura/${encodeURIComponent(material)}`);
 }
 
+export async function fetchCandidatasSae(abastecimientoId) {
+  return apiFetch(`/api/logistica/abastecimientos/${abastecimientoId}/candidatas-sae`);
+}
+
+export async function vincularRecepcionSae(recepcionId, movSaeId) {
+  return apiFetch(`/api/logistica/recepciones/${recepcionId}/vincular`, {
+    method: 'POST',
+    body: JSON.stringify({ mov_sae_id: movSaeId }),
+  });
+}
+
 export async function fetchLogisticaProveedores(busqueda = '') {
   const query = busqueda ? `?busqueda=${encodeURIComponent(busqueda)}` : '';
   return apiFetch(`/api/logistica/proveedores${query}`);

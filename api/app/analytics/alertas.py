@@ -232,6 +232,34 @@ def _evaluar_fuentes() -> Optional[dict]:
             "problema": sae.get("estado", "desconocido"),
             "detalle": sae.get("detalle", ""),
         })
+    else:
+        # Espejo accesible: verificar frescura por tabla (el ETL externo debe
+        # actualizarlo diariamente desde los respaldos SQL de SAE).
+        MAX_AGE_SAE_HORAS = {
+            "sae_existencias": 48,
+            "sae_movimientos_inventario": 96,
+        }
+        for tabla, max_h in MAX_AGE_SAE_HORAS.items():
+            info = (sae.get("tablas") or {}).get(tabla) or {}
+            max_upd = info.get("max_upd")
+            if not max_upd:
+                continue
+            try:
+                upd = datetime.fromisoformat(str(max_upd).replace("Z", "+00:00"))
+                if upd.tzinfo is None:
+                    upd = upd.replace(tzinfo=timezone.utc)
+                edad_h = (_ahora() - upd).total_seconds() / 3600
+            except ValueError:
+                continue
+            if edad_h > max_h:
+                problemas.append({
+                    "fuente": tabla,
+                    "problema": "espejo_desactualizado",
+                    "detalle": (
+                        f"Última actualización hace {round(edad_h, 1)}h "
+                        f"(máx {max_h}h): {max_upd}"
+                    ),
+                })
 
     if not problemas:
         return {

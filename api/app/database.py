@@ -499,6 +499,17 @@ def _ensure_logistica_db():
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_recep_abast ON recepcion(abastecimiento_id)")
 
+        # Vinculación con entradas por compra del espejo SAE (cuadre logística vs almacén)
+        for columna, definicion in (
+            ("mov_sae_id", "INTEGER"),
+            ("cuadrada", "INTEGER NOT NULL DEFAULT 0"),
+        ):
+            try:
+                conn.execute(f"ALTER TABLE recepcion ADD COLUMN {columna} {definicion}")
+            except sqlite3.OperationalError as exc:
+                if "duplicate column name" not in str(exc).lower():
+                    raise
+
         conn.commit()
     finally:
         conn.close()

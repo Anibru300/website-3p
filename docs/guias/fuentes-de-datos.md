@@ -29,6 +29,18 @@ solo consulta**, ni desde Excel ni desde ningún proceso del sistema.
 > SAE o del Excel en cada consulta. Los abastecimientos (OC de proveedores) y las
 > recepciones se capturan en la sección Logística (`/logistica`, acceso desde el
 > dashboard); escritura con rol admin.
+>
+> **Cuadre con SAE:** cada recepción puede vincularse con su entrada por compra
+> del espejo (`sae_movimientos_inventario`, concepto 1 "Compras") por material +
+> proveedor + fecha. Así Logística confirma contra lo que almacén ya metió a SAE
+> (cantidad, fecha, documento, almacén) y el sistema marca la recepción como
+> *cuadrada* o *con discrepancia*. Depende de que el ETL traiga los movimientos
+> (hoy detenido desde 2026-07-17).
+>
+> **Frescura del espejo:** la alerta `fuentes_datos` vigila la edad de
+> `sae_existencias` (máx 48h) y `sae_movimientos_inventario` (máx 96h); si el ETL
+> deja de actualizar el espejo desde los respaldos SQL, aparece como
+> `espejo_desactualizado` en Admin → Analytics → Alertas.
 
 > La BD SQLite activa es SIEMPRE la de `data/` en la raíz (se resuelve desde
 > `users_db_path`). Si ves `api/data/`, es residuo: el 2026-09-03 se renombró a

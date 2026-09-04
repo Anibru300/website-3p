@@ -15,7 +15,7 @@ Casos obligatorios del flujo:
 
 import os
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -129,9 +129,9 @@ def _fila_stock(codigo, existencia, stock_min, stock_max):
 
 
 def _alta_abastecimiento(cliente, material="2431070", cantidad=80, oc="4500079712",
-                         fecha_estimada=None):
+                         fecha_estimada=None, proveedor="Proveedor X"):
     body = {"material": material, "cantidad": cantidad, "oc": oc,
-            "proveedor": "Proveedor X"}
+            "proveedor": proveedor}
     if fecha_estimada:
         body["fecha_estimada"] = fecha_estimada
     r = cliente.post("/api/logistica/abastecimientos", json=body)
@@ -460,3 +460,155 @@ class TestMatrizAsignaciones:
         assert fila["pendiente_recibir"] == 80
         tipos = sorted(d["tipo"] for d in fila["detalle"])
         assert tipos == ["PEDIDO", "STOCK"]
+
+
+# ---------------------------------------------------------------------------
+# Vinculación recepciones <-> entradas por compra de SAE (cuadre)
+# ---------------------------------------------------------------------------
+
+def _mov_compra(id_, material, cantidad, fecha, referencia, proveedor="LUBING MESOAMERICANA, S.A. DE C.V.", cve_clpv="1002", almacen=2):
+    return {
+        "id": id_, "material": material, "cantidad": cantidad, "fecha_doc": fecha,
+        "referencia": referencia, "almacen": almacen, "cve_clpv": cve_clpv,
+        "nombre_tercero": proveedor,
+    }
+
+
+class TestVinculacionSae:
+    def _setup_oc_con_recepcion(self, cliente_admin, monkeypatch):
+        _mock_pedidos(monkeypatch, [_detalle("2026-001", "2431070", 10)])
+        _mock_postgres(monkeypatch, [])
+        cliente_admin.post("/api/logistica/demanda/regenerar")
+        dem = _demandas_por_tipo(cliente_admin, "PEDIDO")[0]
+        aid = _alta_abastecimiento(cliente_admin, material="2431070", cantidad=10,
+                                   fecha_estimada="2026-09-10")
+        cliente_admin.post("/api/logistica/asignaciones", json={
+            "abastecimiento_id": aid, "demanda_id": dem["id"], "cantidad": 10,
+        })
+        rec = cliente_admin.post("/api/logistica/recepciones", json={
+            "abastecimiento_id": aid, "cantidad": 10, "fecha_recepcion": "2026-09-04",
+        }).json()
+        return aid, rec["id"]
+
+    def test_candidatas_excluye_vinculadas_y_ordena_proveedor(self, cliente_admin, monkeypatch):
+        aid, _ = self._setup_oc_con_recepcion(cliente_admin, monkeypatch)
+        movs = [
+            _mov_compra(1, "2431070", 10, date(2026, 7, 10), "2207085"),   # mismo proveedor
+            _mov_compra(2, "2431070", 10, date(2026, 7, 12), "2207090",
+                        proveedor="OTRO PROVEEDOR S.A."),
+        ]
+        # La OC de prueba quedó con proveedor genérico; la actualizamos a LUBING
+        r_put = cliente_admin.put(f"/api/logistica/abastecimientos/{aid}",
+                                  json={"proveedor": "LUBING MESOAMERICANA, S.A. DE C.V."})
+        assert r_put.status_code == 200
+        _mock_postgres(monkeypatch, movs)
+        r = cliente_admin.get(f"/api/logistica/abastecimientos/{aid}/candidatas-sae")
+        assert r.status_code == 200
+        cands = r.json()["candidatas"]
+        assert len(cands) == 2
+        assert cands[0]["mismo_proveedor"] is True
+        assert cands[0]["id"] == 1
+
+        # Vincular la 1: la candidata 1 desaparece de la lista
+        _mock_postgres(monkeypatch, movs)
+        rec_id = cliente_admin.get("/api/logistica/recepciones").json()["data"][0]["id"]
+        r = cliente_admin.post(f"/api/logistica/recepciones/{rec_id}/vincular",
+                               json={"mov_sae_id": 1})
+        assert r.status_code == 200, r.text
+        assert r.json()["cuadrada"] is True
+        assert r.json()["discrepancia"] is False
+
+        _mock_postgres(monkeypatch, movs)
+        cands = cliente_admin.get(
+            f"/api/logistica/abastecimientos/{aid}/candidatas-sae"
+        ).json()["candidatas"]
+        assert [c["id"] for c in cands] == [2]
+
+    def test_vincular_detecta_discrepancia(self, cliente_admin, monkeypatch):
+        _, rec_id = self._setup_oc_con_recepcion(cliente_admin, monkeypatch)
+        movs = [_mov_compra(9, "2431070", 8, date(2026, 7, 10), "2207085")]
+        _mock_postgres(monkeypatch, movs)
+        r = cliente_admin.post(f"/api/logistica/recepciones/{rec_id}/vincular",
+                               json={"mov_sae_id": 9})
+        assert r.status_code == 200
+        assert r.json()["discrepancia"] is True  # recibimos 10, SAE reporta 8
+
+        recs = cliente_admin.get("/api/logistica/recepciones").json()["data"]
+        assert recs[0]["cuadrada"] == 1
+        assert recs[0]["mov_referencia"] == "2207085"
+        assert recs[0]["mov_cantidad"] == 8
+        assert recs[0]["discrepancia"] is True
+
+    def test_vincular_rechaza_movimiento_ocupado(self, cliente_admin, monkeypatch):
+        _, rec_id = self._setup_oc_con_recepcion(cliente_admin, monkeypatch)
+        movs = [_mov_compra(5, "2431070", 10, date(2026, 7, 10), "2207085")]
+        _mock_postgres(monkeypatch, movs)
+        assert cliente_admin.post(
+            f"/api/logistica/recepciones/{rec_id}/vincular", json={"mov_sae_id": 5}
+        ).status_code == 200
+
+        # Segunda recepcion intenta el mismo movimiento
+        aid2 = _alta_abastecimiento(cliente_admin, material="2431070", cantidad=5)
+        rec2 = cliente_admin.post("/api/logistica/recepciones", json={
+            "abastecimiento_id": aid2, "cantidad": 5, "fecha_recepcion": "2026-09-05",
+        }).json()
+        _mock_postgres(monkeypatch, movs)
+        r = cliente_admin.post(f"/api/logistica/recepciones/{rec2['id']}/vincular",
+                               json={"mov_sae_id": 5})
+        assert r.status_code == 409
+        assert "ya está vinculada" in r.json()["detail"]
+
+    def test_vincular_rechaza_movimiento_inexistente(self, cliente_admin, monkeypatch):
+        _, rec_id = self._setup_oc_con_recepcion(cliente_admin, monkeypatch)
+        _mock_postgres(monkeypatch, [])
+        r = cliente_admin.post(f"/api/logistica/recepciones/{rec_id}/vincular",
+                               json={"mov_sae_id": 999})
+        assert r.status_code == 422
+
+    def test_candidatas_404_abastecimiento_inexistente(self, cliente_admin, monkeypatch):
+        _mock_postgres(monkeypatch, [])
+        r = cliente_admin.get("/api/logistica/abastecimientos/9999/candidatas-sae")
+        assert r.status_code == 404
+
+
+class TestAlertaEspejoSae:
+    def _estado_sae(self, edad_horas):
+        ref = (datetime.now(timezone.utc) - timedelta(hours=edad_horas)).isoformat()
+        return {
+            "revisado_en": datetime.now(timezone.utc).isoformat(),
+            "excel": {},
+            "sae": {
+                "fuente": "sae_postgres",
+                "estado": "ok",
+                "detalle": "OK",
+                "tablas": {
+                    "sae_existencias": {"max_upd": ref, "n": 100},
+                    "sae_movimientos_inventario": {"max_upd": ref, "n": 100},
+                },
+            },
+        }
+
+    def test_espejo_viejo_genera_problema(self, monkeypatch):
+        from app.analytics import alertas as alertas_mod
+        from app.services import fuentes as fuentes_mod
+
+        monkeypatch.setattr(fuentes_mod, "estado_fuentes",
+                            lambda: self._estado_sae(edad_horas=200))
+        resultado = alertas_mod._evaluar_fuentes()
+        assert resultado["activa"] is True
+        problemas = {(p["fuente"], p["problema"]) for p in resultado["problemas"]}
+        assert ("sae_existencias", "espejo_desactualizado") in problemas
+        assert ("sae_movimientos_inventario", "espejo_desactualizado") in problemas
+
+    def test_espejo_fresco_no_genera_problema(self, monkeypatch):
+        from app.analytics import alertas as alertas_mod
+        from app.services import fuentes as fuentes_mod
+
+        monkeypatch.setattr(fuentes_mod, "estado_fuentes",
+                            lambda: self._estado_sae(edad_horas=5))
+        resultado = alertas_mod._evaluar_fuentes()
+        sae_problemas = [
+            p for p in resultado.get("problemas", [])
+            if p["fuente"].startswith("sae_")
+        ]
+        assert sae_problemas == []

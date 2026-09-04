@@ -21,6 +21,8 @@ import {
   eliminarLogisticaAsignacion,
   fetchLogisticaRecepciones,
   crearLogisticaRecepcion,
+  fetchCandidatasSae,
+  vincularRecepcionSae,
   fetchLogisticaProveedores,
   buscarCatalogoSae,
   fetchSubalmacenes,
@@ -46,6 +48,8 @@ import {
   AlertCircle,
   Check,
   Info,
+  AlertTriangle,
+  Link,
 } from 'lucide-react';
 
 const TABS = [
@@ -553,6 +557,30 @@ function RecepcionModal({ abastecimientos, subalmacenes, onClose, onGuardar, gua
   const [documento, setDocumento] = useState('');
   const [ubicacion, setUbicacion] = useState('');
   const [observaciones, setObservaciones] = useState('');
+  const [candidatas, setCandidatas] = useState(null);
+  const [candidatasError, setCandidatasError] = useState(false);
+
+  useEffect(() => {
+    if (!abastecimientoId) return;
+    let cancelado = false;
+    fetchCandidatasSae(abastecimientoId)
+      .then((res) => {
+        if (!cancelado) setCandidatas(res.candidatas || []);
+      })
+      .catch(() => {
+        if (!cancelado) setCandidatasError(true);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [abastecimientoId]);
+
+  const usarCandidata = (c) => {
+    setCantidad(String(c.cantidad ?? ''));
+    if (c.fecha_doc) setFecha(c.fecha_doc);
+    setDocumento(c.referencia ? String(c.referencia) : '');
+    setUbicacion(c.almacen != null ? String(c.almacen) : '');
+  };
 
   const elegido = elegibles.find((a) => String(a.id) === String(abastecimientoId));
   const pendiente = elegido ? Number(elegido.pendiente_recibir) || 0 : 0;
@@ -583,6 +611,8 @@ function RecepcionModal({ abastecimientos, subalmacenes, onClose, onGuardar, gua
             onChange={(e) => {
               setAbastecimientoId(e.target.value);
               setCantidad('');
+              setCandidatas(null);
+              setCandidatasError(false);
             }}
             className={INPUT_CLS}
             autoFocus
@@ -598,6 +628,46 @@ function RecepcionModal({ abastecimientos, subalmacenes, onClose, onGuardar, gua
             <p className="text-xs text-gray-500 mt-1">
               Pendiente por recibir: <span className="font-semibold text-gray-700">{formatNumber(pendiente)}</span>
             </p>
+          )}
+          {abastecimientoId && (
+            <div className="mt-2 border border-gray-200 rounded-xl bg-gray-50/60 p-3">
+              <p className="text-xs font-semibold text-gray-600 mb-2">Entradas por compra en SAE</p>
+              {candidatasError ? (
+                <p className="text-xs text-gray-400 italic">Espejo SAE no disponible; captura manual</p>
+              ) : candidatas === null ? (
+                <p className="text-xs text-gray-400">Buscando entradas en SAE...</p>
+              ) : candidatas.length === 0 ? (
+                <p className="text-xs text-gray-400 italic">
+                  Sin entradas de compra sin vincular para este material en SAE
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {candidatas.slice(0, 8).map((c) => (
+                    <li
+                      key={c.id}
+                      className="flex items-center gap-2 text-xs text-gray-700 bg-white border border-gray-100 rounded-lg px-2 py-1.5"
+                    >
+                      <span className="flex-1 min-w-0 truncate">
+                        <span className="text-gray-500">{c.fecha_doc || '—'}</span> doc{' '}
+                        <span className="font-medium">{c.referencia || '—'}</span> ·{' '}
+                        {formatNumber(c.cantidad)} pzas · alm {c.almacen ?? '—'} ·{' '}
+                        {c.nombre_tercero || '—'}
+                      </span>
+                      {c.mismo_proveedor && (
+                        <Badge className="bg-blue-100 text-blue-700 shrink-0">mismo proveedor</Badge>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => usarCandidata(c)}
+                        className="shrink-0 px-2 py-1 text-xs font-medium text-p3-red border border-p3-red/40 rounded-lg hover:bg-red-50 transition-colors"
+                      >
+                        Usar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -684,6 +754,91 @@ function RecepcionModal({ abastecimientos, subalmacenes, onClose, onGuardar, gua
 }
 
 // ---------------------------------------------------------------------------
+// Modal: vincular recepción ya registrada con entrada por compra de SAE
+// ---------------------------------------------------------------------------
+function VincularSaeModal({ recepcion, onClose, onVincular, vinculando }) {
+  const [candidatas, setCandidatas] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    fetchCandidatasSae(recepcion.abastecimiento_id)
+      .then((res) => {
+        if (!cancelado) setCandidatas(res.candidatas || []);
+      })
+      .catch(() => {
+        if (!cancelado) setError(true);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [recepcion.abastecimiento_id]);
+
+  return (
+    <Modal title={`Vincular con SAE — ${recepcion.folio || `recepción ${recepcion.id}`}`} onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-xs text-gray-500">
+          Material <span className="font-medium text-gray-700">{recepcion.material}</span> · Logística{' '}
+          <span className="font-medium text-gray-700">{formatNumber(recepcion.cantidad)}</span> pzas
+          {recepcion.documento ? ` · doc ${recepcion.documento}` : ''}. Selecciona la entrada por
+          compra del espejo SAE que corresponde.
+        </p>
+        {error ? (
+          <p className="text-xs text-gray-400 italic">Espejo SAE no disponible; captura manual</p>
+        ) : candidatas === null ? (
+          <p className="text-sm text-gray-500">Buscando entradas en SAE...</p>
+        ) : candidatas.length === 0 ? (
+          <p className="text-sm text-gray-500 bg-gray-50 border border-dashed border-gray-200 rounded-xl px-4 py-3">
+            Sin entradas de compra sin vincular para este material en SAE
+          </p>
+        ) : (
+          <ul className="space-y-1.5 max-h-72 overflow-y-auto">
+            {candidatas.map((c) => (
+              <li
+                key={c.id}
+                className="flex items-center gap-2 text-xs text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2"
+              >
+                <span className="flex-1 min-w-0 truncate">
+                  <span className="text-gray-500">{c.fecha_doc || '—'}</span> doc{' '}
+                  <span className="font-medium">{c.referencia || '—'}</span> ·{' '}
+                  {formatNumber(c.cantidad)} pzas · alm {c.almacen ?? '—'} ·{' '}
+                  {c.nombre_tercero || '—'}
+                </span>
+                {c.mismo_proveedor && (
+                  <Badge className="bg-blue-100 text-blue-700 shrink-0">mismo proveedor</Badge>
+                )}
+                <button
+                  type="button"
+                  disabled={vinculando}
+                  onClick={() => onVincular(c.id)}
+                  className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-p3-red hover:bg-p3-red-dark text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {vinculando ? (
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Link size={12} />
+                  )}
+                  Vincular
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Página principal
 // ---------------------------------------------------------------------------
 export default function LogisticaPage() {
@@ -742,6 +897,8 @@ export default function LogisticaPage() {
   const [subalmacenes, setSubalmacenes] = useState([]);
   const [recModalOpen, setRecModalOpen] = useState(false);
   const [guardandoRecepcion, setGuardandoRecepcion] = useState(false);
+  const [vinculandoSae, setVinculandoSae] = useState(null);
+  const [vinculandoSaeCargando, setVinculandoSaeCargando] = useState(false);
 
   // -------------------------------------------------------------------------
   // Cargas por pestaña
@@ -1145,6 +1302,27 @@ export default function LogisticaPage() {
       addToast(errMsg(err), 'error');
     } finally {
       setGuardandoRecepcion(false);
+    }
+  };
+
+  const handleVincularSae = async (movSaeId) => {
+    if (!vinculandoSae) return;
+    setVinculandoSaeCargando(true);
+    try {
+      const res = await vincularRecepcionSae(vinculandoSae.id, movSaeId);
+      if (res.discrepancia) {
+        addToast(
+          `Vinculada con discrepancia: Logística ${formatNumber(vinculandoSae.cantidad)} vs SAE ${formatNumber(res.mov?.cantidad ?? '')}`
+        );
+      } else {
+        addToast('Recepción cuadrada con SAE');
+      }
+      setVinculandoSae(null);
+      await loadRecepciones(true);
+    } catch (err) {
+      addToast(errMsg(err), 'error');
+    } finally {
+      setVinculandoSaeCargando(false);
     }
   };
 
@@ -1845,6 +2023,48 @@ export default function LogisticaPage() {
   );
 
   const renderRecepciones = () => {
+    const renderSaeCell = (row) => {
+      if (row.cuadrada && !row.discrepancia) {
+        return (
+          <span title={`SAE: doc ${row.mov_referencia} · ${formatNumber(row.mov_cantidad)} pzas · ${row.mov_fecha_doc} · alm ${row.mov_almacen}`}>
+            <Badge className="bg-emerald-100 text-emerald-700">
+              <Check size={12} className="mr-1" />
+              Cuadrada
+            </Badge>
+          </span>
+        );
+      }
+      if (row.discrepancia) {
+        return (
+          <span title={`Logística ${formatNumber(row.cantidad)} vs SAE ${formatNumber(row.mov_cantidad)} (doc ${row.mov_referencia})`}>
+            <Badge className="bg-amber-100 text-amber-700">
+              <AlertTriangle size={12} className="mr-1" />
+              Discrepancia
+            </Badge>
+          </span>
+        );
+      }
+      return (
+        <span className="inline-flex items-center gap-1.5">
+          <Badge className="bg-gray-100 text-gray-600">Pendiente</Badge>
+          {esAdmin && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setVinculandoSae(row);
+              }}
+              className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              title="Vincular con entrada de compra en SAE"
+            >
+              <Link size={12} />
+              Vincular
+            </button>
+          )}
+        </span>
+      );
+    };
+
     const recepcionesFiltradas = (() => {
       const q = recBusqueda.trim().toLowerCase();
       if (!q) return recepciones;
@@ -1919,6 +2139,7 @@ export default function LogisticaPage() {
               format: formatNumber,
             },
             { key: 'documento', label: 'Documento', sortable: true, format: (v) => v || '—' },
+            { key: 'sae_cuadre', label: 'SAE', format: (v, row) => renderSaeCell(row) },
             { key: 'ubicacion', label: 'Ubicación', sortable: true, format: (v) => v || '—' },
             { key: 'usuario', label: 'Usuario', sortable: true, format: (v) => v || '—' },
           ]}
@@ -2050,6 +2271,14 @@ export default function LogisticaPage() {
           onClose={() => setRecModalOpen(false)}
           onGuardar={handleGuardarRecepcion}
           guardando={guardandoRecepcion}
+        />
+      )}
+      {vinculandoSae && (
+        <VincularSaeModal
+          recepcion={vinculandoSae}
+          onClose={() => setVinculandoSae(null)}
+          onVincular={handleVincularSae}
+          vinculando={vinculandoSaeCargando}
         />
       )}
     </div>

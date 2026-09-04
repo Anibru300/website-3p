@@ -507,9 +507,25 @@ def listar_recepciones(abastecimiento_id=None) -> list[dict]:
     with logistica_connection() as conn:
         filas = [dict(r) for r in conn.execute(sql, params).fetchall()]
     descripciones = describir_materiales([f["material"] for f in filas])
+    movs = _movs_por_ids([int(f["mov_sae_id"]) for f in filas if f.get("mov_sae_id")])
     for f in filas:
         f["descripcion"] = descripciones.get(f["material"], "")
         f["cantidad"] = float(f["cantidad"])
+        mov = movs.get(int(f["mov_sae_id"])) if f.get("mov_sae_id") else None
+        if mov:
+            f["mov_cantidad"] = float(mov["cantidad"])
+            f["mov_fecha_doc"] = str(mov["fecha_doc"])[:10]
+            f["mov_referencia"] = mov["referencia"]
+            f["mov_almacen"] = mov["almacen"]
+            f["mov_proveedor"] = mov["nombre_tercero"]
+            f["discrepancia"] = f["cantidad"] != f["mov_cantidad"]
+        else:
+            f["mov_cantidad"] = None
+            f["mov_fecha_doc"] = None
+            f["mov_referencia"] = None
+            f["mov_almacen"] = None
+            f["mov_proveedor"] = None
+            f["discrepancia"] = False
     return filas
 
 
@@ -558,4 +574,121 @@ def cobertura_material(material: str) -> dict:
         "suficiente": en_transito >= necesidad > 0 or (necesidad == 0 and cubierto >= 0),
         "demandas": demandas,
         "abastecimientos": abastecimientos,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Vinculación con entradas por compra de SAE (cuadre Logística vs almacén)
+# ---------------------------------------------------------------------------
+
+# Concepto 1 = Compras (entrada). Ver sae_conceptos_movimiento.
+_QUERY_ENTRADAS_COMPRA = """
+    SELECT id, cve_art AS material, cantidad, fecha_doc, referencia,
+           almacen, cve_clpv, nombre_tercero
+    FROM sae_movimientos_inventario
+    WHERE cve_cpto = 1
+"""
+
+
+def _norm_proveedor(texto: str) -> str:
+    """Texto normalizado para comparación floja de nombres de proveedor."""
+    return "".join(c for c in str(texto or "").lower() if c.isalnum())
+
+
+def _movs_por_ids(ids: list[int]) -> dict:
+    if not ids:
+        return {}
+    try:
+        with postgres_cursor() as cur:
+            cur.execute(
+                _QUERY_ENTRADAS_COMPRA + " AND id = ANY(%(ids)s)",
+                {"ids": ids},
+            )
+            return {int(r["id"]): dict(r) for r in cur.fetchall()}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def candidatas_sae(abastecimiento_id: int) -> dict:
+    """Entradas por compra de SAE candidatas a cuadrar con un abastecimiento.
+
+    Filtro: mismo material y fecha posterior a la solicitud (si existe).
+    Excluye movimientos ya vinculados a cualquier recepción. Ordena primero
+    las del mismo proveedor.
+    """
+    with logistica_connection() as conn:
+        ab = conn.execute(
+            "SELECT * FROM abastecimiento WHERE id = ?", (abastecimiento_id,)
+        ).fetchone()
+        if not ab:
+            raise ValueError("Abastecimiento no encontrado")
+        vinculados = {
+            row["mov_sae_id"]
+            for row in conn.execute(
+                "SELECT mov_sae_id FROM recepcion WHERE mov_sae_id IS NOT NULL"
+            ).fetchall()
+        }
+
+    try:
+        with postgres_cursor() as cur:
+            sql = _QUERY_ENTRADAS_COMPRA + " AND cve_art = %(material)s"
+            params = {"material": str(ab["material"])}
+            if ab["fecha_solicitud"]:
+                sql += " AND fecha_doc >= %(desde)s"
+                params["desde"] = str(ab["fecha_solicitud"])[:10]
+            sql += " ORDER BY fecha_doc DESC LIMIT 100"
+            cur.execute(sql, params)
+            movs = [dict(r) for r in cur.fetchall()]
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError(f"No se pudo consultar el espejo SAE: {exc}")
+
+    objetivo = _norm_proveedor(ab["proveedor"])
+    candidatas = []
+    for m in movs:
+        if int(m["id"]) in vinculados:
+            continue
+        m["mismo_proveedor"] = bool(
+            objetivo and objetivo in _norm_proveedor(m["nombre_tercero"])
+        )
+        candidatas.append(m)
+    # Mismo proveedor primero; dentro de cada grupo, las más recientes primero
+    candidatas.sort(key=lambda m: m["fecha_doc"], reverse=True)
+    candidatas.sort(key=lambda m: not m["mismo_proveedor"])
+    return {
+        "abastecimiento_id": abastecimiento_id,
+        "material": ab["material"],
+        "proveedor_oc": ab["proveedor"],
+        "candidatas": candidatas,
+    }
+
+
+def vincular_recepcion_sae(recepcion_id: int, mov_sae_id: int) -> dict:
+    """Vincula una recepción existente con su entrada por compra en SAE."""
+    with logistica_connection() as conn:
+        rec = conn.execute("SELECT * FROM recepcion WHERE id = ?", (recepcion_id,)).fetchone()
+        if not rec:
+            raise ValueError("Recepción no encontrada")
+        ocupado = conn.execute(
+            "SELECT id FROM recepcion WHERE mov_sae_id = ? AND id != ?",
+            (mov_sae_id, recepcion_id),
+        ).fetchone()
+        if ocupado:
+            raise ValueError(
+                f"Esa entrada de SAE ya está vinculada a la recepción {ocupado['id']}"
+            )
+        movs = _movs_por_ids([int(mov_sae_id)])
+        mov = movs.get(int(mov_sae_id))
+        if not mov:
+            raise ValueError("No existe la entrada de compra en el espejo SAE")
+        conn.execute(
+            "UPDATE recepcion SET mov_sae_id = ?, cuadrada = 1 WHERE id = ?",
+            (int(mov_sae_id), recepcion_id),
+        )
+        conn.commit()
+    return {
+        "recepcion_id": recepcion_id,
+        "mov_sae_id": int(mov_sae_id),
+        "cuadrada": True,
+        "mov": mov,
+        "discrepancia": float(rec["cantidad"]) != float(mov["cantidad"]),
     }

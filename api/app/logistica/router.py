@@ -343,6 +343,34 @@ def crear_recepcion(body: RecepcionIn, user: dict = Depends(require_admin)):
     return {"id": cur.lastrowid}
 
 
+class VincularIn(BaseModel):
+    mov_sae_id: int
+
+
+@router.get("/abastecimientos/{abastecimiento_id}/candidatas-sae")
+def get_candidatas_sae(abastecimiento_id: int, user: dict = Depends(get_current_user)):
+    """Entradas por compra de SAE candidatas a cuadrar con este abastecimiento."""
+    try:
+        return svc.candidatas_sae(abastecimiento_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/recepciones/{recepcion_id}/vincular")
+def vincular_recepcion(
+    recepcion_id: int, body: VincularIn, user: dict = Depends(require_admin)
+):
+    """Vincula una recepción con su entrada por compra del espejo SAE."""
+    try:
+        return svc.vincular_recepcion_sae(recepcion_id, body.mov_sae_id)
+    except ValueError as exc:
+        detalle = str(exc)
+        raise HTTPException(
+            status_code=409 if "ya está vinculada" in detalle else 422,
+            detail=detalle,
+        )
+
+
 # ---------------------------------------------------------------------------
 # Catálogos auxiliares
 # ---------------------------------------------------------------------------
