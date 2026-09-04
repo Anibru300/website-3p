@@ -69,3 +69,6 @@ api/tests/cache/
 # Firmas generadas por los tests de vendedores
 api/tests/vendedores/
 api/tests/logistica.db
+
+# Artefactos de tests del API (se regeneran con pytest)
+api/tests/_test_*

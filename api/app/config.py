@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     # BD del módulo Logística (SQLite local). Vacío = misma carpeta que users.db.
     logistica_db_path: str = ""
 
+    # BD del módulo Fichas técnicas (SQLite local). Vacío = misma carpeta que users.db.
+    fichas_db_path: str = ""
+
+    # Carpeta donde se guardan los PDF de fichas técnicas (no va al repo).
+    fichas_dir: str = "data/fichas"
+
     # San Antonio Excel (solo lectura)
     san_antonio_excel_path: str = "C:/Users/Ventas-3P/Desktop/SAN ANTONIO/SAN_ANTONIO_SEGUIMIENTO.xlsx"
 

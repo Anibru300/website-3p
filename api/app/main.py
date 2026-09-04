@@ -11,6 +11,7 @@ from app.analytics.router import router as analytics_router
 from app.auth.router import router as auth_router
 from app.config import get_settings
 from app.dashboard.router import router as dashboard_router
+from app.fichas.router import router as fichas_router
 from app.inventario.router import router as inventario_router
 from app.logistica.router import router as logistica_router
 from app.cotizaciones.router import router as cotizaciones_router
@@ -63,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(cotizaciones_router)
     app.include_router(inventario_router)
     app.include_router(logistica_router)
+    app.include_router(fichas_router)
     app.include_router(san_antonio_router)
 
     @app.get("/health")

@@ -240,6 +240,11 @@ export const translations = {
       closeLabel: 'Cerrar',
       ctaWithCatalogTitle: '¿Necesitas una cotización?',
       ctaWithCatalogText: 'Si no encuentras lo que buscas de {brand} o necesitas precios y disponibilidad, contáctanos directamente.',
+      documentationTitle: 'Documentación',
+      noDocumentation: 'Este producto todavía no cuenta con documentación técnica disponible.',
+      viewPdf: 'Ver PDF',
+      downloadPdf: 'Descargar',
+      versionLabel: 'Versión {version}',
     },
     contact: {
       badge: 'Cotización',
@@ -529,6 +534,11 @@ export const translations = {
       closeLabel: 'Close',
       ctaWithCatalogTitle: 'Need a quote?',
       ctaWithCatalogText: 'If you cannot find what you need from {brand} or need pricing and availability, contact us directly.',
+      documentationTitle: 'Documentation',
+      noDocumentation: 'This product does not have technical documentation available yet.',
+      viewPdf: 'View PDF',
+      downloadPdf: 'Download',
+      versionLabel: 'Version {version}',
     },
     contact: {
       badge: 'Quote',

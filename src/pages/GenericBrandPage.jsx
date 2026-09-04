@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { ArrowLeft, Sparkles, Clock, MapPin, Phone, Mail, ExternalLink, Package, Search, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { SEO } from '../components/shared';
+import ProductDocumentation from '../components/ProductDocumentation';
 import { brandCatalogs } from '../data/catalogoMarcas';
 
 const WHATSAPP_PHONE = '524771284661';
@@ -371,13 +372,14 @@ const GenericBrandPage = ({ brandId }) => {
                 </div>
               </div>
 
+              <ProductDocumentation marca={brandId} codigo={selectedProduct.codigo} />
+
               <div className="bg-gray-50 rounded-xl p-4 mb-6">
                 <div className="flex items-center gap-3 text-sm text-gray-700">
                   <MapPin size={18} className="text-gray-400" />
                   <span>{t('brandPage.availableFrom')}</span>
                 </div>
               </div>
-
               <div className="flex flex-col sm:flex-row gap-3">
                 <a
                   href={catalogWhatsappUrl(brand.name, selectedProduct)}

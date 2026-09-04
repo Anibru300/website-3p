@@ -26,6 +26,7 @@ import {
   whatsappProductUrl,
 } from '../data/msSchippersData';
 import { SEO } from '../components/shared';
+import ProductDocumentation from '../components/ProductDocumentation';
 
 const productIcon = {
   higiene: Beaker,
@@ -421,6 +422,8 @@ const MsSchippersPage = () => {
               )}
 
               {/* Info de stock y disponibilidad */}
+              <ProductDocumentation marca="ms-schippers" codigo={selectedProduct.codigo} />
+
               <div className="bg-gray-50 rounded-xl p-4 mb-6">
                 <div className="flex items-center gap-3 text-sm text-gray-700 mb-2">
                   <MapPin size={18} className="text-gray-400" />

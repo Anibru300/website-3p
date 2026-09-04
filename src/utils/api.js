@@ -791,6 +791,135 @@ export async function fetchAnalyticsAlertasAvanzadas() {
   return apiFetch('/api/analytics/alertas/avanzadas');
 }
 
+// ---------------------------------------------------------------------------
+// Fichas Técnicas (documentación de producto por marca)
+// ---------------------------------------------------------------------------
+
+export async function fetchTiposDocumento() {
+  return apiFetch('/api/fichas/tipos');
+}
+
+export async function fetchFichasAdmin(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, value);
+    }
+  });
+  const qs = query.toString();
+  return apiFetch(`/api/fichas${qs ? `?${qs}` : ''}`);
+}
+
+export async function fetchProductosMarca(marca) {
+  return apiFetch(`/api/fichas/productos?marca=${encodeURIComponent(marca)}`);
+}
+
+// Multipart manual: apiFetch fuerza Content-Type json, así que se hace fetch
+// directo con solo el header Authorization (mismo patrón que vendedores/firmas).
+export async function subirDocumentoProducto(formData) {
+  const token = getToken();
+  const response = await fetch(`${API_BASE}/api/fichas`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (response.status === 401) {
+    removeToken();
+    window.location.href = '/login';
+    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
+  }
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || `Error ${response.status}`);
+  }
+  return data;
+}
+
+export async function actualizarDocumento(id, patch) {
+  return apiFetch(`/api/fichas/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function desactivarDocumento(id) {
+  return apiFetch(`/api/fichas/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchDocumentosPublicos(marca, codigo) {
+  const params = new URLSearchParams({ marca, codigo });
+  return apiFetch(`/api/fichas/publicas?${params.toString()}`);
+}
+
+export function obtenerPdfFichaUrl(id) {
+  return `${API_BASE}/api/fichas/${id}/pdf`;
+}
+
+// Abre el PDF en pestaña nueva. Para docs públicos basta la URL directa;
+// con JWT también funciona para privados usando fetch + blob.
+export async function verPdfFicha(id) {
+  const token = getToken();
+  const url = obtenerPdfFichaUrl(id);
+
+  if (!token) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return { success: true };
+  }
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (response.status === 401) {
+    removeToken();
+    window.location.href = '/login';
+    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
+  }
+
+  if (!response.ok) {
+    throw new Error(`Error ${response.status} al abrir el PDF`);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  window.open(objectUrl, '_blank', 'noopener,noreferrer');
+  // El objectUrl se libera después de unos segundos para dar tiempo a que el visor cargue
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+  return { success: true };
+}
+
+export async function descargarPdfFicha(id, nombreArchivo = `ficha-${id}.pdf`) {
+  const token = getToken();
+  const url = obtenerPdfFichaUrl(id);
+
+  const response = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (response.status === 401) {
+    removeToken();
+    window.location.href = '/login';
+    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
+  }
+
+  if (!response.ok) {
+    throw new Error(`Error ${response.status} al descargar el PDF`);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = nombreArchivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
+  return { success: true };
+}
+
 export async function descargarReporteAnalytics(formato, dias = 30, fechaDesde = '', fechaHasta = '') {
   const response = await fetch(
     `${API_BASE}/api/analytics/reporte/${formato}?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`,

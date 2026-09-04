@@ -525,3 +525,146 @@ def logistica_connection():
         yield conn
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# SQLite local del módulo Fichas técnicas (PDF de fichas/especificaciones por
+# producto). Mismo patrón que logistica.db: ruta configurable, DDL idempotente.
+# ---------------------------------------------------------------------------
+
+
+def fichas_db_path() -> Path:
+    settings = get_settings()
+    if settings.fichas_db_path:
+        return Path(settings.fichas_db_path)
+    return Path(settings.users_db_path).resolve().parent / "fichas.db"
+
+
+# Catálogo de tipos de documento (seed; orden fijo usado también en ordenamiento).
+TIPOS_DOCUMENTO_SEED = (
+    ("ficha_tecnica", "Ficha técnica", 1),
+    ("especificacion_tecnica", "Especificación técnica", 2),
+    ("manual", "Manual", 3),
+    ("catalogo", "Catálogo", 4),
+    ("certificado", "Certificado", 5),
+    ("hoja_seguridad", "Hoja de seguridad", 6),
+    ("instructivo", "Instructivo", 7),
+    ("otro", "Otro", 8),
+)
+
+
+def _ensure_fichas_db():
+    path = fichas_db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(path))
+    try:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tipos_documento (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                codigo TEXT NOT NULL UNIQUE,
+                nombre TEXT NOT NULL,
+                orden INTEGER NOT NULL DEFAULT 0,
+                activo INTEGER NOT NULL DEFAULT 1
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS documentos_producto (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                marca TEXT NOT NULL,
+                codigo TEXT NOT NULL,
+                descripcion TEXT DEFAULT '',
+                tipo_documento_id INTEGER NOT NULL REFERENCES tipos_documento(id),
+                nombre_documento TEXT DEFAULT '',
+                descripcion_documento TEXT DEFAULT '',
+                numero_documento TEXT DEFAULT '',
+                version TEXT DEFAULT '1.0',
+                nombre_archivo TEXT NOT NULL,
+                archivo TEXT NOT NULL,
+                tamano INTEGER NOT NULL DEFAULT 0,
+                mime_type TEXT DEFAULT 'application/pdf',
+                fecha_documento TEXT DEFAULT '',
+                publico INTEGER NOT NULL DEFAULT 1,
+                vigente INTEGER NOT NULL DEFAULT 1,
+                activo INTEGER NOT NULL DEFAULT 1,
+                fecha_carga TEXT NOT NULL,
+                usuario_carga TEXT DEFAULT '',
+                fecha_modificacion TEXT,
+                usuario_modificacion TEXT DEFAULT ''
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_doc_prod_marca_codigo ON documentos_producto(marca, codigo)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_doc_prod_tipo ON documentos_producto(tipo_documento_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_doc_prod_visibilidad ON documentos_producto(publico, vigente, activo)"
+        )
+
+        # Seed de tipos solo si la tabla está vacía (no toca altas/bajas manuales).
+        n_tipos = conn.execute("SELECT COUNT(*) FROM tipos_documento").fetchone()[0]
+        if n_tipos == 0:
+            conn.executemany(
+                "INSERT INTO tipos_documento (codigo, nombre, orden) VALUES (?, ?, ?)",
+                TIPOS_DOCUMENTO_SEED,
+            )
+
+        # Migración del schema legacy (tabla `fichas`, una ficha por producto):
+        # pasa las filas a documentos_producto como ficha_tecnica pública/vigente
+        # y elimina la tabla vieja. Idempotente: al terminar ya no existe `fichas`.
+        legacy = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'fichas'"
+        ).fetchone()
+        if legacy is not None:
+            tipo_id = conn.execute(
+                "SELECT id FROM tipos_documento WHERE codigo = 'ficha_tecnica'"
+            ).fetchone()[0]
+            for fila in conn.execute(
+                """
+                SELECT marca, codigo, descripcion, nombre_archivo, archivo, tamano, fecha, usuario
+                FROM fichas
+                """
+            ):
+                marca, codigo, descripcion, nombre_archivo, archivo, tamano, fecha, usuario = fila
+                conn.execute(
+                    """
+                    INSERT INTO documentos_producto (
+                        marca, codigo, descripcion, tipo_documento_id, nombre_documento,
+                        nombre_archivo, archivo, tamano, publico, vigente, activo,
+                        fecha_carga, usuario_carga
+                    ) VALUES (?, ?, ?, ?, '', ?, ?, ?, 1, 1, 1, ?, ?)
+                    """,
+                    (
+                        marca,
+                        codigo,
+                        descripcion,
+                        tipo_id,
+                        nombre_archivo,
+                        archivo,
+                        tamano,
+                        fecha,
+                        usuario,
+                    ),
+                )
+            conn.execute("DROP TABLE fichas")
+
+        conn.commit()
+    finally:
+        conn.close()
+
+
+@contextmanager
+def fichas_connection():
+    _ensure_fichas_db()
+    conn = sqlite3.connect(str(fichas_db_path()))
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+    finally:
+        conn.close()

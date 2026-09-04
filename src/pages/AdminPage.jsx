@@ -48,6 +48,7 @@ import {
 } from '../utils/api';
 import DataSourcesPanel from '../components/admin/DataSourcesPanel';
 import StockConfigPanel from '../components/admin/StockConfigPanel';
+import FichasPanel from '../components/admin/FichasPanel';
 import {
   LayoutDashboard,
   Users,
@@ -89,6 +90,7 @@ const SIDEBAR_ITEMS = [
   { id: 'portales', label: 'Portales', icon: Lock },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'fuentes', label: 'Fuentes', icon: Database },
+  { id: 'fichas', label: 'Fichas Técnicas', icon: FileText },
 ];
 
 const CRM_SUBTABS = [
@@ -3328,6 +3330,7 @@ export default function AdminPage() {
             {activeSection === 'analytics' && renderAnalyticsSection()}
             {activeSection === 'fuentes' && <DataSourcesPanel />}
             {activeSection === 'stock' && <StockConfigPanel />}
+            {activeSection === 'fichas' && <FichasPanel />}
           </div>
         </main>
       </div>
