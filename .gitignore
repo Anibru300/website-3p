@@ -61,9 +61,11 @@ data/
 
 # Base de datos temporal de pruebas
 api/tests/_test_users.db*
+api/tests/_test_logistica.db*
 
 # Respaldo temporal de api/data (Fase 1) y caché de pruebas de sync
 api/data_respaldo-*/
 api/tests/cache/
 # Firmas generadas por los tests de vendedores
 api/tests/vendedores/
+api/tests/logistica.db

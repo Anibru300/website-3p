@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import DebouncedInput from '../components/ui/DebouncedInput.jsx';
+import EmptyState from '../components/ui/EmptyState.jsx';
+import DataTable from '../components/ui/DataTable.jsx';
+import KpiCard from '../components/ui/KpiCard.jsx';
+import SectionHeader from '../components/ui/SectionHeader.jsx';
 import {
   fetchDashboardResumen,
   fetchExistencias,
@@ -49,6 +54,7 @@ import {
   Calculator,
   Activity,
   Shield,
+  Truck,
 } from 'lucide-react';
 
 const TABS = [
@@ -158,38 +164,6 @@ function colorHexForResponsable(id) {
     default:
       return COLORS.amber;
   }
-}
-
-function DebouncedInput({ value, onChange, delay = 600, className = '', ...props }) {
-  const inputRef = useRef(null);
-  const syncedValueRef = useRef(value);
-  const timeoutRef = useRef(null);
-
-  // Sincroniza cambios externos sin setState en un effect.
-  useEffect(() => {
-    if (value !== syncedValueRef.current) {
-      syncedValueRef.current = value;
-      if (inputRef.current) inputRef.current.value = value;
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    }
-  }, [value]);
-
-  const handleChange = (e) => {
-    const newValue = e.target.value;
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      syncedValueRef.current = newValue;
-      onChange(newValue);
-    }, delay);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  return <input ref={inputRef} {...props} defaultValue={value} onChange={handleChange} className={className} />;
 }
 
 function SearchableSelect({
@@ -643,19 +617,6 @@ function MultiSearchableSelect({
   );
 }
 
-function EmptyState({ message = 'Sin datos', icon = Inbox }) {
-  const IconComponent = icon;
-  return (
-    <div className="bg-gray-50 rounded-2xl p-10 text-center border border-dashed border-gray-200">
-      <div className="mx-auto w-14 h-14 rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center mb-3">
-        <IconComponent className="text-gray-400" size={28} />
-      </div>
-      <p className="text-gray-500 font-medium">{message}</p>
-      <p className="text-xs text-gray-400 mt-1">No se encontraron registros para mostrar.</p>
-    </div>
-  );
-}
-
 function Tooltip({ tooltip }) {
   if (!tooltip) return null;
   return (
@@ -1070,190 +1031,6 @@ function ChartLegend({ items, valueFormatter = (v) => v }) {
           <span className="text-gray-900 font-semibold shrink-0">{valueFormatter(item.value)}</span>
         </div>
       ))}
-    </div>
-  );
-}
-
-function DataTable({ columns, rows, emptyMessage = 'Sin datos', emptyIcon = Inbox, onRowClick, onRowDoubleClick, selectedRow }) {
-  const [sort, setSort] = useState({ key: null, dir: 'asc' });
-
-  const defaultFormatNumber = (value) => {
-    if (value == null) return '—';
-    const num = Number(value);
-    if (Number.isNaN(num)) return value;
-    return new Intl.NumberFormat('es-MX').format(num);
-  };
-
-  const sortedRows = useMemo(() => {
-    if (!sort.key) return rows;
-    const col = columns.find((c) => c.key === sort.key);
-    if (!col || !col.sortable) return rows;
-    const dir = sort.dir === 'asc' ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      const av = col.accessor ? col.accessor(a) : a[col.key];
-      const bv = col.accessor ? col.accessor(b) : b[col.key];
-      const an = Number(av);
-      const bn = Number(bv);
-      if (!Number.isNaN(an) && !Number.isNaN(bn) && av !== '' && bv !== '') {
-        return (an - bn) * dir;
-      }
-      return String(av ?? '').localeCompare(String(bv ?? '')) * dir;
-    });
-  }, [rows, sort, columns]);
-
-  const totals = useMemo(() => {
-    return columns.map((col) => {
-      if (!col.total) return null;
-      return sortedRows.reduce((sum, row) => {
-        const v = col.accessor ? col.accessor(row) : row[col.key];
-        const n = Number(v);
-        return sum + (Number.isNaN(n) ? 0 : n);
-      }, 0);
-    });
-  }, [sortedRows, columns]);
-
-  const hasTotals = totals.some((t) => t !== null);
-  const firstTotalIdx = totals.findIndex((t) => t !== null);
-
-  const handleHeaderClick = (col) => {
-    if (!col.sortable) return;
-    setSort((prev) => {
-      if (prev.key !== col.key) return { key: col.key, dir: 'asc' };
-      return { key: col.key, dir: prev.dir === 'asc' ? 'desc' : 'asc' };
-    });
-  };
-
-  if (!rows || rows.length === 0) {
-    return <EmptyState message={emptyMessage} icon={emptyIcon} />;
-  }
-
-  return (
-    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-md w-full">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50 text-gray-600 font-semibold uppercase tracking-wide text-xs">
-          <tr>
-            {columns.map((col) => (
-              <th
-                key={col.key}
-                onClick={() => handleHeaderClick(col)}
-                className={`px-3 lg:px-4 py-3 text-left select-none ${
-                  col.sortable
-                    ? 'cursor-pointer hover:bg-gray-100 hover:text-p3-red transition-colors'
-                    : ''
-                }`}
-              >
-                <div className="flex items-center gap-1.5 whitespace-nowrap">
-                  {col.label}
-                  {col.sortable && (
-                    <span className="text-gray-400">
-                      {sort.key === col.key ? (
-                        sort.dir === 'asc' ? (
-                          <ArrowUp size={12} />
-                        ) : (
-                          <ArrowDown size={12} />
-                        )
-                      ) : (
-                        <ArrowUpDown size={12} />
-                      )}
-                    </span>
-                  )}
-                </div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {sortedRows.map((row, idx) => (
-            <tr
-              key={idx}
-              onClick={() => onRowClick?.(row)}
-              onDoubleClick={() => onRowDoubleClick?.(row)}
-              className={`transition-colors ${
-                onRowClick || onRowDoubleClick ? 'cursor-pointer' : ''
-              } ${
-                selectedRow && selectedRow.codigo === row.codigo
-                  ? 'bg-red-50 hover:bg-red-100'
-                  : 'hover:bg-gray-50/70'
-              }`}
-            >
-              {columns.map((col) => {
-                const raw = col.accessor ? col.accessor(row) : row[col.key];
-                const display = col.format ? col.format(raw, row) : (raw ?? '—');
-                return (
-                  <td
-                    key={col.key}
-                    title={col.wrap ? String(raw ?? '') : undefined}
-                    className={`px-3 lg:px-4 py-2.5 text-gray-700 align-top ${
-                      col.wrap
-                        ? 'break-words max-w-lg'
-                        : 'whitespace-nowrap'
-                    }`}
-                  >
-                    {display}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-        {hasTotals && (
-          <tfoot className="bg-gray-50 font-semibold text-gray-800">
-            <tr>
-              {columns.map((col, idx) => {
-                const total = totals[idx];
-                if (total === null) {
-                  return <td key={col.key} className="px-3 lg:px-4 py-2.5"></td>;
-                }
-                return (
-                  <td
-                    key={col.key}
-                    className={`px-3 lg:px-4 py-2.5 ${col.wrap ? 'break-words max-w-lg' : 'whitespace-nowrap'}`}
-                  >
-                    {idx === firstTotalIdx && (
-                      <span className="text-gray-500 text-xs uppercase mr-2">Total</span>
-                    )}
-                    {col.format ? col.format(total, {}) : defaultFormatNumber(total)}
-                  </td>
-                );
-              })}
-            </tr>
-          </tfoot>
-        )}
-      </table>
-    </div>
-  );
-}
-
-function KpiCard({ label, value, icon, color = 'bg-p3-blue', subtext = '' }) {
-  const IconComponent = icon;
-  return (
-    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:shadow-lg transition-shadow min-h-[120px] h-full">
-      <div
-        className={`${color} text-white w-14 h-14 rounded-xl flex items-center justify-center shadow-sm shrink-0`}
-      >
-        <IconComponent size={28} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-500 font-medium leading-tight line-clamp-2 min-h-[2.5em]">
-          {label}
-        </p>
-        <p className="text-2xl sm:text-3xl font-bold text-gray-900">{value ?? 0}</p>
-        {subtext && <p className="text-xs text-gray-400 mt-1">{subtext}</p>}
-      </div>
-    </div>
-  );
-}
-
-function SectionHeader({ title, count, icon: Icon }) {
-  return (
-    <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-100">
-      {Icon && <Icon className="text-p3-red" size={24} />}
-      <h3 className="text-xl font-bold text-gray-800">{title}</h3>
-      {count !== undefined && (
-        <span className="ml-auto inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-          {count} registros
-        </span>
-      )}
     </div>
   );
 }
@@ -3762,6 +3539,14 @@ export default function DashboardPage() {
                   <span className="hidden sm:inline">Administración</span>
                 </button>
               )}
+              <button
+                onClick={() => (window.location.href = '/logistica')}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"
+                title="Logística"
+              >
+                <Truck size={18} />
+                <span className="hidden sm:inline">Logística</span>
+              </button>
               <button
                 onClick={() => (window.location.href = '/cotizador')}
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-p3-red hover:bg-red-50 rounded-lg transition-colors"

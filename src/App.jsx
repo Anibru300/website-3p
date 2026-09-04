@@ -7,6 +7,7 @@ import GenericBrandPage from './pages/GenericBrandPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import CotizadorPage from './pages/CotizadorPage';
+import LogisticaPage from './pages/LogisticaPage';
 import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
@@ -99,6 +100,14 @@ function App() {
     content = (
       <ProtectedRoute>
         <CotizadorPage />
+      </ProtectedRoute>
+    );
+    showHeader = false;
+    mainClass = '';
+  } else if (segments[0] === 'logistica') {
+    content = (
+      <ProtectedRoute>
+        <LogisticaPage />
       </ProtectedRoute>
     );
     showHeader = false;

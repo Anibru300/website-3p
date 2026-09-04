@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     # Users DB (SQLite local, no va al repo)
     users_db_path: str = "./data/users.db"
 
+    # BD del módulo Logística (SQLite local). Vacío = misma carpeta que users.db.
+    logistica_db_path: str = ""
+
     # San Antonio Excel (solo lectura)
     san_antonio_excel_path: str = "C:/Users/Ventas-3P/Desktop/SAN ANTONIO/SAN_ANTONIO_SEGUIMIENTO.xlsx"
 

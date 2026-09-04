@@ -20,6 +20,15 @@ solo consulta**, ni desde Excel ni desde ningún proceso del sistema.
 | L1 | SQLite `data/users.db` | raíz del repo | users, login_attempts, analytics_events, alertas_enviadas, crm_* | Login, analytics, alertas, CRM | El sistema | Continuo | Backup diario |
 | L2 | SQLite `data/cotizaciones.db` | raíz del repo | cotizaciones guardadas | Cotizaciones de clientes | El sistema | Continuo | Backup diario |
 | L3 | SQLite `data/inventario_historico.db` | raíz del repo | snapshots valor inventario | Gráfica histórica | Endpoint snapshot | Diario (programar) | Backup diario |
+| L4 | SQLite `data/logistica.db` | raíz del repo | demanda, abastecimiento, asignacion, recepcion | Módulo Logística (necesidades, OC en tránsito, destinos, recepciones) | El sistema + regeneración automática con el sync | Continuo | Backup diario |
+
+> **Logística (L4):** la `demanda` es una *proyección* que se regenera con upsert
+> desde fuentes existentes (PEDIDO ← detalle de pedidos pendientes E2;
+> STOCK ← `sae_existencias` con la regla del mínimo efectivo y `stock_max` como
+> objetivo). No duplica maestros: descripciones/clientes/existencias se leen de
+> SAE o del Excel en cada consulta. Los abastecimientos (OC de proveedores) y las
+> recepciones se capturan en la sección Logística (`/logistica`, acceso desde el
+> dashboard); escritura con rol admin.
 
 > La BD SQLite activa es SIEMPRE la de `data/` en la raíz (se resuelve desde
 > `users_db_path`). Si ves `api/data/`, es residuo: el 2026-09-03 se renombró a

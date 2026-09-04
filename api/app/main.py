@@ -12,6 +12,7 @@ from app.auth.router import router as auth_router
 from app.config import get_settings
 from app.dashboard.router import router as dashboard_router
 from app.inventario.router import router as inventario_router
+from app.logistica.router import router as logistica_router
 from app.cotizaciones.router import router as cotizaciones_router
 from app.san_antonio.router import router as san_antonio_router
 from app.services.excel import precargar_historial_cache
@@ -61,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(ventas_router)
     app.include_router(cotizaciones_router)
     app.include_router(inventario_router)
+    app.include_router(logistica_router)
     app.include_router(san_antonio_router)
 
     @app.get("/health")

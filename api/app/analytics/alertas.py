@@ -252,14 +252,75 @@ def _evaluar_fuentes() -> Optional[dict]:
     }
 
 
-def _evaluar_stock() -> Optional[dict]:
-    """Productos bajo el stock mínimo definido en SAE (stock_min).
+def _evaluar_logistica() -> Optional[dict]:
+    """Alertas del módulo Logística (demanda/abastecimiento/recepciones).
 
-    Los mínimos los manda SAE, no hay configuración local. Sin dedupe de
-    ocultamiento: mientras haya productos bajo mínimo la alerta se muestra
-    en el panel. Si el espejo Postgres no responde, no se evalúa (la alerta
-    de fuentes_datos ya reporta ese problema).
+    Evalúa sobre la BD local de logística (sin depender de Postgres):
+    - material_atrasado: OC con fecha estimada vencida y piezas pendientes.
+    - compra_sin_asignar: material comprado sin destino (pedido/stock).
+    - demanda_sin_abastecer: pedido con fecha requerida a 7 días o menos y
+      cobertura cero.
+    - posible_duplicidad: material cuya demanda ya está cubierta pero sigue
+      teniendo piezas en tránsito sin asignar (riesgo de re-compra).
     """
+    try:
+        from app.services import logistica as svc
+
+        abastecimientos = svc.listar_abastecimientos(filtro="todo")
+        demandas = svc.listar_demanda()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[alertas] No se pudo evaluar logística: %s", exc)
+        return None
+
+    atrasados = [a for a in abastecimientos if a["atrasado"]]
+    sin_asignar = [a for a in abastecimientos if a["sin_asignar"] > 0]
+
+    hoy = _ahora().date()
+    limite = hoy + timedelta(days=7)
+    sin_abastecer = []
+    for d in demandas:
+        if d["tipo"] != "PEDIDO" or d["estatus"] != "pendiente" or not d.get("fecha_requerida"):
+            continue
+        try:
+            requerida = datetime.strptime(str(d["fecha_requerida"])[:10], "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if hoy <= requerida <= limite:
+            sin_abastecer.append(d)
+
+    cubiertas = [d for d in demandas if d["estatus"] == "cubierta"]
+    duplicidad = []
+    for d in cubiertas:
+        extra = [
+            a for a in abastecimientos
+            if a["material"] == d["material"] and a["sin_asignar"] > 0
+        ]
+        for a in extra:
+            duplicidad.append({"material": d["material"], "oc": a["oc"], "folio": a["folio"],
+                               "sin_asignar": a["sin_asignar"], "demanda": d["referencia"]})
+
+    detalle = (
+        [f"ATRASADO {a['material']} (OC {a['oc'] or a['folio']}): faltan {a['pendiente_recibir']:g}" for a in atrasados]
+        + [f"SIN ASIGNAR {a['material']} (OC {a['oc'] or a['folio']}): {a['sin_asignar']:g}" for a in sin_asignar]
+        + [f"SIN ABASTECER {d['material']} pedido {d['referencia']}: {d['pendiente']:g} para {d['fecha_requerida']}" for d in sin_abastecer]
+        + [f"POSIBLE DUPLICIDAD {x['material']}: demanda {x['demanda']} cubierta pero OC {x['oc'] or x['folio']} tiene {x['sin_asignar']:g} sin asignar" for x in duplicidad]
+    )
+    activa = bool(detalle)
+    motivo = "; ".join(detalle[:5]) if activa else "Sin novedades en logística"
+    return {
+        "tipo": "logistica",
+        "activa": activa,
+        "atrasados": len(atrasados),
+        "sin_asignar": len(sin_asignar),
+        "demanda_sin_abastecer": len(sin_abastecer),
+        "posible_duplicidad": len(duplicidad),
+        "motivo": motivo,
+        "detalle_logistica": detalle,
+    }
+
+
+def _evaluar_stock() -> Optional[dict]:
+    """Productos bajo el stock mínimo definido en SAE (stock_min)."""
     try:
         # Import perezoso para evitar circularidad con app.inventario.router.
         from app.inventario.router import consultar_productos_bajo_minimo
@@ -372,6 +433,7 @@ def evaluar_alertas(notificar: bool = True) -> dict:
         paises = _evaluar_paises(conn)
         fuentes = _evaluar_fuentes()
         stock = _evaluar_stock()
+        logistica = _evaluar_logistica()
 
         if notificar:
             if pico and pico.get("activa"):
@@ -386,8 +448,11 @@ def evaluar_alertas(notificar: bool = True) -> dict:
                 _intentar_notificar(conn, fuentes, dedupe_key=f"fuentes:{clave}")
             if stock and stock.get("activa"):
                 _intentar_notificar(conn, stock, dedupe_key=f"stock:{stock['total']}")
+            if logistica and logistica.get("activa"):
+                clave = f"log:{logistica['atrasados']}:{logistica['sin_asignar']}:{logistica['demanda_sin_abastecer']}:{logistica['posible_duplicidad']}"
+                _intentar_notificar(conn, logistica, dedupe_key=clave)
 
-    activas = [a for a in (pico, paises, fuentes, stock) if a and a.get("activa")]
+    activas = [a for a in (pico, paises, fuentes, stock, logistica) if a and a.get("activa")]
     return {
         "evaluado_en": _ahora().isoformat(),
         "alertas_activas": len(activas),
@@ -395,4 +460,5 @@ def evaluar_alertas(notificar: bool = True) -> dict:
         "pais_no_esperado": paises,
         "fuentes_datos": fuentes,
         "stock_bajo": stock,
+        "logistica": logistica,
     }

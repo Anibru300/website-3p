@@ -398,3 +398,119 @@ def users_connection():
         yield conn
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# SQLite local del módulo Logística (demanda / abastecimiento / asignación /
+# recepciones). Mismo patrón que users.db: ruta configurable, DDL idempotente.
+# ---------------------------------------------------------------------------
+
+
+def logistica_db_path() -> Path:
+    settings = get_settings()
+    if settings.logistica_db_path:
+        return Path(settings.logistica_db_path)
+    return Path(settings.users_db_path).resolve().parent / "logistica.db"
+
+
+def _ensure_logistica_db():
+    path = logistica_db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(path))
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS demanda (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tipo TEXT NOT NULL,
+                material TEXT NOT NULL,
+                cantidad REAL NOT NULL,
+                referencia TEXT NOT NULL DEFAULT '',
+                cliente TEXT DEFAULT '',
+                fecha_requerida TEXT,
+                prioridad TEXT NOT NULL DEFAULT 'media',
+                estatus TEXT NOT NULL DEFAULT 'pendiente',
+                origen TEXT NOT NULL DEFAULT 'auto',
+                justificacion TEXT DEFAULT '',
+                observaciones TEXT DEFAULT '',
+                activa INTEGER NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(tipo, material, referencia)
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_demanda_material ON demanda(material, activa)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_demanda_estatus ON demanda(estatus, activa)")
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS abastecimiento (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                folio TEXT UNIQUE,
+                material TEXT NOT NULL,
+                cantidad REAL NOT NULL,
+                proveedor TEXT DEFAULT '',
+                oc TEXT DEFAULT '',
+                fecha_solicitud TEXT,
+                fecha_estimada TEXT,
+                estatus TEXT NOT NULL DEFAULT 'solicitado',
+                observaciones TEXT DEFAULT '',
+                created_by TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_abast_material ON abastecimiento(material)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_abast_oc ON abastecimiento(oc)")
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS asignacion (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                abastecimiento_id INTEGER NOT NULL,
+                demanda_id INTEGER NOT NULL,
+                cantidad REAL NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (abastecimiento_id) REFERENCES abastecimiento(id) ON DELETE CASCADE,
+                FOREIGN KEY (demanda_id) REFERENCES demanda(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_asign_abast ON asignacion(abastecimiento_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_asign_demanda ON asignacion(demanda_id)")
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS recepcion (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                abastecimiento_id INTEGER NOT NULL,
+                cantidad REAL NOT NULL,
+                fecha_recepcion TEXT NOT NULL,
+                documento TEXT DEFAULT '',
+                ubicacion TEXT DEFAULT '',
+                usuario TEXT DEFAULT '',
+                observaciones TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (abastecimiento_id) REFERENCES abastecimiento(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_recep_abast ON recepcion(abastecimiento_id)")
+
+        conn.commit()
+    finally:
+        conn.close()
+
+
+@contextmanager
+def logistica_connection():
+    _ensure_logistica_db()
+    conn = sqlite3.connect(str(logistica_db_path()))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    try:
+        yield conn
+    finally:
+        conn.close()

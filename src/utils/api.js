@@ -115,6 +115,83 @@ export async function fetchPedidosVivos(query = '') {
   return apiFetch(`/api/ventas/pedidos-vivos?${query}`);
 }
 
+// ---------------------------------------------------------------------------
+// Logística (demanda / abastecimiento / asignación / recepciones)
+// ---------------------------------------------------------------------------
+
+export async function fetchLogisticaResumen() {
+  return apiFetch('/api/logistica/resumen');
+}
+
+export async function fetchLogisticaDemanda(query = '') {
+  return apiFetch(`/api/logistica/demanda?${query}`);
+}
+
+export async function regenerarLogisticaDemanda() {
+  return apiFetch('/api/logistica/demanda/regenerar', { method: 'POST' });
+}
+
+export async function crearLogisticaDemanda(datos) {
+  return apiFetch('/api/logistica/demanda', { method: 'POST', body: JSON.stringify(datos) });
+}
+
+export async function editarLogisticaDemanda(id, datos) {
+  return apiFetch(`/api/logistica/demanda/${id}`, { method: 'PUT', body: JSON.stringify(datos) });
+}
+
+export async function cerrarLogisticaDemanda(id) {
+  return apiFetch(`/api/logistica/demanda/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchLogisticaAbastecimientos(query = '') {
+  return apiFetch(`/api/logistica/abastecimientos?${query}`);
+}
+
+export async function crearLogisticaAbastecimiento(datos) {
+  return apiFetch('/api/logistica/abastecimientos', { method: 'POST', body: JSON.stringify(datos) });
+}
+
+export async function editarLogisticaAbastecimiento(id, datos) {
+  return apiFetch(`/api/logistica/abastecimientos/${id}`, { method: 'PUT', body: JSON.stringify(datos) });
+}
+
+export async function eliminarLogisticaAbastecimiento(id) {
+  return apiFetch(`/api/logistica/abastecimientos/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchLogisticaAsignaciones(query = '') {
+  return apiFetch(`/api/logistica/asignaciones?${query}`);
+}
+
+export async function crearLogisticaAsignacion(datos) {
+  return apiFetch('/api/logistica/asignaciones', { method: 'POST', body: JSON.stringify(datos) });
+}
+
+export async function eliminarLogisticaAsignacion(id) {
+  return apiFetch(`/api/logistica/asignaciones/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchLogisticaRecepciones(query = '') {
+  return apiFetch(`/api/logistica/recepciones?${query}`);
+}
+
+export async function crearLogisticaRecepcion(datos) {
+  return apiFetch('/api/logistica/recepciones', { method: 'POST', body: JSON.stringify(datos) });
+}
+
+export async function fetchLogisticaCobertura(material) {
+  return apiFetch(`/api/logistica/cobertura/${encodeURIComponent(material)}`);
+}
+
+export async function fetchLogisticaProveedores(busqueda = '') {
+  const query = busqueda ? `?busqueda=${encodeURIComponent(busqueda)}` : '';
+  return apiFetch(`/api/logistica/proveedores${query}`);
+}
+
+export async function buscarCatalogoSae(busqueda = '') {
+  return apiFetch(`/api/admin/stock-config/catalogo?busqueda=${encodeURIComponent(busqueda)}&limit=20`);
+}
+
 export async function fetchHistorialVentas(query = '') {
   return apiFetch(`/api/ventas/historial?${query}`);
 }

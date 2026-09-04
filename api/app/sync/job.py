@@ -104,7 +104,16 @@ def sincronizar_fuente(fuente: str) -> dict:
 
 
 def sincronizar_todas() -> list[dict]:
-    return [sincronizar_fuente(f) for f in FUENTES_HABILITADAS]
+    resultados = [sincronizar_fuente(f) for f in FUENTES_HABILITADAS]
+    # Mantener la demanda por pedido al día con cada sync (mejor esfuerzo).
+    try:
+        from app.services.logistica import regenerar_demanda
+
+        resumen = regenerar_demanda()
+        logger.info("[sync] demanda logística regenerada: %s", resumen)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[sync] No se pudo regenerar la demanda logística: %s", exc)
+    return resultados
 
 
 if __name__ == "__main__":
