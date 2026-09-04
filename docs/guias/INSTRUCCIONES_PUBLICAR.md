@@ -1,4 +1,4 @@
-﻿# ðŸš€ Instrucciones para Publicar 3P Website en GitHub
+# ðŸš€ Instrucciones para Publicar 3P Website en GitHub
 
 ## ðŸ“‹ RESUMEN RÃPIDO
 
@@ -25,7 +25,7 @@ cd "C:\Projects\PAGINA WEB 3P"
 
 3. **Ejecuta el script:**
 ```powershell
-.\deploy-to-github.ps1
+.\scripts\deploy\deploy-to-github.ps1
 ```
 
 4. **Si el repositorio no existe**, el script te darÃ¡ instrucciones para crearlo en GitHub.

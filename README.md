@@ -14,16 +14,29 @@ Sitio web profesional para 3P S.A. DE C.V., empresa líder en distribución de e
 ## 📁 Estructura del Proyecto
 
 ```
-3p-website/
+PAGINA WEB 3P/
 ├── api/                    # Backend FastAPI (portal operativo)
 │   ├── app/               # Módulos de la API
-│   ├── scripts/           # Utilidades (crear usuario admin)
+│   ├── scripts/           # Utilidades (importador CRM, admin, etc.)
+│   ├── tests/             # Tests pytest (91 pruebas)
+│   ├── tools/             # Scripts de operación (start, restart, túnel)
 │   ├── requirements.txt   # Dependencias Python
 │   └── README.md          # Guía del backend
-├── public/                 # Archivos estáticos
+├── data/                   # Bases SQLite locales (ignoradas por git)
+├── docs/                   # Documentación del proyecto
+│   ├── guias/             # Guías operativas vigentes
+│   ├── historial/         # Cierres y avances ya cumplidos
+│   ├── materiales/        # Entregables y material de trabajo
+│   ├── recursos/          # Assets fuente (logos originales)
+│   └── fuentes/           # Documentos fuente de la empresa
+├── public/                 # Archivos estáticos del sitio
 │   ├── images/            # Imágenes del sitio
-│   ├── favicon-*.png      # Favicons
+│   ├── catalogs/          # PDFs de catálogos
+│   ├── models/            # Modelos 3D (GLB)
 │   └── logo.png           # Logo principal
+├── scripts/                # Scripts de automatización
+│   ├── deploy/            # Scripts de publicación a GitHub Pages
+│   └── legacy/            # Scripts de un solo uso (archivados)
 ├── src/
 │   ├── components/        # Componentes React
 │   ├── pages/             # Páginas (Home, Login, Dashboard, marcas)
@@ -32,6 +45,7 @@ Sitio web profesional para 3P S.A. DE C.V., empresa líder en distribución de e
 │   ├── App.jsx            # Componente principal
 │   ├── index.css          # Estilos globales
 │   └── main.jsx           # Punto de entrada
+├── CATALOGO AUTORIZADO PARA PAGINA WEB/   # PDFs fuente de catálogos
 ├── index.html             # HTML principal
 ├── tailwind.config.js     # Configuración de Tailwind
 └── package.json           # Dependencias

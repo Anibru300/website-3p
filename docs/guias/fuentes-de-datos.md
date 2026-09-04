@@ -24,7 +24,8 @@ solo consulta**, ni desde Excel ni desde ningún proceso del sistema.
 > La BD SQLite activa es SIEMPRE la de `data/` en la raíz (se resuelve desde
 > `users_db_path`). Si ves `api/data/`, es residuo: el 2026-09-03 se renombró a
 > `api/data_respaldo-2026-09-03/` y su contenido quedó respaldado en
-> `data/backups/2026-09-03/`.
+> `data/backups/2026-09-03/`. Ese respaldo temporal se eliminó el mismo 2026-09-04
+> (limpieza del repo), una vez confirmada la migración.
 
 ---
 

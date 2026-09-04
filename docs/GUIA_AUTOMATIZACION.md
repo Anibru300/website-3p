@@ -1,4 +1,4 @@
-﻿# ðŸ¤– GuÃ­a de AutomatizaciÃ³n Completa
+# ðŸ¤– GuÃ­a de AutomatizaciÃ³n Completa
 
 ## Â¿QuÃ© se configurÃ³?
 
@@ -162,7 +162,7 @@ C:\Users\Importaciones-3P\Desktop\pagina web\
 â””â”€â”€ 3p-website\                      â† Proyecto
     â”œâ”€â”€ package.json                 â† Configurado para deploy
     â”œâ”€â”€ vite.config.js               â† Configurado para GitHub Pages
-    â”œâ”€â”€ deploy-to-github.ps1         â† Script alternativo
+    â”œâ”€â”€ scripts\deploy\deploy-to-github.ps1  â† Script alternativo
     â””â”€â”€ ...
 ```
 
