@@ -53,8 +53,8 @@ api/.env
 api/tools/.cloudflared/
 api/tools/cloudflared.exe
 
-# Local SQLite databases
-data/
+# Local SQLite databases (solo raiz; no ignorar src/data)
+/data/
 
 
 
