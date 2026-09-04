@@ -947,6 +947,11 @@ export const brandCatalogs = {
         imagen: "/images/catalogo/lubing/4213-05.jpg",
       },
       {
+        codigo: "4237-1",
+        descripcion: "DOSIFICADOR DOSATRON 25 RE",
+        imagen: "/images/catalogo/lubing/4237-1.jpg",
+      },
+      {
         codigo: "4255",
         descripcion: "RESPIRADERO  P/LINEA C/DESAGUE",
         imagen: "/images/catalogo/lubing/4255.jpg",
