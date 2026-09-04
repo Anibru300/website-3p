@@ -18,7 +18,7 @@ const CatalogGallery = () => {
       origin: 'Países Bajos',
       description: language === 'es' ? 'Control climático y automatización' : 'Climate control and automation',
       image: '/images/brands/fancom.png',
-      status: 'coming-soon',
+      status: 'available',
       href: '/marcas/fancom'
     },
     {
@@ -27,7 +27,7 @@ const CatalogGallery = () => {
       origin: 'Alemania',
       description: language === 'es' ? 'Sistemas de bebida y transporte' : 'Drinking and transport systems',
       image: '/images/brands/lubing.png',
-      status: 'coming-soon',
+      status: 'available',
       href: '/marcas/lubing'
     },
     {
@@ -36,7 +36,7 @@ const CatalogGallery = () => {
       origin: 'USA',
       description: language === 'es' ? 'Equipos para avicultura' : 'Poultry equipment',
       image: '/images/brands/georgia-poultry.png',
-      status: 'coming-soon',
+      status: 'available',
       href: '/marcas/georgia-poultry'
     },
     {
@@ -55,7 +55,7 @@ const CatalogGallery = () => {
       origin: 'Francia',
       description: language === 'es' ? 'Calefacción y climatización' : 'Heating and climate systems',
       image: '/images/brands/sbm.png',
-      status: 'coming-soon',
+      status: 'available',
       href: '/marcas/sbm'
     },
     {
@@ -64,7 +64,7 @@ const CatalogGallery = () => {
       origin: 'USA',
       description: language === 'es' ? 'Sistemas de calefacción y climatización' : 'Heating and climate systems',
       image: '/images/brands/lbwhite.png',
-      status: 'coming-soon',
+      status: 'available',
       href: '/marcas/lbwhite'
     },
     {
@@ -73,7 +73,7 @@ const CatalogGallery = () => {
       origin: 'USA',
       description: language === 'es' ? 'Accesorios y equipos para avicultura' : 'Poultry accessories and equipment',
       image: '/images/brands/amt.png',
-      status: 'coming-soon',
+      status: 'available',
       href: '/marcas/amt'
     },
     {
@@ -82,7 +82,7 @@ const CatalogGallery = () => {
       origin: language === 'es' ? 'Países Bajos' : 'Netherlands',
       description: language === 'es' ? 'Sistemas de calefacción infrarroja' : 'Infrared heating systems',
       image: '/images/brands/alke.png',
-      status: 'coming-soon',
+      status: 'available',
       href: '/marcas/alke'
     },
     {

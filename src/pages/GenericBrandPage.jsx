@@ -1,6 +1,17 @@
-import { ArrowLeft, Sparkles, Clock, MapPin, Phone, Mail, ExternalLink } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ArrowLeft, Sparkles, Clock, MapPin, Phone, Mail, ExternalLink, Package, Search, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { SEO } from '../components/shared';
+import { brandCatalogs } from '../data/catalogoMarcas';
+
+const WHATSAPP_PHONE = '524771284661';
+
+const catalogWhatsappUrl = (brandName, producto) => {
+  const text = encodeURIComponent(
+    `Hola, me interesa cotizar el producto ${brandName}: ${producto.codigo} - ${producto.descripcion}`
+  );
+  return `https://wa.me/${WHATSAPP_PHONE}?text=${text}`;
+};
 
 const brandData = {
   lubing: {
@@ -71,10 +82,10 @@ const brandData = {
   alke: {
     name: 'ALKE',
     description: {
-      es: 'Soluciones para almacenamiento y manejo de granos. Silos y equipos de almacenamiento.',
-      en: 'Solutions for grain storage and handling. Silos and storage equipment.'
+      es: 'Calefacción infrarroja y calefactores para avicultura. Tecnología holandesa para el confort de los animales.',
+      en: 'Infrared heating and heaters for poultry. Dutch technology for animal comfort.'
     },
-    keywords: 'ALKE, silos granos, almacenamiento granos, manejo materiales',
+    keywords: 'ALKE, calefacción infrarroja, calefactores pollos, calefacción avícola',
     color: '#F77F00'
   },
   tigsa: {
@@ -102,6 +113,21 @@ const GenericBrandPage = ({ brandId }) => {
 
   const description = brand.description[language] || brand.description.es;
   const contactText = t('brandPage.contactText').replace('{brand}', brand.name);
+
+  const catalog = brandCatalogs[brandId];
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  const productosFiltrados = useMemo(() => {
+    if (!catalog) return [];
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return catalog.productos;
+    return catalog.productos.filter(
+      (p) =>
+        p.codigo.toLowerCase().includes(term) ||
+        (p.descripcion && p.descripcion.toLowerCase().includes(term))
+    );
+  }, [catalog, searchTerm]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -142,6 +168,14 @@ const GenericBrandPage = ({ brandId }) => {
               <p className="text-xl text-white/90 leading-relaxed">
                 {description}
               </p>
+              {catalog && (
+                <div className="flex flex-wrap gap-4 text-sm text-white/80 mt-4">
+                  <span className="flex items-center gap-1">
+                    <Package size={16} /> {catalog.productos.length}{' '}
+                    {t('brandPage.productsCountShort')}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex-shrink-0">
               <div
@@ -168,6 +202,73 @@ const GenericBrandPage = ({ brandId }) => {
       </section>
 
       {/* Contenido principal */}
+      {catalog ? (
+        <section className="py-12 md:py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Buscador */}
+            <div className="relative max-w-md mx-auto mb-10">
+              <Search
+                size={18}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                placeholder={t('brandPage.searchPlaceholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-p3-blue focus:border-transparent shadow-sm"
+              />
+            </div>
+
+            <p className="text-center text-gray-500 text-sm mb-8">
+              {t('brandPage.productsCount').replace('{count}', catalog.productos.length)}
+            </p>
+
+            {/* Grilla de productos */}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
+              {productosFiltrados.map((prod) => (
+                <div
+                  key={prod.codigo}
+                  className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer flex flex-col"
+                  onClick={() => setSelectedProduct(prod)}
+                >
+                  <div className="h-48 bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
+                    <img
+                      src={prod.imagen}
+                      alt={prod.descripcion}
+                      className="h-full w-full object-contain"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <div className="w-20 h-20 rounded-2xl bg-p3-blue/10 flex items-center justify-center hidden">
+                      <Package size={40} className="text-p3-blue" />
+                    </div>
+                  </div>
+                  <div className="p-4 flex-1 flex flex-col">
+                    <span className="text-xs font-semibold text-p3-blue mb-2">
+                      {t('brandPage.skuLabel')} {prod.codigo}
+                    </span>
+                    <h3 className="text-base font-bold text-gray-900 line-clamp-3">
+                      {prod.descripcion}
+                    </h3>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Sin resultados */}
+            {productosFiltrados.length === 0 && (
+              <div className="text-center py-20">
+                <Package size={48} className="text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">{t('brandPage.noResults')}</p>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : (
       <section className="py-12 md:py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden -mt-20 relative z-20">
@@ -228,15 +329,87 @@ const GenericBrandPage = ({ brandId }) => {
           </div>
         </div>
       </section>
+      )}
+
+      {/* Modal de producto */}
+      {selectedProduct && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setSelectedProduct(null)}
+        >
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedProduct(null)}
+              className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors z-10"
+              aria-label="Cerrar"
+            >
+              <X size={20} className="text-gray-700" />
+            </button>
+
+            <div className="p-6 md:p-8">
+              <div className="flex flex-col md:flex-row gap-6 mb-6">
+                <div className="w-full md:w-80 h-72 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden p-4">
+                  <img
+                    src={selectedProduct.imagen}
+                    alt={selectedProduct.descripcion}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-p3-blue mb-1">
+                    {t('brandPage.skuLabel')} {selectedProduct.codigo}
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                    {selectedProduct.descripcion}
+                  </h2>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                    {t('brandPage.availableLabel')}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-3 text-sm text-gray-700">
+                  <MapPin size={18} className="text-gray-400" />
+                  <span>{t('brandPage.availableFrom')}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <a
+                  href={catalogWhatsappUrl(brand.name, selectedProduct)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#25D366] text-white font-semibold rounded-lg hover:bg-[#128C7E] transition-colors flex-1"
+                >
+                  <Phone size={18} />
+                  {t('brandPage.whatsappLabel')}
+                </a>
+                <button
+                  onClick={() => setSelectedProduct(null)}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  {t('brandPage.closeLabel')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CTA inferior */}
       <section className="py-16 bg-white border-t border-gray-100">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-            Explora nuestros catálogos activos
+            {catalog ? t('brandPage.ctaWithCatalogTitle') : 'Explora nuestros catálogos activos'}
           </h2>
           <p className="text-gray-600 mb-8">
-            Mientras preparamos el catálogo de {brand.name}, puedes revisar las líneas que ya tenemos disponibles.
+            {catalog
+              ? t('brandPage.ctaWithCatalogText').replace('{brand}', brand.name)
+              : `Mientras preparamos el catálogo de ${brand.name}, puedes revisar las líneas que ya tenemos disponibles.`}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
