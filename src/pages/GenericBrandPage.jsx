@@ -4,6 +4,13 @@ import { useLanguage } from '../context/LanguageContext';
 import { SEO } from '../components/shared';
 import ProductDocumentation from '../components/ProductDocumentation';
 import { brandCatalogs } from '../data/catalogoMarcas';
+import { fancomCurated } from '../data/fancomData';
+
+// Datos curados por marca (categorías y descripciones verificadas).
+// Se fusionan con el catálogo generado (catalogoMarcas.js) por código exacto.
+const brandCurated = {
+  fancom: fancomCurated,
+};
 
 const WHATSAPP_PHONE = '524771284661';
 
@@ -40,7 +47,8 @@ const brandData = {
       en: 'Environmental control and automation systems for poultry and swine farms. Precision Dutch technology.'
     },
     keywords: 'Fancom, control ambiental, automatización granjas, sistemas Holland',
-    color: '#E76F51'
+    color: '#E76F51',
+    image: '/images/brands/fancom.png'
   },
   'ms-schippers': {
     name: 'MS Schippers',
@@ -116,19 +124,90 @@ const GenericBrandPage = ({ brandId }) => {
   const contactText = t('brandPage.contactText').replace('{brand}', brand.name);
 
   const catalog = brandCatalogs[brandId];
+  const curated = brandCurated[brandId];
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const productosFiltrados = useMemo(() => {
+  // Fusiona el catálogo generado con los datos curados (categoría, descripción, info).
+  const productosEnriquecidos = useMemo(() => {
     if (!catalog) return [];
+    return catalog.productos.map((p) => {
+      const c = curated?.productos?.[p.codigo];
+      if (!c) return p;
+      return {
+        ...p,
+        categoria: c.categoria || null,
+        descripcion: c.descripcion || p.descripcion,
+        info: c.info || null,
+      };
+    });
+  }, [catalog, curated]);
+
+  const productosFiltrados = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
-    if (!term) return catalog.productos;
-    return catalog.productos.filter(
+    if (!term) return productosEnriquecidos;
+    return productosEnriquecidos.filter(
       (p) =>
         p.codigo.toLowerCase().includes(term) ||
         (p.descripcion && p.descripcion.toLowerCase().includes(term))
     );
-  }, [catalog, searchTerm]);
+  }, [productosEnriquecidos, searchTerm]);
+
+  // Agrupa por categoría cuando la marca tiene datos curados; null = grilla plana.
+  const gruposPorCategoria = useMemo(() => {
+    if (!curated || !productosFiltrados.length) return null;
+    const porId = {};
+    curated.categorias.forEach((cat) => {
+      porId[cat.id] = { ...cat, productos: [] };
+    });
+    const otros = {
+      id: 'otros',
+      es: 'Otros productos',
+      en: 'Other products',
+      productos: [],
+    };
+    productosFiltrados.forEach((p) => {
+      const destino = p.categoria && porId[p.categoria] ? porId[p.categoria] : otros;
+      destino.productos.push(p);
+    });
+    const grupos = curated.categorias
+      .filter((cat) => porId[cat.id].productos.length > 0)
+      .map((cat) => porId[cat.id]);
+    if (otros.productos.length > 0) grupos.push(otros);
+    return grupos.length > 0 ? grupos : null;
+  }, [curated, productosFiltrados]);
+
+  const renderProductCard = (prod) => (
+    <div
+      key={prod.codigo}
+      className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer flex flex-col"
+      onClick={() => setSelectedProduct(prod)}
+    >
+      <div className="h-48 bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
+        <img
+          src={prod.imagen}
+          alt={prod.descripcion}
+          className="h-full w-full object-contain"
+          loading="lazy"
+          onError={(e) => {
+            e.target.style.display = 'none';
+            e.target.nextElementSibling?.classList.remove('hidden');
+          }}
+        />
+        <div className="w-20 h-20 rounded-2xl bg-p3-blue/10 flex items-center justify-center hidden">
+          <Package size={40} className="text-p3-blue" />
+        </div>
+      </div>
+      <div className="p-4 flex-1 flex flex-col">
+        <span className="text-xs font-semibold text-p3-blue mb-2">
+          {t('brandPage.skuLabel')} {prod.codigo}
+        </span>
+        <h3 className="text-base font-bold text-gray-900 line-clamp-3">
+          {prod.descripcion}
+        </h3>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -180,7 +259,7 @@ const GenericBrandPage = ({ brandId }) => {
             </div>
             <div className="flex-shrink-0">
               <div
-                className="w-28 h-28 md:w-36 md:h-36 bg-white rounded-2xl flex items-center justify-center p-4 shadow-2xl"
+                className="w-36 h-36 md:w-48 md:h-48 bg-white rounded-2xl flex items-center justify-center p-5 shadow-2xl"
               >
                 <img
                   src={brand.image || `/images/brands/${brandId}.svg`}
@@ -225,40 +304,31 @@ const GenericBrandPage = ({ brandId }) => {
               {t('brandPage.productsCount').replace('{count}', catalog.productos.length)}
             </p>
 
-            {/* Grilla de productos */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
-              {productosFiltrados.map((prod) => (
-                <div
-                  key={prod.codigo}
-                  className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer flex flex-col"
-                  onClick={() => setSelectedProduct(prod)}
-                >
-                  <div className="h-48 bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
-                    <img
-                      src={prod.imagen}
-                      alt={prod.descripcion}
-                      className="h-full w-full object-contain"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    <div className="w-20 h-20 rounded-2xl bg-p3-blue/10 flex items-center justify-center hidden">
-                      <Package size={40} className="text-p3-blue" />
+            {/* Productos: agrupados por categoría o grilla plana */}
+            {gruposPorCategoria ? (
+              <div className="space-y-14">
+                {gruposPorCategoria.map((grupo) => (
+                  <section key={grupo.id}>
+                    <div className="flex items-center gap-3 mb-6">
+                      <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+                        {grupo[language] || grupo.es}
+                      </h2>
+                      <span className="text-sm text-gray-400 font-medium">
+                        ({grupo.productos.length})
+                      </span>
+                      <div className="flex-1 h-px bg-gray-200" />
                     </div>
-                  </div>
-                  <div className="p-4 flex-1 flex flex-col">
-                    <span className="text-xs font-semibold text-p3-blue mb-2">
-                      {t('brandPage.skuLabel')} {prod.codigo}
-                    </span>
-                    <h3 className="text-base font-bold text-gray-900 line-clamp-3">
-                      {prod.descripcion}
-                    </h3>
-                  </div>
-                </div>
-              ))}
-            </div>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
+                      {grupo.productos.map(renderProductCard)}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
+                {productosFiltrados.map(renderProductCard)}
+              </div>
+            )}
 
             {/* Sin resultados */}
             {productosFiltrados.length === 0 && (
@@ -366,6 +436,11 @@ const GenericBrandPage = ({ brandId }) => {
                   <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
                     {selectedProduct.descripcion}
                   </h2>
+                  {selectedProduct.info && (
+                    <p className="text-gray-600 leading-relaxed mb-4">
+                      {selectedProduct.info[language] || selectedProduct.info.es}
+                    </p>
+                  )}
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
                     {t('brandPage.availableLabel')}
                   </span>
