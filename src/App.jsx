@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage';
 import ChoreTimePage from './pages/ChoreTimePage';
 import MsSchippersPage from './pages/MsSchippersPage';
 import FancomPage from './pages/FancomPage';
+import LubingPage from './pages/LubingPage';
 import GenericBrandPage from './pages/GenericBrandPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -132,6 +133,8 @@ function App() {
       content = <MsSchippersPage />;
     } else if (brandId === 'fancom') {
       content = <FancomPage />;
+    } else if (brandId === 'lubing') {
+      content = <LubingPage />;
     } else if (brandId) {
       content = <GenericBrandPage brandId={brandId} />;
     }
