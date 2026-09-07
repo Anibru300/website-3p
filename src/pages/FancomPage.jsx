@@ -194,49 +194,51 @@ const FancomPage = () => {
         className="sticky top-[136px] z-30 shadow-md"
         style={{ backgroundColor: FANCOM.green }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            <div className="flex gap-3 overflow-x-auto pb-1 lg:pb-0 flex-1 min-w-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <button
-                onClick={() => setCategoriaActiva('todos')}
-                className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${
-                  categoriaActiva === 'todos'
-                    ? 'text-white shadow-lg'
-                    : 'text-white/70 hover:text-white hover:bg-white/10'
-                }`}
-                style={
-                  categoriaActiva === 'todos' ? { backgroundColor: FANCOM.accent, color: FANCOM.dark } : {}
-                }
-              >
-                <LayoutGrid size={15} />
-                Todos
-                <span className="text-xs opacity-70">({productos.length})</span>
-              </button>
-              {fancomCurated.categorias.map((cat) => {
-                const Icon = categoryIcon[cat.id] || Package;
-                const activa = categoriaActiva === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setCategoriaActiva(cat.id)}
-                    className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${
-                      activa
-                        ? 'shadow-lg'
-                        : 'text-white/70 hover:text-white hover:bg-white/10'
-                    }`}
-                    style={activa ? { backgroundColor: FANCOM.accent, color: FANCOM.dark } : {}}
-                  >
-                    <Icon size={15} />
-                    {cat[language] || cat.es}
-                    <span className="text-xs opacity-70">
-                      ({conteoPorCategoria[cat.id] || 0})
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          {/* Categorías: fluyen en varias filas, todas visibles */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setCategoriaActiva('todos')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                categoriaActiva === 'todos'
+                  ? 'text-white shadow-lg'
+                  : 'text-white/70 hover:text-white hover:bg-white/10'
+              }`}
+              style={
+                categoriaActiva === 'todos' ? { backgroundColor: FANCOM.accent, color: FANCOM.dark } : {}
+              }
+            >
+              <LayoutGrid size={15} />
+              Todos
+              <span className="text-xs opacity-70">({productos.length})</span>
+            </button>
+            {fancomCurated.categorias.map((cat) => {
+              const Icon = categoryIcon[cat.id] || Package;
+              const activa = categoriaActiva === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setCategoriaActiva(cat.id)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    activa
+                      ? 'shadow-lg'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                  }`}
+                  style={activa ? { backgroundColor: FANCOM.accent, color: FANCOM.dark } : {}}
+                >
+                  <Icon size={15} />
+                  {cat[language] || cat.es}
+                  <span className="text-xs opacity-70">
+                    ({conteoPorCategoria[cat.id] || 0})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-            <div className="relative w-full lg:w-72 lg:ml-10 flex-shrink-0">
+          {/* Buscador: línea propia, alineado a la derecha */}
+          <div className="flex justify-end mt-3">
+            <div className="relative w-full sm:w-80">
               <Search
                 size={18}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
