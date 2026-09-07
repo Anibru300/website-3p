@@ -3,6 +3,7 @@ import { Header } from './components/layout';
 import HomePage from './pages/HomePage';
 import ChoreTimePage from './pages/ChoreTimePage';
 import MsSchippersPage from './pages/MsSchippersPage';
+import FancomPage from './pages/FancomPage';
 import GenericBrandPage from './pages/GenericBrandPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -129,6 +130,8 @@ function App() {
       content = <HomePage />;
     } else if (brandId === 'ms-schippers') {
       content = <MsSchippersPage />;
+    } else if (brandId === 'fancom') {
+      content = <FancomPage />;
     } else if (brandId) {
       content = <GenericBrandPage brandId={brandId} />;
     }
