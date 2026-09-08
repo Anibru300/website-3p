@@ -2,14 +2,17 @@
 
 import datetime
 import json
+import logging
 import time
 from pathlib import Path
 
 from openpyxl import load_workbook
 
 from app.config import get_settings
-from app.database import users_connection
+from app.database import postgres_cursor, users_connection
 from app.sync.db import cargar_sheets, sync_fresco
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -534,13 +537,61 @@ def _load_cache_from_disk(excel_path: Path) -> bool:
         return False
 
 
+def _enriquecer_clientes_sae(filas):
+    """Rellena 'cliente' vacío del historial usando sae_facturas + sae_clientes.
+
+    Las facturas emitidas sin pedido ('FACTURA SIN ORIGEN' en el Excel) no traen
+    'Cliente Pedido'; el cliente facturado solo existe en SAE. Mejor esfuerzo:
+    si el espejo SAE no responde, se reintenta en la próxima carga.
+    """
+    global _historial_enriquecido
+    if _historial_enriquecido:
+        return
+    folios = {
+        normalize_text(f["folio_factura"])
+        for f in filas
+        if not f["cliente"] and normalize_text(f["folio_factura"])
+    }
+    if not folios:
+        _historial_enriquecido = True
+        return
+    try:
+        with postgres_cursor() as cur:
+            cur.execute(
+                """
+                SELECT f.cve_doc AS folio, c.nombre AS cliente
+                FROM sae_facturas f
+                JOIN sae_clientes c ON c.clave = f.cve_clpv
+                WHERE f.tip_doc = 'F' AND f.cve_doc = ANY(%(folios)s)
+                """,
+                {"folios": list(folios)},
+            )
+            por_folio = {
+                normalize_text(r["folio"]).lower(): normalize_text(r["cliente"])
+                for r in cur.fetchall()
+            }
+    except Exception:
+        logger.warning("Enriquecimiento de clientes SAE no disponible", exc_info=True)
+        return
+    for f in filas:
+        if not f["cliente"] and normalize_text(f["folio_factura"]):
+            nombre = por_folio.get(normalize_text(f["folio_factura"]).lower())
+            if nombre:
+                f["cliente"] = nombre
+    _historial_enriquecido = True
+
+
+_historial_enriquecido = False
+
+
 def _load_historial_cache():
     """Lee el Excel de facturación y guarda en caché las filas de factura y metadatos."""
-    global _historial_cache
+    global _historial_cache, _historial_enriquecido
     settings = get_settings()
     excel_path = Path(settings.ventas_facturacion_excel_path)
 
     if not excel_path.exists():
+        _historial_enriquecido = False
         _historial_cache = {
             "timestamp": time.time(),
             "excel_mtime": 0,
@@ -551,6 +602,11 @@ def _load_historial_cache():
         return
 
     if _load_cache_from_disk(excel_path):
+        _historial_enriquecido = False
+        _enriquecer_clientes_sae(_historial_cache["filas"])
+        _historial_cache["clientes"] = sorted(
+            {f["cliente"] for f in _historial_cache["filas"] if f["cliente"]}
+        )
         return
 
     try:
@@ -564,7 +620,6 @@ def _load_historial_cache():
         wb.close()
 
     filas = []
-    clientes_set = set()
     codigos_set = set()
 
     for item in filas_crudas:
@@ -573,18 +628,21 @@ def _load_historial_cache():
             continue
         fila = _build_historial_item(item)
         filas.append(fila)
-        if fila["cliente"]:
-            clientes_set.add(fila["cliente"])
         if fila["codigo"]:
             codigos_set.add(fila["codigo"])
 
+    filas.sort(key=lambda x: (x["cliente"] or "", x["fecha_factura"] or "", x["codigo"] or ""))
+
+    # Cliente de facturas sin pedido se toma del espejo SAE (ver docstring).
+    _historial_enriquecido = False
+    _enriquecer_clientes_sae(filas)
     filas.sort(key=lambda x: (x["cliente"] or "", x["fecha_factura"] or "", x["codigo"] or ""))
 
     _historial_cache = {
         "timestamp": time.time(),
         "excel_mtime": excel_path.stat().st_mtime,
         "filas": filas,
-        "clientes": sorted(clientes_set),
+        "clientes": sorted({f["cliente"] for f in filas if f["cliente"]}),
         "codigos": sorted(codigos_set),
     }
 
