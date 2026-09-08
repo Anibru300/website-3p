@@ -1,25 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Header } from './components/layout';
+import WhatsAppFloat from './components/layout/WhatsAppFloat';
 import HomePage from './pages/HomePage';
-import ChoreTimePage from './pages/ChoreTimePage';
-import MsSchippersPage from './pages/MsSchippersPage';
-import FancomPage from './pages/FancomPage';
-import LubingPage from './pages/LubingPage';
-import GeorgiaPoultryPage from './pages/GeorgiaPoultryPage';
-import SbmPage from './pages/SbmPage';
-import LbWhitePage from './pages/LbWhitePage';
-import AmtPage from './pages/AmtPage';
-import AlkePage from './pages/AlkePage';
-import GenericBrandPage from './pages/GenericBrandPage';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import CotizadorPage from './pages/CotizadorPage';
-import LogisticaPage from './pages/LogisticaPage';
-import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
 import { trackEvent } from './utils/api';
+
+// Code-splitting por ruta: cada página se descarga solo cuando se visita.
+const ChoreTimePage = lazy(() => import('./pages/ChoreTimePage'));
+const MsSchippersPage = lazy(() => import('./pages/MsSchippersPage'));
+const FancomPage = lazy(() => import('./pages/FancomPage'));
+const LubingPage = lazy(() => import('./pages/LubingPage'));
+const GeorgiaPoultryPage = lazy(() => import('./pages/GeorgiaPoultryPage'));
+const SbmPage = lazy(() => import('./pages/SbmPage'));
+const LbWhitePage = lazy(() => import('./pages/LbWhitePage'));
+const AmtPage = lazy(() => import('./pages/AmtPage'));
+const AlkePage = lazy(() => import('./pages/AlkePage'));
+const GenericBrandPage = lazy(() => import('./pages/GenericBrandPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const CotizadorPage = lazy(() => import('./pages/CotizadorPage'));
+const LogisticaPage = lazy(() => import('./pages/LogisticaPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+
+function PageLoader() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center bg-white">
+      <div className="w-10 h-10 border-4 border-p3-red border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+}
 
 function AdminGuard({ children }) {
   const { user, loading } = useAuth();
@@ -169,7 +180,10 @@ function App() {
     <ToastProvider>
       <div className="min-h-screen bg-white">
         {showHeader && <Header />}
-        <main style={{ paddingTop: showHeader ? headerH : 0 }}>{content}</main>
+        <main style={{ paddingTop: showHeader ? headerH : 0 }}>
+          <Suspense fallback={<PageLoader />}>{content}</Suspense>
+        </main>
+        {showHeader && <WhatsAppFloat />}
       </div>
     </ToastProvider>
   );
