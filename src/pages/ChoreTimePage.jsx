@@ -87,7 +87,7 @@ const ChoreTimePage = () => {
                 Inventario disponible de piezas originales para sistemas de avicultura.
               </p>
               <div className="flex flex-wrap gap-4 text-sm text-white/70">
-                <span className="flex items-center gap-1"><Package size={16} /> {choreTimeProducts.length} productos en stock</span>
+                <span className="flex items-center gap-1"><Package size={16} /> {choreTimeProducts.length} productos</span>
                 <span className="flex items-center gap-1"><Phone size={16} /> +52 477 128 4661</span>
                 <span className="flex items-center gap-1"><Mail size={16} /> trespsadecv@hotmail.com</span>
               </div>
@@ -171,11 +171,6 @@ const ChoreTimePage = () => {
                   </div>
                   <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">{prod.nombre}</h3>
                   <p className="text-sm text-gray-600 line-clamp-3 mb-4">{prod.specs}</p>
-                  <div className="flex items-center justify-between">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${prod.stock >= 10 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      Stock: {prod.stock} pzas
-                    </span>
-                  </div>
                 </div>
               </div>
             ))}
@@ -325,12 +320,6 @@ const ChoreTimePage = () => {
                   <div className="flex items-center gap-3 text-sm text-gray-700">
                     <MapPin size={18} className="text-gray-400" />
                     <span>Disponible desde León, Guanajuato</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-gray-700">
-                    <Package size={18} className="text-gray-400" />
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${selectedProduct.stock >= 10 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      Stock disponible: {selectedProduct.stock} pzas
-                    </span>
                   </div>
                 </div>
 

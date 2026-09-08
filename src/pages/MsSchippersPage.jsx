@@ -60,13 +60,8 @@ const MsSchippersPage = () => {
     });
   }, [categoriaActiva, searchTerm]);
 
-  const inStockCount = msSchippersProducts.filter((p) => p.stock > 0).length;
-  const totalStock = msSchippersProducts.reduce((sum, p) => sum + p.stock, 0);
-
   const stats = [
     { label: 'Productos en catálogo', value: msSchippersProducts.length },
-    { label: 'Productos con stock', value: inStockCount },
-    { label: 'Piezas disponibles', value: totalStock.toLocaleString('es-MX') },
   ];
 
   const selectedLine = selectedProduct?.lineId
@@ -249,17 +244,6 @@ const MsSchippersPage = () => {
                     {prod.specs && (
                       <p className="text-sm text-gray-600 line-clamp-2 mb-3">{prod.specs}</p>
                     )}
-                    <div className="mt-auto flex items-center justify-between">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          prod.stock > 0
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-amber-100 text-amber-700'
-                        }`}
-                      >
-                        Stock: {prod.stock} pzas
-                      </span>
-                    </div>
                   </div>
                 </div>
               );
@@ -424,25 +408,13 @@ const MsSchippersPage = () => {
                 </div>
               )}
 
-              {/* Info de stock y disponibilidad */}
+              {/* Info de disponibilidad */}
               <ProductDocumentation marca="ms-schippers" codigo={selectedProduct.codigo} />
 
               <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-3 text-sm text-gray-700 mb-2">
+                <div className="flex items-center gap-3 text-sm text-gray-700">
                   <MapPin size={18} className="text-gray-400" />
                   <span>Disponible desde León, Guanajuato</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-700">
-                  <Package size={18} className="text-gray-400" />
-                  <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      selectedProduct.stock > 0
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-amber-100 text-amber-700'
-                    }`}
-                  >
-                    Stock disponible: {selectedProduct.stock} pzas
-                  </span>
                 </div>
               </div>
 
