@@ -5,34 +5,39 @@ import {
   Phone,
   Mail,
   MapPin,
-  Download,
-  Sparkles,
-  ClipboardList,
   Search,
-  Boxes,
-  Beaker,
-  Settings,
-  Wrench,
   X,
+  Sparkles,
+  Wrench,
+  Settings2,
+  LayoutGrid,
+  ShieldCheck,
   FileText,
   Check,
 } from 'lucide-react';
 import {
   msSchippersBrand,
   msSchippersLines,
-  msSchippersProducts,
   msSchippersProductCategories,
-  msSchippersCategoryMeta,
+  msSchippersProducts,
+  whatsappLineUrl,
   whatsappProductUrl,
 } from '../data/msSchippersData';
 import { SEO } from '../components/shared';
 import ProductDocumentation from '../components/ProductDocumentation';
 
-const productIcon = {
-  higiene: Beaker,
-  equipo: Settings,
+// Paleta MS Schippers (teal corporativo) combinada con acentos 3P.
+const BRAND = {
+  dark: '#0B3D3A',
+  green: '#0F766E',
+  accent: '#2DD4BF',
+};
+
+const categoryIcon = {
+  higiene: Sparkles,
+  equipo: Settings2,
   refaccion: Wrench,
-  otro: Boxes,
+  otro: Package,
 };
 
 const lineMetaById = msSchippersLines.reduce((acc, line) => {
@@ -40,149 +45,190 @@ const lineMetaById = msSchippersLines.reduce((acc, line) => {
   return acc;
 }, {});
 
+const categoriaNombre = (id) =>
+  msSchippersProductCategories.find((c) => c.id === id)?.nombre || id;
+
 const MsSchippersPage = () => {
   const [categoriaActiva, setCategoriaActiva] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   const productosFiltrados = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
     return msSchippersProducts.filter((prod) => {
       const matchCategory =
         categoriaActiva === 'todos' || prod.categoria === categoriaActiva;
-      const term = searchTerm.toLowerCase();
-      const termSearch =
-        term === '' ||
-        prod.nombre.toLowerCase().includes(term) ||
+      const matchSearch =
+        !term ||
         prod.codigo.toLowerCase().includes(term) ||
+        prod.nombre.toLowerCase().includes(term) ||
         (prod.specs && prod.specs.toLowerCase().includes(term)) ||
         (prod.lineId && lineMetaById[prod.lineId]?.name.toLowerCase().includes(term));
-      return matchCategory && termSearch;
+      return matchCategory && matchSearch;
     });
   }, [categoriaActiva, searchTerm]);
 
-  const stats = [
-    { label: 'Productos en catálogo', value: msSchippersProducts.length },
-  ];
+  const conteoPorCategoria = useMemo(() => {
+    const conteo = {};
+    msSchippersProducts.forEach((p) => {
+      conteo[p.categoria] = (conteo[p.categoria] || 0) + 1;
+    });
+    return conteo;
+  }, []);
 
   const selectedLine = selectedProduct?.lineId
     ? lineMetaById[selectedProduct.lineId]
     : null;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen" style={{ backgroundColor: '#f2f7f6' }}>
       <SEO
-        title={`${msSchippersBrand.name} | Higiene y Bioseguridad - 3P S.A. DE C.V.`}
+        title="MS Schippers | Higiene y Bioseguridad - 3P S.A. DE C.V."
         description={msSchippersBrand.description}
         keywords={msSchippersBrand.keywords}
       />
 
-      {/* Hero */}
+      {/* Hero — identidad MS Schippers (teal) con acentos 3P */}
       <section
-        className="relative text-white py-16 md:py-24"
-        style={{ backgroundColor: msSchippersBrand.color }}
+        className="relative text-white overflow-hidden"
+        style={{ backgroundColor: BRAND.dark }}
       >
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-10">
+        {/* Glows decorativos */}
+        <div
+          className="absolute -top-32 -right-32 w-96 h-96 rounded-full pointer-events-none"
+          style={{ backgroundColor: BRAND.accent, opacity: 0.12, filter: 'blur(80px)' }}
+        />
+        <div
+          className="absolute -bottom-40 -left-24 w-80 h-80 rounded-full pointer-events-none"
+          style={{ backgroundColor: BRAND.accent, opacity: 0.08, filter: 'blur(70px)' }}
+        />
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-5">
           <div className="absolute top-10 left-10 w-40 h-40 border-4 border-white rounded-full" />
           <div className="absolute bottom-10 right-10 w-64 h-64 border-4 border-white rounded-full" />
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-14 md:py-20">
           <a
             href="/"
-            className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-6 transition-colors"
+            className="inline-flex items-center gap-2 text-white/70 hover:text-white mb-8 transition-colors text-sm"
           >
             <ArrowLeft size={18} />
             <span>Volver al inicio</span>
           </a>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-            <div className="max-w-2xl">
-              <div className="inline-block px-3 py-1 bg-white/20 text-white text-sm font-semibold rounded-full mb-4">
-                Distribuidor Autorizado en México
-              </div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                {msSchippersBrand.name}
-              </h1>
-              <p className="text-xl text-white/90 mb-4">{msSchippersBrand.slogan}</p>
-              <p className="text-white/80 mb-6 leading-relaxed">
-                {msSchippersBrand.description}
-              </p>
-              <div className="flex flex-wrap gap-4 text-sm text-white/80">
-                <span className="flex items-center gap-1">
-                  <Package size={16} /> {msSchippersProducts.length} productos
-                </span>
-                <span className="flex items-center gap-1">
-                  <Phone size={16} /> {msSchippersBrand.phone}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Mail size={16} /> {msSchippersBrand.email}
-                </span>
-              </div>
-            </div>
+
+          <div className="flex flex-col lg:flex-row lg:items-center gap-10">
+            {/* Logo MS Schippers */}
             <div className="flex-shrink-0">
               <img
                 src={msSchippersBrand.logo}
                 alt={msSchippersBrand.name}
-                className="h-24 md:h-32 w-auto bg-white rounded-2xl px-8 py-4 shadow-2xl"
+                className="h-24 md:h-32 lg:h-36 w-auto bg-white rounded-2xl px-8 py-4 shadow-2xl"
                 loading="lazy"
                 onError={(e) => {
                   e.target.style.display = 'none';
                 }}
               />
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Stats */}
-      <section className="bg-gray-50 py-10 border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-100"
-              >
-                <div className="text-3xl font-bold text-[#0F766E]">{stat.value}</div>
-                <div className="text-sm text-gray-600 mt-1">{stat.label}</div>
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-p3-red text-white text-xs md:text-sm font-bold rounded-full mb-5 shadow-lg">
+                <ShieldCheck size={15} />
+                Distribuidor Autorizado en México
               </div>
-            ))}
+              <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
+                {msSchippersBrand.slogan}
+              </h1>
+              <p className="text-lg md:text-xl text-white/85 leading-relaxed mb-6">
+                {msSchippersBrand.description}
+              </p>
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/70">
+                <span className="flex items-center gap-2">
+                  <Package size={16} style={{ color: BRAND.accent }} />
+                  {msSchippersProducts.length} productos
+                </span>
+                <span className="flex items-center gap-2">
+                  <LayoutGrid size={16} style={{ color: BRAND.accent }} />
+                  {msSchippersLines.length} líneas
+                </span>
+                <span className="flex items-center gap-2">
+                  <MapPin size={16} style={{ color: BRAND.accent }} />
+                  León, Guanajuato
+                </span>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Franja de acento degradado MS Schippers -> 3P */}
+        <div
+          className="h-1.5 w-full"
+          style={{
+            background: `linear-gradient(90deg, ${BRAND.accent} 0%, ${BRAND.accent} 60%, #C41E3A 100%)`,
+          }}
+        />
       </section>
 
-      {/* Filtros */}
+      {/* Submenú de categorías + buscador (sticky) */}
       <section
-        className="sticky z-30 bg-white border-b shadow-sm"
-        style={{ top: 'var(--header-h, 136px)' }}
+        className="sticky z-30 shadow-md"
+        style={{ top: 'var(--header-h, 136px)', backgroundColor: BRAND.green }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <div className="flex flex-wrap gap-2 flex-1">
-              {msSchippersProductCategories.map((cat) => (
+          {/* Categorías: fluyen en varias filas, todas visibles */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setCategoriaActiva('todos')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                categoriaActiva === 'todos'
+                  ? 'text-white shadow-lg'
+                  : 'text-white/70 hover:text-white hover:bg-white/10'
+              }`}
+              style={
+                categoriaActiva === 'todos' ? { backgroundColor: BRAND.accent, color: BRAND.dark } : {}
+              }
+            >
+              <LayoutGrid size={15} />
+              Todos
+              <span className="text-xs opacity-70">({msSchippersProducts.length})</span>
+            </button>
+            {msSchippersProductCategories.filter((c) => c.id !== 'todos').map((cat) => {
+              const Icon = categoryIcon[cat.id] || Package;
+              const activa = categoriaActiva === cat.id;
+              return (
                 <button
                   key={cat.id}
                   onClick={() => setCategoriaActiva(cat.id)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    categoriaActiva === cat.id
-                      ? 'bg-[#0F766E] text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    activa
+                      ? 'shadow-lg'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}
+                  style={activa ? { backgroundColor: BRAND.accent, color: BRAND.dark } : {}}
                 >
+                  <Icon size={15} />
                   {cat.nombre}
+                  <span className="text-xs opacity-70">
+                    ({conteoPorCategoria[cat.id] || 0})
+                  </span>
                 </button>
-              ))}
-            </div>
+              );
+            })}
+          </div>
 
-            <div className="relative md:max-w-xs">
+          {/* Buscador: línea propia, alineado a la derecha */}
+          <div className="flex justify-end mt-3">
+            <div className="relative w-full sm:w-80">
               <Search
                 size={18}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
               />
               <input
                 type="text"
-                placeholder="Buscar producto..."
+                placeholder="Buscar por código, nombre o línea..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:border-transparent text-sm"
+                className="w-full pl-10 pr-4 py-2 rounded-lg border-0 focus:outline-none focus:ring-2 text-sm text-gray-900"
+                style={{ '--tw-ring-color': BRAND.accent }}
               />
             </div>
           </div>
@@ -190,20 +236,32 @@ const MsSchippersPage = () => {
       </section>
 
       {/* Catálogo */}
-      <section className="py-12 md:py-16">
+      <section className="py-10 md:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-sm text-gray-500 mb-6">
+            {productosFiltrados.length} de {msSchippersProducts.length} productos
+            {categoriaActiva !== 'todos' && (
+              <>
+                {' '}
+                en{' '}
+                <span className="font-semibold" style={{ color: BRAND.green }}>
+                  {categoriaNombre(categoriaActiva)}
+                </span>
+              </>
+            )}
+          </p>
+
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
             {productosFiltrados.map((prod) => {
-              const Icon = productIcon[prod.categoria] || Package;
-              const meta = msSchippersCategoryMeta[prod.categoria] || msSchippersCategoryMeta.otro;
               const line = prod.lineId ? lineMetaById[prod.lineId] : null;
+              const Icon = categoryIcon[prod.categoria] || Package;
               return (
                 <div
                   key={prod.codigo}
                   className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer flex flex-col"
                   onClick={() => setSelectedProduct(prod)}
                 >
-                  <div className="h-48 bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
+                  <div className="h-48 bg-white flex items-center justify-center p-4 relative overflow-hidden">
                     {prod.image ? (
                       <img
                         src={prod.image}
@@ -217,32 +275,31 @@ const MsSchippersPage = () => {
                       />
                     ) : null}
                     <div
-                      className={`w-20 h-20 rounded-2xl bg-[#0F766E]/10 flex items-center justify-center ${
+                      className={`w-20 h-20 rounded-2xl flex items-center justify-center ${
                         prod.image ? 'hidden' : ''
                       }`}
+                      style={{ backgroundColor: `${BRAND.accent}1a` }}
                     >
-                      <Icon size={40} className="text-[#0F766E]" />
+                      <Icon size={40} style={{ color: BRAND.green }} />
                     </div>
                   </div>
-                  <div className="p-4 flex-1 flex flex-col">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className="text-xs font-semibold text-[#0F766E]">
-                        SKU: {prod.codigo}
-                      </span>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${meta.color}`}>
-                        {meta.label}
-                      </span>
-                    </div>
-                    <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">
+                  <div className="p-4 flex-1 flex flex-col border-t border-gray-50">
+                    <span
+                      className="text-xs font-semibold mb-2"
+                      style={{ color: BRAND.green }}
+                    >
+                      SKU: {prod.codigo}
+                    </span>
+                    <h3 className="text-base font-bold text-gray-900 line-clamp-3">
                       {prod.nombre}
                     </h3>
                     {line && (
-                      <p className="text-xs text-teal-600 font-medium mb-2">
+                      <p className="text-xs font-medium mt-2" style={{ color: line.bgColor }}>
                         Línea: {line.name}
                       </p>
                     )}
                     {prod.specs && (
-                      <p className="text-sm text-gray-600 line-clamp-2 mb-3">{prod.specs}</p>
+                      <p className="text-sm text-gray-600 line-clamp-2 mt-2">{prod.specs}</p>
                     )}
                   </div>
                 </div>
@@ -252,7 +309,10 @@ const MsSchippersPage = () => {
 
           {productosFiltrados.length === 0 && (
             <div className="text-center py-20">
-              <p className="text-gray-500">No se encontraron productos con ese criterio.</p>
+              <Package size={48} className="text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">
+                No se encontraron productos con ese criterio.
+              </p>
             </div>
           )}
         </div>
@@ -277,101 +337,82 @@ const MsSchippersPage = () => {
             </button>
 
             <div className="p-6 md:p-8">
-              {/* Header */}
               <div className="flex flex-col md:flex-row gap-6 mb-6">
-                {selectedProduct.image ? (
-                  <div className="w-full md:w-48 h-48 rounded-2xl bg-white border border-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden p-4">
+                <div
+                  className="w-full md:w-80 h-72 rounded-2xl border border-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden p-4"
+                  style={{ backgroundColor: '#f2f7f6' }}
+                >
+                  {selectedProduct.image ? (
                     <img
                       src={selectedProduct.image}
                       alt={selectedProduct.nombre}
                       className="h-full w-full object-contain"
                       loading="lazy"
                     />
-                  </div>
-                ) : (
-                  <div className="w-full md:w-48 h-48 rounded-2xl bg-[#0F766E]/10 flex items-center justify-center flex-shrink-0">
-                    {(() => {
-                      const Icon = productIcon[selectedProduct.categoria] || Package;
-                      return <Icon size={64} className="text-[#0F766E]" />;
-                    })()}
-                  </div>
-                )}
+                  ) : (
+                    <div
+                      className="w-24 h-24 rounded-2xl flex items-center justify-center"
+                      style={{ backgroundColor: `${BRAND.accent}1a` }}
+                    >
+                      {(categoryIcon[selectedProduct.categoria] || Package) &&
+                        (() => {
+                          const Icon = categoryIcon[selectedProduct.categoria] || Package;
+                          return <Icon size={48} style={{ color: BRAND.green }} />;
+                        })()}
+                    </div>
+                  )}
+                </div>
                 <div className="flex-1">
-                  <div className="text-sm font-semibold text-[#0F766E] mb-1">
+                  <div
+                    className="text-sm font-semibold mb-1"
+                    style={{ color: BRAND.green }}
+                  >
                     SKU: {selectedProduct.codigo}
                   </div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
                     {selectedProduct.nombre}
                   </h2>
-                  {selectedLine && (
-                    <p className="text-sm font-medium text-teal-700 mb-3">
-                      Línea {selectedLine.name} — {selectedLine.tagline}
+                  {selectedProduct.specs && (
+                    <p className="text-gray-600 leading-relaxed mb-4">
+                      {selectedProduct.specs}
                     </p>
                   )}
-                  <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      msSchippersCategoryMeta[selectedProduct.categoria]?.color ||
-                      msSchippersCategoryMeta.otro.color
-                    }`}
-                  >
-                    {msSchippersCategoryMeta[selectedProduct.categoria]?.label ||
-                      msSchippersCategoryMeta.otro.label}
+                  {selectedLine && (
+                    <p className="text-sm font-semibold mb-4" style={{ color: selectedLine.bgColor }}>
+                      Línea: {selectedLine.name} — {selectedLine.tagline}
+                    </p>
+                  )}
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                    Disponible
                   </span>
                 </div>
               </div>
 
-              {/* Descripción de línea */}
-              {selectedLine && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                    <FileText size={20} className="text-[#0F766E]" />
-                    Descripción
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed">{selectedLine.description}</p>
-                </div>
-              )}
-
-              {/* Specs del producto */}
-              {selectedProduct.specs && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                    <ClipboardList size={20} className="text-[#0F766E]" />
-                    Especificaciones / Información técnica
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed">{selectedProduct.specs}</p>
-                </div>
-              )}
-
-              {/* Beneficios */}
               {selectedLine && selectedLine.benefits && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <Sparkles size={20} className="text-[#0F766E]" />
-                    Beneficios clave
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">
+                    Beneficios de {selectedLine.name}
                   </h3>
-                  <ul className="space-y-2">
+                  <ul className="grid sm:grid-cols-2 gap-2">
                     {selectedLine.benefits.map((benefit, idx) => (
-                      <li key={idx} className="text-gray-600 flex items-start gap-2">
-                        <Check size={18} className="text-[#0F766E] mt-0.5 flex-shrink-0" />
-                        <span>{benefit}</span>
+                      <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                        <Check size={16} className="flex-shrink-0 mt-0.5" style={{ color: BRAND.green }} />
+                        {benefit}
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* Aplicaciones */}
               {selectedLine && selectedLine.applications && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <ClipboardList size={20} className="text-[#0F766E]" />
-                    Aplicaciones
-                  </h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">Aplicaciones</h3>
                   <div className="flex flex-wrap gap-2">
                     {selectedLine.applications.map((app) => (
                       <span
                         key={app}
-                        className="px-3 py-1 bg-teal-50 text-teal-700 text-sm font-medium rounded-full"
+                        className="px-3 py-1 rounded-full text-xs font-semibold text-white"
+                        style={{ backgroundColor: BRAND.green }}
                       >
                         {app}
                       </span>
@@ -380,35 +421,36 @@ const MsSchippersPage = () => {
                 </div>
               )}
 
-              {/* PDFs */}
               {selectedLine && selectedLine.pdfs && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <Download size={20} className="text-[#0F766E]" />
-                    Fichas técnicas y folletos
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">Documentación</h3>
+                  <div className="flex flex-wrap gap-3">
                     <a
                       href={selectedLine.pdfs.a.url}
-                      download
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white"
+                      style={{ backgroundColor: BRAND.green }}
                     >
-                      <Download size={16} />
+                      <FileText size={16} />
                       Folleto {selectedLine.pdfs.a.label.includes('frente') ? 'A' : 'PDF A'}
+                      <span className="text-white/70">({selectedLine.pdfs.a.size})</span>
                     </a>
                     <a
                       href={selectedLine.pdfs.b.url}
-                      download
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white"
+                      style={{ backgroundColor: BRAND.green }}
                     >
-                      <Download size={16} />
+                      <FileText size={16} />
                       Folleto {selectedLine.pdfs.b.label.includes('reverso') ? 'B' : 'PDF B'}
+                      <span className="text-white/70">({selectedLine.pdfs.b.size})</span>
                     </a>
                   </div>
                 </div>
               )}
 
-              {/* Info de disponibilidad */}
               <ProductDocumentation marca="ms-schippers" codigo={selectedProduct.codigo} />
 
               <div className="bg-gray-50 rounded-xl p-4 mb-6">
@@ -417,8 +459,6 @@ const MsSchippersPage = () => {
                   <span>Disponible desde León, Guanajuato</span>
                 </div>
               </div>
-
-              {/* CTAs */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <a
                   href={whatsappProductUrl(selectedProduct)}
@@ -441,37 +481,41 @@ const MsSchippersPage = () => {
         </div>
       )}
 
-      {/* CTA */}
-      <section className="bg-gray-50 py-16">
+      {/* CTA inferior */}
+      <section className="text-white py-16" style={{ backgroundColor: BRAND.dark }}>
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-            ¿Necesitas una cotización o disponibilidad de stock?
+          <img
+            src={msSchippersBrand.logo}
+            alt={msSchippersBrand.name}
+            className="h-12 w-auto mx-auto mb-6 opacity-90 bg-white rounded-xl px-4 py-2"
+            loading="lazy"
+          />
+          <h2 className="text-2xl md:text-3xl font-bold mb-4">
+            ¿Necesitas una cotización de productos MS Schippers?
           </h2>
-          <p className="text-gray-600 mb-8">
-            Contamos con inventario de productos MS Schippers en León, Guanajuato. Escríbenos
-            por WhatsApp con el código del producto que necesitas.
+          <p className="text-white/75 mb-8">
+            Contamos con inventario de higiene y bioseguridad MS Schippers en León,
+            Guanajuato. Escríbenos con el código del producto que necesitas.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href={`https://wa.me/${msSchippersBrand.whatsapp}?text=${encodeURIComponent(
-                'Hola, me interesa cotizar productos MS Schippers.'
-              )}`}
+              href={whatsappLineUrl(msSchippersLines[0])}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-[#25D366] text-white font-semibold rounded-lg hover:bg-[#128C7E] transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-[#25D366] text-white font-semibold rounded-xl hover:bg-[#128C7E] transition-colors"
             >
               <Phone size={18} />
               Cotizar por WhatsApp
             </a>
             <a
-              href={`tel:${msSchippersBrand.phone.replace(/\s/g, '')}`}
-              className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-[#0F766E] text-white font-semibold rounded-lg hover:bg-[#0d5c56] transition-colors"
+              href={`mailto:${msSchippersBrand.email}`}
+              className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-p3-red text-white font-semibold rounded-xl hover:bg-p3-red-dark transition-colors"
             >
-              <Phone size={18} />
-              Llamar ahora
+              <Mail size={18} />
+              Escríbenos por correo
             </a>
           </div>
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-gray-500">
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-white/60">
             <span className="flex items-center gap-1">
               <MapPin size={16} /> León, Guanajuato
             </span>
