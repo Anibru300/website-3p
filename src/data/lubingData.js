@@ -5,7 +5,7 @@
 
 export const lubingCurated = {
   categorias: [
-    { id: "bebida", es: "Sistemas de bebida", en: "Drinking systems" },
+    { id: "bebida", es: "Bebederos", en: "Drinkers" },
     { id: "clima", es: "Sistemas de clima", en: "Climate systems" },
     { id: "transporte", es: "Sistemas de transporte", en: "Conveyor systems" },
     { id: "alimentacion", es: "Alimentación (Novicor)", en: "Feeding (Novicor)" },
