@@ -155,7 +155,10 @@ const MsSchippersPage = () => {
       </section>
 
       {/* Filtros */}
-      <section className="sticky top-[136px] z-30 bg-white border-b shadow-sm">
+      <section
+        className="sticky z-30 bg-white border-b shadow-sm"
+        style={{ top: 'var(--header-h, 136px)' }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex flex-wrap gap-2 flex-1">

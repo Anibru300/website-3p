@@ -38,6 +38,22 @@ function AdminGuard({ children }) {
 
 function App() {
   const [route, setRoute] = useState(window.location.pathname || '/');
+  const [headerH, setHeaderH] = useState(136);
+
+  // Altura real del header fijo: se mide en vivo y se expone como --header-h
+  // para que los submenús sticky de las páginas de marca se peguen justo debajo
+  // (sin rendija de contenido moviéndose entre el header y la barra de categorías).
+  useEffect(() => {
+    const measure = () => {
+      const h = document.querySelector('header')?.offsetHeight;
+      const height = h && h > 0 ? h : 136;
+      setHeaderH(height);
+      document.documentElement.style.setProperty('--header-h', `${height}px`);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [route]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -85,12 +101,10 @@ function App() {
 
   let content = <HomePage />;
   let showHeader = true;
-  let mainClass = 'pt-[136px]';
 
   if (segments[0] === 'login') {
     content = <LoginPage />;
     showHeader = false;
-    mainClass = '';
   } else if (segments[0] === 'dashboard') {
     content = (
       <ProtectedRoute>
@@ -98,7 +112,6 @@ function App() {
       </ProtectedRoute>
     );
     showHeader = false;
-    mainClass = '';
   } else if (segments[0] === 'cotizador') {
     content = (
       <ProtectedRoute>
@@ -106,7 +119,6 @@ function App() {
       </ProtectedRoute>
     );
     showHeader = false;
-    mainClass = '';
   } else if (segments[0] === 'logistica') {
     content = (
       <ProtectedRoute>
@@ -114,7 +126,6 @@ function App() {
       </ProtectedRoute>
     );
     showHeader = false;
-    mainClass = '';
   } else if (segments[0] === 'admin') {
     content = (
       <ProtectedRoute>
@@ -124,7 +135,6 @@ function App() {
       </ProtectedRoute>
     );
     showHeader = false;
-    mainClass = '';
   } else if (segments[0] === 'marcas') {
     const brandId = segments[1];
     if (brandId === 'chore-time') {
@@ -147,7 +157,7 @@ function App() {
     <ToastProvider>
       <div className="min-h-screen bg-white">
         {showHeader && <Header />}
-        <main className={mainClass}>{content}</main>
+        <main style={{ paddingTop: showHeader ? headerH : 0 }}>{content}</main>
       </div>
     </ToastProvider>
   );

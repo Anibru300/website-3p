@@ -189,7 +189,8 @@ const GeorgiaPoultryPage = () => {
 
       {/* Submenú de categorías + buscador (sticky) */}
       <section
-        className="sticky top-[136px] z-30 shadow-md"
+        className="sticky z-30 shadow-md"
+        style={{ top: 'var(--header-h, 136px)' }}
         style={{ backgroundColor: GP.blue }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
