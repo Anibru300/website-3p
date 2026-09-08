@@ -60,6 +60,19 @@ Leyenda de estados: ⬜ pendiente · ✅ confirmada correcta (el usuario la acla
 
 10 fotos dudosas (sin acción pendiente). La lista detallada quedó en el reporte de esa sesión; **pendiente: volcar los códigos aquí**. Las 2 que parecían inconsistencia (3100302 pegamento Oatey, 4237-1 dosificador LUBING/Dosatron) ya quedaron **aclardas como correctas** por el usuario.
 
+## MS SCHIPPERS (verificado 2026-09-08)
+
+Las 45 imágenes referenciadas en `msSchippersData.js` existen en disco y se muestran correctamente (45/45, sin rotas ni huérfanas). Quedan **6 productos sin foto** — no hay imagen de ellos en la base de datos ni en `CATALOGO AUTORIZADO PARA PAGINA WEB/MS DETERGENTES/`; la página ya muestra un placeholder elegante en su lugar. No se asignaron fotos de productos similares para no mostrar algo distinto al artículo real:
+
+| Código | Descripción | Problema | Estado |
+|---|---|---|---|
+| 3409680 | Sorting paddle red, 102 cm | Sin foto (sin stock) | 🔄 pedir foto real |
+| 809599 | High pressure spray gun ST-2600, KEW (blue) | Sin foto; 809660 usa `spray-gun-st2600.jpg` pero es la variante de otro color | 🔄 pedir foto real |
+| MS PEROFIXER | PEROFIXER | Sin foto (sin stock) | 🔄 pedir foto real |
+| Q5 | Q5 G10 1LT CAUTERNARIO DE AMONIO | Sin foto; solo existe la de 20 L (Q5-20) | 🔄 pedir foto real |
+| 200075552 | MS Boquilla de baja presión | Sin foto (stock 6) | 🔄 pedir foto real |
+| 5070 WALL | MS Motobomba TopFoam Wall Demo | Sin foto (stock 1) | 🔄 pedir foto real |
+
 ---
 
 *Actualizar este documento al terminar cada marca. Al final de la dinámica, imprimir/revisar con almacén y aplicar correcciones (pedir foto real, reasignar, etc.).*
