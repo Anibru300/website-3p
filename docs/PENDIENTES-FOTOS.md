@@ -67,7 +67,6 @@ Las 45 imágenes referenciadas en `msSchippersData.js` existen en disco y se mue
 | Código | Descripción | Problema | Estado |
 |---|---|---|---|
 | 3409680 | Sorting paddle red, 102 cm | Sin foto (sin stock) | 🔄 pedir foto real |
-| 809599 | High pressure spray gun ST-2600, KEW (blue) | Usa por ahora la foto de la 809660 (misma pistola, otro color) — pendiente de revisión | ⬜ |
 | MS PEROFIXER | PEROFIXER | Sin foto (sin stock) | 🔄 pedir foto real |
 | Q5 | Q5 G10 1LT CAUTERNARIO DE AMONIO | Usa por ahora la foto del de 20 L (Q5-20) — pendiente de revisión | ⬜ |
 | 200075552 | MS Boquilla de baja presión | Sin foto (stock 6) | 🔄 pedir foto real |

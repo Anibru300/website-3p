@@ -153,7 +153,6 @@ export const msSchippersProducts = [
   { codigo: '0807174', nombre: 'Restrictor (screw-thread) 0.8 mm', stock: 1, categoria: 'equipo', image: '/images/catalogo/schippers/restrictor-08mm.jpg'},
   { codigo: '0807175', nombre: 'Restrictor (screw-thread) 0.9 mm', stock: 1, categoria: 'equipo', image: '/images/catalogo/schippers/restrictor-09mm.jpg'},
   { codigo: '3409680', nombre: 'Sorting paddle red, 102 cm', stock: 0, categoria: 'equipo' },
-  { codigo: '809599', nombre: 'High pressure spray gun ST-2600, KEW (blue)', stock: 0, categoria: 'equipo', image: '/images/catalogo/schippers/spray-gun-st2600.jpg' },
   { codigo: '809660', nombre: 'High pressure spray gun ST-2600, KEW', stock: 9, categoria: 'equipo', image: '/images/catalogo/schippers/spray-gun-st2600.jpg'},
   { codigo: '3P GUN', nombre: 'PISTOLA NEBULIZADORA', stock: 2, categoria: 'equipo', image: '/images/catalogo/schippers/3p-gun.png'},
   { codigo: '804589', nombre: 'Coupling KEW, 1/4" female thread', stock: 23, categoria: 'equipo', image: '/images/catalogo/schippers/coupling-kew-female.jpg'},
