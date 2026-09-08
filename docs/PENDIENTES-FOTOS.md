@@ -40,6 +40,14 @@ Leyenda de estados: ⬜ pendiente · ✅ confirmada correcta (el usuario la acla
 | 520169 / 520169 NS | 520169.jpg | MOTOR P/HEATER AD250 1.0 Y 2.0 | Misma foto (duplicado exacto) para ambos códigos. | ⬜ |
 | 522076 / 522076. | 522076.jpg | VALVULA CONTROL DE GAS PARA HEATER | Misma foto (duplicado exacto) para ambos códigos. | ⬜ |
 
+## AMT (verificado 2026-09-08)
+
+3/3 fotos revisadas. Los 3 productos coinciden con SKUs oficiales de amt-usa.com (verificado foto contra foto):
+
+| Código | Archivo | Descripción | Problema | Estado |
+|---|---|---|---|---|
+| 19200 AMT | 19200-amt.jpg | ELEVADOR NEGRO AMT | Parecía dudosa (placa plana, no un "elevador"), pero coincide exactamente con el SKU oficial 19200 "Cord Adjuster (Long)" de AMT — la pieza sí es correcta; el nombre local es impreciso. | ✅ aclarada correcta |
+
 ## FANCOM (verificado 2026-09-07)
 
 12 fotos dudosas reportadas en la verificación de la sesión anterior. La lista detallada quedó en el reporte de esa sesión; **pendiente: volcar los códigos aquí**. 0 incorrectas.
