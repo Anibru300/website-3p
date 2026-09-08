@@ -48,6 +48,10 @@ Leyenda de estados: ⬜ pendiente · ✅ confirmada correcta (el usuario la acla
 |---|---|---|---|---|
 | 19200 AMT | 19200-amt.jpg | ELEVADOR NEGRO AMT | Parecía dudosa (placa plana, no un "elevador"), pero coincide exactamente con el SKU oficial 19200 "Cord Adjuster (Long)" de AMT — la pieza sí es correcta; el nombre local es impreciso. | ✅ aclarada correcta |
 
+## ALKE (verificado 2026-09-08)
+
+2/2 fotos coinciden — sin incorrectas ni dudosas. El termopar 202015 es parte de consumo oficial ALKE (#28, rosca M8x1, manual cerámica 41/61/81). Nota: la longitud 520, el "fusible oculto" y la extensión L250 **no están publicadas por ALKE** — son especificación comercial; confirmar con almacén si se quieren mostrar como dato del fabricante.
+
 ## FANCOM (verificado 2026-09-07)
 
 12 fotos dudosas reportadas en la verificación de la sesión anterior. La lista detallada quedó en el reporte de esa sesión; **pendiente: volcar los códigos aquí**. 0 incorrectas.

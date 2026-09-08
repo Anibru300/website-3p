@@ -9,6 +9,7 @@ import GeorgiaPoultryPage from './pages/GeorgiaPoultryPage';
 import SbmPage from './pages/SbmPage';
 import LbWhitePage from './pages/LbWhitePage';
 import AmtPage from './pages/AmtPage';
+import AlkePage from './pages/AlkePage';
 import GenericBrandPage from './pages/GenericBrandPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -157,6 +158,8 @@ function App() {
       content = <LbWhitePage />;
     } else if (brandId === 'amt') {
       content = <AmtPage />;
+    } else if (brandId === 'alke') {
+      content = <AlkePage />;
     } else if (brandId) {
       content = <GenericBrandPage brandId={brandId} />;
     }
