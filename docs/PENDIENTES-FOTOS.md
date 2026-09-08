@@ -31,6 +31,15 @@ Leyenda de estados: ⬜ pendiente · ✅ confirmada correcta (el usuario la acla
 
 **Nota SBM:** 3802001 y 3802001. comparten la misma foto (`3802001.jpg`) intencionalmente — misma pieza, dos códigos. No es error, solo confirmar que almacén lo avala.
 
+## LB WHITE (verificado 2026-09-08)
+
+22/22 fotos coinciden — sin incorrectas ni dudosas. Solo pares de códigos con la misma foto intencionalmente, confirmar con almacén:
+
+| Código | Archivo | Descripción | Problema | Estado |
+|---|---|---|---|---|
+| 520169 / 520169 NS | 520169.jpg | MOTOR P/HEATER AD250 1.0 Y 2.0 | Misma foto (duplicado exacto) para ambos códigos. | ⬜ |
+| 522076 / 522076. | 522076.jpg | VALVULA CONTROL DE GAS PARA HEATER | Misma foto (duplicado exacto) para ambos códigos. | ⬜ |
+
 ## FANCOM (verificado 2026-09-07)
 
 12 fotos dudosas reportadas en la verificación de la sesión anterior. La lista detallada quedó en el reporte de esa sesión; **pendiente: volcar los códigos aquí**. 0 incorrectas.

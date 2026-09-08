@@ -7,6 +7,7 @@ import FancomPage from './pages/FancomPage';
 import LubingPage from './pages/LubingPage';
 import GeorgiaPoultryPage from './pages/GeorgiaPoultryPage';
 import SbmPage from './pages/SbmPage';
+import LbWhitePage from './pages/LbWhitePage';
 import GenericBrandPage from './pages/GenericBrandPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -151,6 +152,8 @@ function App() {
       content = <GeorgiaPoultryPage />;
     } else if (brandId === 'sbm') {
       content = <SbmPage />;
+    } else if (brandId === 'lbwhite') {
+      content = <LbWhitePage />;
     } else if (brandId) {
       content = <GenericBrandPage brandId={brandId} />;
     }
