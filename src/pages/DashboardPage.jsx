@@ -3396,23 +3396,6 @@ export default function DashboardPage() {
       : null;
     const topAlmacenPct = topAlmacen && valorActual ? (topAlmacen.valor_total / valorActual) * 100 : 0;
 
-    // Días dentro del rango que no tienen snapshot (la tarea no corrió o la PC estaba apagada)
-    const diasFaltantes = (() => {
-      if (fechas.length < 2) return [];
-      const [ay, am, ad] = fechas[0].split('-').map(Number);
-      const [by, bm, bd] = fechas[fechas.length - 1].split('-').map(Number);
-      const actual = new Date(ay, am - 1, ad);
-      const fin = new Date(by, bm - 1, bd);
-      const conRegistro = new Set(fechas);
-      const faltantes = [];
-      while (actual <= fin) {
-        const key = `${actual.getFullYear()}-${String(actual.getMonth() + 1).padStart(2, '0')}-${String(actual.getDate()).padStart(2, '0')}`;
-        if (!conRegistro.has(key)) faltantes.push(key);
-        actual.setDate(actual.getDate() + 1);
-      }
-      return faltantes;
-    })();
-
     // Frescura del espejo SAE que alimenta el cálculo
     const frescura = (() => {
       if (!frescuraEspejo) return null;
@@ -3450,16 +3433,6 @@ export default function DashboardPage() {
               Datos de SAE sincronizados <strong>{frescura.texto}</strong>
               <span className="text-xs opacity-75"> ({frescura.fecha})</span>
               {frescura.horas > 48 && ' — revisar el ETL, el valor puede estar desactualizado'}
-            </span>
-          </div>
-        )}
-
-        {diasFaltantes.length > 0 && (
-          <div className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
-            <AlertCircle size={16} className="shrink-0" />
-            <span>
-              Días sin snapshot en el rango: <strong>{diasFaltantes.join(', ')}</strong>
-              <span className="text-xs opacity-75"> (la tarea no corrió o la PC estaba apagada)</span>
             </span>
           </div>
         )}
