@@ -1,4 +1,4 @@
-﻿# Inicia el backend de 3P en segundo plano y guarda logs.
+# Inicia el backend de 3P en segundo plano y guarda logs.
 # Uso: Task Scheduler al inicio de sesiÃ³n.
 
 $BaseDir = "C:\Projects\PAGINA WEB 3P\pagina web 3p\api"
@@ -29,8 +29,8 @@ Write-StartupLog "Iniciando backend..."
 try {
     Set-Location $BaseDir
     & ".venv\Scripts\activate.ps1"
-    Start-Process -FilePath "uvicorn" `
-        -ArgumentList "app.main:app", "--host", "0.0.0.0", "--port", "8000" `
+    Start-Process -FilePath "$BaseDir\.venv\Scripts\python.exe" `
+        -ArgumentList "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000" `
         -WorkingDirectory $BaseDir `
         -WindowStyle Hidden `
         -RedirectStandardOutput $LogFile `

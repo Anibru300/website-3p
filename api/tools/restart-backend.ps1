@@ -1,4 +1,4 @@
-﻿# Reinicia el backend de 3P
+# Reinicia el backend de 3P
 $ErrorActionPreference = "Stop"
 
 Write-Host "Buscando proceso uvicorn..." -ForegroundColor Cyan
@@ -23,8 +23,8 @@ if (!(Test-Path $LogDir)) {
 Write-Host "Iniciando backend..." -ForegroundColor Cyan
 Set-Location $BaseDir
 & ".venv\Scripts\activate.ps1"
-Start-Process -FilePath "uvicorn" `
-    -ArgumentList "app.main:app", "--host", "0.0.0.0", "--port", "8000" `
+Start-Process -FilePath "$BaseDir\.venv\Scripts\python.exe" `
+    -ArgumentList "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000" `
     -WorkingDirectory $BaseDir `
     -WindowStyle Hidden `
     -RedirectStandardOutput $LogFile `
