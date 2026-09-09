@@ -11,7 +11,7 @@ if ($uvicorn) {
     Write-Host "No se encontrÃ³ proceso uvicorn corriendo." -ForegroundColor Gray
 }
 
-$BaseDir = "C:\Projects\PAGINA WEB 3P\api"
+$BaseDir = "C:\Projects\PAGINA WEB 3P\pagina web 3p\api"
 $LogDir = "$BaseDir\logs"
 $LogFile = "$LogDir\backend.log"
 $ErrFile = "$LogDir\backend.err"

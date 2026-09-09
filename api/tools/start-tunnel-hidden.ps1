@@ -1,7 +1,7 @@
 ﻿# Inicia el tÃºnel de Cloudflare en segundo plano y guarda logs.
 # Uso: Task Scheduler al inicio de sesiÃ³n.
 
-$ScriptDir = "C:\Projects\PAGINA WEB 3P\api\tools"
+$ScriptDir = "C:\Projects\PAGINA WEB 3P\pagina web 3p\api\tools"
 $Cloudflared = "$ScriptDir\cloudflared.exe"
 $ConfigPath = "$ScriptDir\.cloudflared\config.yml"
 $TokenPath = "$ScriptDir\.cloudflared\token.txt"

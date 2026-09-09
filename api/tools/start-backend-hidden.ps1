@@ -1,7 +1,7 @@
 ﻿# Inicia el backend de 3P en segundo plano y guarda logs.
 # Uso: Task Scheduler al inicio de sesiÃ³n.
 
-$BaseDir = "C:\Projects\PAGINA WEB 3P\api"
+$BaseDir = "C:\Projects\PAGINA WEB 3P\pagina web 3p\api"
 $LogDir = "$BaseDir\logs"
 $StartupLog = "$LogDir\startup-backend.log"
 $LogFile = "$LogDir\backend.log"

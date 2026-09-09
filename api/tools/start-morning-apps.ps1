@@ -2,7 +2,7 @@
 # Se ejecuta automÃ¡ticamente al inicio de sesiÃ³n mediante la tarea programada "3P-Morning-Apps".
 
 $ErrorActionPreference = "Continue"
-$LogFile = "C:\Projects\PAGINA WEB 3P\api\logs\morning-apps.log"
+$LogFile = "C:\Projects\PAGINA WEB 3P\pagina web 3p\api\logs\morning-apps.log"
 
 function Write-Log {
     param([string]$Message, [string]$Level = "INFO")

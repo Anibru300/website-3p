@@ -4,7 +4,7 @@
 $ErrorActionPreference = "Stop"
 
 $TaskName = "3P-Inventario-Snapshot-Diario"
-$ScriptPath = "C:\Projects\PAGINA WEB 3P\scripts\inventario-snapshot-daily.ps1"
+$ScriptPath = "C:\Projects\PAGINA WEB 3P\pagina web 3p\scripts\inventario-snapshot-daily.ps1"
 $User = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
 $Action = New-ScheduledTaskAction `

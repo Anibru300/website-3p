@@ -11,7 +11,7 @@ if ($cloudflared) {
     Write-Host "No se encontrÃ³ proceso cloudflared corriendo." -ForegroundColor Gray
 }
 
-$ScriptDir = "C:\Projects\PAGINA WEB 3P\api\tools"
+$ScriptDir = "C:\Projects\PAGINA WEB 3P\pagina web 3p\api\tools"
 $Cloudflared = "$ScriptDir\cloudflared.exe"
 $ConfigPath = "$ScriptDir\.cloudflared\config.yml"
 $TokenPath = "$ScriptDir\.cloudflared\token.txt"
