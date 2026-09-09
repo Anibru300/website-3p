@@ -2713,14 +2713,7 @@ export default function DashboardPage() {
             accessor: (row) => Number(row.total_facturado) || 0,
             format: formatCurrency,
           },
-          {
-            key: 'saldo_pendiente',
-            label: 'Saldo',
-            sortable: true,
-            total: true,
-            accessor: (row) => Number(row.saldo_pendiente) || 0,
-            format: formatCurrency,
-          },
+          { key: 'moneda', label: 'Moneda', sortable: true },
           { key: 'estado', label: 'Estado', sortable: true },
           {
             key: 'dias_pendiente',

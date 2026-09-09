@@ -263,6 +263,7 @@ def _pedidos_vivos_from_rows(cabeceras, detalles, busqueda: str = "", limit: int
                 "importe_total": 0.0,
                 "total_facturado": 0.0,
                 "saldo_pendiente": 0.0,
+                "moneda": "",
             }
         cant_pedida = d.get("CANT_PEDIDA", 0) or 0
         precio_unitario = d.get("PRECIO_UNITARIO", 0) or 0
@@ -270,8 +271,17 @@ def _pedidos_vivos_from_rows(cabeceras, detalles, busqueda: str = "", limit: int
         pendiente_facturar = d.get("PENDIENTE_FACTURAR", 0) or 0
         try:
             agg[folio]["importe_total"] += float(cant_pedida) * float(precio_unitario)
-            agg[folio]["total_facturado"] += float(total_facturado)
-            agg[folio]["saldo_pendiente"] += float(pendiente_facturar)
+            # TOTAL_FACTURADO y PENDIENTE_FACTURAR vienen repetidos en cada
+            # línea con el total a nivel pedido: tomarlos una sola vez (MAX),
+            # si se suman se inflan por el número de líneas.
+            agg[folio]["total_facturado"] = max(
+                agg[folio]["total_facturado"], float(total_facturado)
+            )
+            agg[folio]["saldo_pendiente"] = max(
+                agg[folio]["saldo_pendiente"], float(pendiente_facturar)
+            )
+            if not agg[folio]["moneda"]:
+                agg[folio]["moneda"] = normalize_text(d.get("MONEDA") or "")
         except (ValueError, TypeError):
             continue
 
@@ -308,7 +318,9 @@ def _pedidos_vivos_from_rows(cabeceras, detalles, busqueda: str = "", limit: int
         else:
             estado_calculado = "Pendiente"
 
-        moneda_val = normalize_text(c.get("MONEDA") or c.get("MONEDA_PEDIDO") or "MXN").upper()
+        moneda_val = normalize_text(
+            totales.get("moneda") or c.get("MONEDA") or c.get("MONEDA_PEDIDO") or "MXN"
+        ).upper()
         if moneda_val not in ("USD", "MXN", "PESOS", "DOLARES", "DÓLARES"):
             moneda_val = "MXN"
         if moneda_val in ("PESOS",):
