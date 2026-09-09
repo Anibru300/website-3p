@@ -139,7 +139,7 @@ const Header = () => {
                 {language.toUpperCase()}
               </button>
               <a
-                href="/login"
+                href="https://plataforma.3psadecv.com/login"
                 className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-p3-red hover:text-white transition-all"
                 title="Acceso 3P"
               >
@@ -195,7 +195,7 @@ const Header = () => {
               ))}
             </div>
             <a
-              href="/login"
+              href="https://plataforma.3psadecv.com/login"
               onClick={() => setIsMobileMenuOpen(false)}
               className="mt-4 flex items-center gap-2 px-4 py-3 rounded-lg bg-p3-red text-white font-medium"
             >

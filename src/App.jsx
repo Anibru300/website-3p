@@ -2,8 +2,6 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Header } from './components/layout';
 import WhatsAppFloat from './components/layout/WhatsAppFloat';
 import HomePage from './pages/HomePage';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import { useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
 import { trackEvent } from './utils/api';
 
@@ -18,11 +16,11 @@ const LbWhitePage = lazy(() => import('./pages/LbWhitePage'));
 const AmtPage = lazy(() => import('./pages/AmtPage'));
 const AlkePage = lazy(() => import('./pages/AlkePage'));
 const GenericBrandPage = lazy(() => import('./pages/GenericBrandPage'));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
-const DashboardPage = lazy(() => import('./pages/DashboardPage'));
-const CotizadorPage = lazy(() => import('./pages/CotizadorPage'));
-const LogisticaPage = lazy(() => import('./pages/LogisticaPage'));
-const AdminPage = lazy(() => import('./pages/AdminPage'));
+
+// La plataforma privada (login, dashboard, admin, logística, cotizador) vive en
+// otro repositorio/sitio: cualquier ruta vieja redirige allá.
+const PLATAFORMA_URL = 'https://plataforma.3psadecv.com';
+const RUTAS_PLATAFORMA = ['login', 'dashboard', 'admin', 'logistica', 'cotizador'];
 
 function PageLoader() {
   return (
@@ -30,25 +28,6 @@ function PageLoader() {
       <div className="w-10 h-10 border-4 border-p3-red border-t-transparent rounded-full animate-spin"></div>
     </div>
   );
-}
-
-function AdminGuard({ children }) {
-  const { user, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-p3-red border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Verificando sesión...</p>
-        </div>
-      </div>
-    );
-  }
-  if (!user || user.rol !== 'admin') {
-    window.location.href = '/dashboard';
-    return null;
-  }
-  return children;
 }
 
 function App() {
@@ -86,6 +65,7 @@ function App() {
   const cleanRoute = route || '/';
   const [pathPart] = cleanRoute.split('?'); // Get only the path part, ignore query string
   const segments = pathPart.split('/').filter(Boolean);
+  const esRutaPlataforma = RUTAS_PLATAFORMA.includes(segments[0]);
 
   // Scroll a sección cuando la ruta apunta a un ancla de HomePage
   useEffect(() => {
@@ -114,44 +94,18 @@ function App() {
     }
   }, [segments]);
 
+  // Rutas de la plataforma: redirigir al sitio privado conservando la ruta
+  if (esRutaPlataforma) {
+    window.location.replace(`${PLATAFORMA_URL}${pathPart}`);
+    return null;
+  }
+
   let content = <HomePage />;
   let showHeader = true;
 
-  if (segments[0] === 'login') {
-    content = <LoginPage />;
-    showHeader = false;
-  } else if (segments[0] === 'dashboard') {
-    content = (
-      <ProtectedRoute>
-        <DashboardPage />
-      </ProtectedRoute>
-    );
-    showHeader = false;
-  } else if (segments[0] === 'cotizador') {
-    content = (
-      <ProtectedRoute>
-        <CotizadorPage />
-      </ProtectedRoute>
-    );
-    showHeader = false;
-  } else if (segments[0] === 'logistica') {
-    content = (
-      <ProtectedRoute>
-        <LogisticaPage />
-      </ProtectedRoute>
-    );
-    showHeader = false;
-  } else if (segments[0] === 'admin') {
-    content = (
-      <ProtectedRoute>
-        <AdminGuard>
-          <AdminPage />
-        </AdminGuard>
-      </ProtectedRoute>
-    );
-    showHeader = false;
-  } else if (segments[0] === 'marcas') {
+  if (segments[0] === 'marcas') {
     const brandId = segments[1];
+    showHeader = true;
     if (brandId === 'chore-time') {
       // Chore-Time no es distribuidor autorizado; no publicar
       content = <HomePage />;

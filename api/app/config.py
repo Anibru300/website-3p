@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     service_token: str = ""
 
     # CORS
-    cors_origins: str = "http://localhost:5173,https://3psadecv.com"
+    cors_origins: str = "http://localhost:5173,https://3psadecv.com,https://plataforma.3psadecv.com"
 
     # PostgreSQL
     postgres_host: str = "localhost"

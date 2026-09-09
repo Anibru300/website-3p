@@ -29,10 +29,8 @@ export async function apiFetch(endpoint, options = {}) {
   });
 
   if (response.status === 401) {
-    console.error('[apiFetch] 401 en', endpoint, 'status:', response.status, 'headers:', Object.fromEntries(response.headers.entries()));
     removeToken();
-    window.location.href = '/login';
-    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
+    throw new Error('Sesión expirada.');
   }
 
   let data;
@@ -44,7 +42,6 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   if (!response.ok) {
-    console.error('[apiFetch] Error', response.status, 'en', endpoint, 'respuesta:', data);
     const error = new Error(data.detail || `Error ${response.status}`);
     error.status = response.status;
     throw error;
@@ -53,302 +50,37 @@ export async function apiFetch(endpoint, options = {}) {
   return data;
 }
 
-export async function loginUser(username, password, remember = false) {
-  const params = new URLSearchParams();
-  params.append('username', username);
-  params.append('password', password);
-  if (remember) {
-    params.append('scope', 'remember');
-  }
-
-  const data = await apiFetch('/api/auth/login', {
-    method: 'POST',
-    body: params.toString(),
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-
-  if (data.access_token) {
-    setToken(data.access_token);
-  }
-  return data;
-}
-
-export async function verifyTotp(email, tempToken, code) {
-  const data = await apiFetch('/api/auth/verify-totp', {
-    method: 'POST',
-    body: JSON.stringify({ email, temp_token: tempToken, code }),
-  });
-
-  if (data.access_token) {
-    setToken(data.access_token);
-  }
-  return data;
-}
-
-export async function fetchMe() {
-  return apiFetch('/api/me');
-}
-
-export async function fetchDashboardResumen() {
-  return apiFetch('/api/dashboard/resumen');
-}
-
-export async function fetchExistencias(query = '') {
-  return apiFetch(`/api/almacen/existencias?${query}`);
-}
-
-export async function fetchExistenciasPorCodigos(codigos = []) {
-  if (!codigos || codigos.length === 0) return { data: {} };
-  return apiFetch('/api/almacen/existencias-por-codigos', {
-    method: 'POST',
-    body: JSON.stringify({ codigos }),
-  });
-}
-
-export async function fetchSubalmacenes() {
-  return apiFetch('/api/almacen/subalmacenes');
-}
-
-export async function fetchVales(query = '') {
-  return apiFetch(`/api/almacen/vales?${query}`);
-}
-
-export async function fetchPedidosVivos(query = '') {
-  return apiFetch(`/api/ventas/pedidos-vivos?${query}`);
-}
-
 // ---------------------------------------------------------------------------
-// Logística (demanda / abastecimiento / asignación / recepciones)
+// Fichas/documentos públicos de productos
 // ---------------------------------------------------------------------------
 
-export async function fetchLogisticaResumen() {
-  return apiFetch('/api/logistica/resumen');
+export async function fetchDocumentosPublicos(marca, codigo) {
+  const params = new URLSearchParams({ marca, codigo });
+  return apiFetch(`/api/fichas/publicas?${params.toString()}`);
 }
 
-export async function fetchLogisticaDemanda(query = '') {
-  return apiFetch(`/api/logistica/demanda?${query}`);
+export function obtenerPdfFichaUrl(id) {
+  return `${API_BASE}/api/fichas/${id}/pdf`;
 }
 
-export async function regenerarLogisticaDemanda() {
-  return apiFetch('/api/logistica/demanda/regenerar', { method: 'POST' });
-}
-
-export async function crearLogisticaDemanda(datos) {
-  return apiFetch('/api/logistica/demanda', {
-    method: 'POST',
-    body: JSON.stringify({ cliente_clave: '', ...datos }),
-  });
-}
-
-export async function editarLogisticaDemanda(id, datos) {
-  return apiFetch(`/api/logistica/demanda/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ cliente_clave: '', ...datos }),
-  });
-}
-
-export async function cerrarLogisticaDemanda(id) {
-  return apiFetch(`/api/logistica/demanda/${id}`, { method: 'DELETE' });
-}
-
-export async function fetchLogisticaAbastecimientos(query = '') {
-  return apiFetch(`/api/logistica/abastecimientos?${query}`);
-}
-
-export async function crearLogisticaAbastecimiento(datos) {
-  return apiFetch('/api/logistica/abastecimientos', {
-    method: 'POST',
-    body: JSON.stringify({ proveedor_clave: '', ...datos }),
-  });
-}
-
-export async function editarLogisticaAbastecimiento(id, datos) {
-  return apiFetch(`/api/logistica/abastecimientos/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ proveedor_clave: '', ...datos }),
-  });
-}
-
-export async function eliminarLogisticaAbastecimiento(id) {
-  return apiFetch(`/api/logistica/abastecimientos/${id}`, { method: 'DELETE' });
-}
-
-export async function fetchLogisticaAsignaciones(query = '') {
-  return apiFetch(`/api/logistica/asignaciones?${query}`);
-}
-
-export async function crearLogisticaAsignacion(datos) {
-  return apiFetch('/api/logistica/asignaciones', { method: 'POST', body: JSON.stringify(datos) });
-}
-
-export async function eliminarLogisticaAsignacion(id) {
-  return apiFetch(`/api/logistica/asignaciones/${id}`, { method: 'DELETE' });
-}
-
-export async function fetchLogisticaRecepciones(query = '') {
-  return apiFetch(`/api/logistica/recepciones?${query}`);
-}
-
-export async function crearLogisticaRecepcion(datos) {
-  return apiFetch('/api/logistica/recepciones', { method: 'POST', body: JSON.stringify(datos) });
-}
-
-export async function fetchLogisticaCobertura(material) {
-  return apiFetch(`/api/logistica/cobertura/${encodeURIComponent(material)}`);
-}
-
-export async function fetchCandidatasSae(abastecimientoId) {
-  return apiFetch(`/api/logistica/abastecimientos/${abastecimientoId}/candidatas-sae`);
-}
-
-export async function vincularRecepcionSae(recepcionId, movSaeId) {
-  return apiFetch(`/api/logistica/recepciones/${recepcionId}/vincular`, {
-    method: 'POST',
-    body: JSON.stringify({ mov_sae_id: movSaeId }),
-  });
-}
-
-export async function fetchLogisticaProveedores(busqueda = '') {
-  const query = busqueda ? `?busqueda=${encodeURIComponent(busqueda)}` : '';
-  return apiFetch(`/api/logistica/proveedores${query}`);
-}
-
-export async function fetchLogisticaClientes(busqueda = '') {
-  const query = busqueda ? `?busqueda=${encodeURIComponent(busqueda)}` : '';
-  return apiFetch(`/api/logistica/clientes${query}`);
-}
-
-export async function fetchClienteDetalle(clave) {
-  return apiFetch(`/api/logistica/clientes/${encodeURIComponent(clave)}`);
-}
-
-export async function fetchProveedorDetalle(clave) {
-  return apiFetch(`/api/logistica/proveedores/${encodeURIComponent(clave)}`);
-}
-
-export async function buscarCatalogoSae(busqueda = '') {
-  return apiFetch(`/api/admin/stock-config/catalogo?busqueda=${encodeURIComponent(busqueda)}&limit=20`);
-}
-
-export async function fetchHistorialVentas(query = '') {
-  return apiFetch(`/api/ventas/historial?${query}`);
-}
-
-export async function fetchHistorialVentasMetadata() {
-  return apiFetch('/api/ventas/historial/metadata');
-}
-
-export async function exportarHistorialVentas(filtros, filename = 'historial_ventas.xlsx') {
+// Abre el PDF en pestaña nueva. Para docs públicos basta la URL directa;
+// con JWT también funciona para privados usando fetch + blob.
+export async function verPdfFicha(id) {
   const token = getToken();
-  const url = `${API_BASE}/api/ventas/historial/exportar`;
+  const url = obtenerPdfFichaUrl(id);
+
+  if (!token) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return { success: true };
+  }
 
   const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(filtros),
+    headers: { Authorization: `Bearer ${token}` },
   });
 
   if (response.status === 401) {
     removeToken();
-    window.location.href = '/login';
-    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
-  }
-
-  if (!response.ok) {
-    let detail = `Error ${response.status}`;
-    try {
-      const data = await response.json();
-      detail = data.detail || detail;
-    } catch {
-      detail = await response.text();
-    }
-    throw new Error(detail);
-  }
-
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = objectUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(objectUrl);
-}
-
-export async function fetchPrecioReferencia(codigo, cliente = '') {
-  const params = new URLSearchParams({ codigo });
-  if (cliente) params.set('cliente', cliente);
-  return apiFetch(`/api/cotizaciones/precio-referencia?${params.toString()}`);
-}
-
-export async function fetchVendedoresCotizaciones() {
-  return apiFetch('/api/cotizaciones/vendedores');
-}
-
-export async function guardarCotizacion(data) {
-  return apiFetch('/api/cotizaciones', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function listarCotizaciones(query = '') {
-  return apiFetch(`/api/cotizaciones?${query}`);
-}
-
-export function obtenerCotizacionPdfUrl(id) {
-  return `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/cotizaciones/${id}/pdf`;
-}
-
-export async function descargarCotizacionPdf(id, filename = `cotizacion-${id}.pdf`) {
-  const token = getToken();
-  const url = obtenerCotizacionPdfUrl(id);
-
-  const response = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-
-  if (response.status === 401) {
-    removeToken();
-    window.location.href = '/login';
-    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
-  }
-
-  if (!response.ok) {
-    throw new Error(`Error ${response.status} al descargar el PDF`);
-  }
-
-  const blob = await response.blob();
-
-  // Fallback: descarga normal
-  const objectUrl = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = objectUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(objectUrl);
-  return { success: true, method: 'download' };
-}
-
-
-export async function verCotizacionPdf(id) {
-  const token = getToken();
-  const url = obtenerCotizacionPdfUrl(id);
-
-  const response = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-
-  if (response.status === 401) {
-    removeToken();
-    window.location.href = '/login';
-    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
+    throw new Error('Sesión expirada.');
   }
 
   if (!response.ok) {
@@ -363,287 +95,9 @@ export async function verCotizacionPdf(id) {
   return { success: true };
 }
 
-export async function fetchFacturasCobranza(query = '') {
-  return apiFetch(`/api/ventas/facturas-cobranza?${query}`);
-}
-
-export async function fetchSeguimientoDocumental(query = '') {
-  return apiFetch(`/api/ventas/seguimiento-documental?${query}`);
-}
-
-export async function fetchMovimientosInventario(query = '') {
-  return apiFetch(`/api/inventario/movimientos?${query}`);
-}
-
-export async function guardarSnapshotValorInventario() {
-  return apiFetch('/api/inventario/valor-historico/snapshot', {
-    method: 'POST',
-  });
-}
-
-export async function fetchHistorialValorInventario({ fecha_desde, fecha_hasta } = {}) {
-  const params = new URLSearchParams();
-  if (fecha_desde) params.set('fecha_desde', fecha_desde);
-  if (fecha_hasta) params.set('fecha_hasta', fecha_hasta);
-  const query = params.toString();
-  return apiFetch(`/api/inventario/valor-historico${query ? `?${query}` : ''}`);
-}
-
-export async function fetchAlertasStock() {
-  return apiFetch('/api/inventario/alertas-stock');
-}
-
-export async function fetchValorPorProducto(cveAlm) {
-  return apiFetch(`/api/inventario/valor-por-producto?cve_alm=${encodeURIComponent(cveAlm)}`);
-}
-
-export async function fetchSanAntonioOrdenes(query = '') {
-  return apiFetch(`/api/san-antonio/ordenes?${query}`);
-}
-
-export async function fetchCrmResumen() {
-  return apiFetch('/api/admin/crm/resumen');
-}
-
-export async function fetchCrmEntidades(query = '') {
-  return apiFetch(`/api/admin/crm/entidades?${query}`);
-}
-
-export async function fetchCrmPortales(query = '') {
-  return apiFetch(`/api/admin/crm/portales?${query}`);
-}
-
-export async function crearEntidadCrm(data) {
-  return apiFetch('/api/admin/crm/entidades', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function fetchCrmEntidad(id) {
-  return apiFetch(`/api/admin/crm/entidades/${id}`);
-}
-
-export async function actualizarEntidadCrm(id, data) {
-  return apiFetch(`/api/admin/crm/entidades/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function eliminarEntidadCrm(id) {
-  return apiFetch(`/api/admin/crm/entidades/${id}`, {
-    method: 'DELETE',
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Contactos
-// ---------------------------------------------------------------------------
-
-export async function fetchCrmContactos(entidadId) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/contactos`);
-}
-
-export async function crearContactoCrm(entidadId, data) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/contactos`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function actualizarContactoCrm(contactoId, data) {
-  return apiFetch(`/api/admin/crm/contactos/${contactoId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function eliminarContactoCrm(contactoId) {
-  return apiFetch(`/api/admin/crm/contactos/${contactoId}`, {
-    method: 'DELETE',
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Granjas
-// ---------------------------------------------------------------------------
-
-export async function fetchCrmGranjas(entidadId) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/granjas`);
-}
-
-export async function crearGranjaCrm(entidadId, data) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/granjas`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function actualizarGranjaCrm(granjaId, data) {
-  return apiFetch(`/api/admin/crm/granjas/${granjaId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function eliminarGranjaCrm(granjaId) {
-  return apiFetch(`/api/admin/crm/granjas/${granjaId}`, {
-    method: 'DELETE',
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Ubicaciones / Domicilios
-// ---------------------------------------------------------------------------
-
-export async function fetchCrmUbicaciones(entidadId) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/ubicaciones`);
-}
-
-export async function crearUbicacionCrm(entidadId, data) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/ubicaciones`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function actualizarUbicacionCrm(ubicacionId, data) {
-  return apiFetch(`/api/admin/crm/ubicaciones/${ubicacionId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function eliminarUbicacionCrm(ubicacionId) {
-  return apiFetch(`/api/admin/crm/ubicaciones/${ubicacionId}`, {
-    method: 'DELETE',
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Paqueterías
-// ---------------------------------------------------------------------------
-
-export async function fetchCrmPaqueterias(entidadId) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/paqueterias`);
-}
-
-export async function crearPaqueteriaCrm(entidadId, data) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/paqueterias`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function actualizarPaqueteriaCrm(paqueteriaId, data) {
-  return apiFetch(`/api/admin/crm/paqueterias/${paqueteriaId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function eliminarPaqueteriaCrm(paqueteriaId) {
-  return apiFetch(`/api/admin/crm/paqueterias/${paqueteriaId}`, {
-    method: 'DELETE',
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Portales
-// ---------------------------------------------------------------------------
-
-export async function fetchCrmEntidadPortales(entidadId) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/portales`);
-}
-
-export async function crearPortalCrm(entidadId, data) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/portales`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function actualizarPortalCrm(portalId, data) {
-  return apiFetch(`/api/admin/crm/portales/${portalId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function eliminarPortalCrm(portalId) {
-  return apiFetch(`/api/admin/crm/portales/${portalId}`, {
-    method: 'DELETE',
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Descuentos
-// ---------------------------------------------------------------------------
-
-export async function fetchCrmDescuentos(entidadId) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/descuentos`);
-}
-
-export async function crearDescuentoCrm(entidadId, data) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/descuentos`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function actualizarDescuentoCrm(descuentoId, data) {
-  return apiFetch(`/api/admin/crm/descuentos/${descuentoId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function eliminarDescuentoCrm(descuentoId) {
-  return apiFetch(`/api/admin/crm/descuentos/${descuentoId}`, {
-    method: 'DELETE',
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Documentos
-// ---------------------------------------------------------------------------
-
-export async function fetchCrmDocumentos(entidadId) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/documentos`);
-}
-
-export async function crearDocumentoCrm(entidadId, data) {
-  return apiFetch(`/api/admin/crm/entidades/${entidadId}/documentos`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function actualizarDocumentoCrm(documentoId, data) {
-  return apiFetch(`/api/admin/crm/documentos/${documentoId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function eliminarDocumentoCrm(documentoId) {
-  return apiFetch(`/api/admin/crm/documentos/${documentoId}`, {
-    method: 'DELETE',
-  });
-}
-
-export function getProductoFotoUrl(codigo) {
-  return `${API_BASE}/api/almacen/foto-producto/${encodeURIComponent(codigo)}`;
-}
-
-export async function fetchProductoFotoBlobUrl(codigo) {
-  if (!codigo || String(codigo).trim() === '') {
-    return null;
-  }
-
-  const url = getProductoFotoUrl(codigo);
+export async function descargarPdfFicha(id, nombreArchivo = `ficha-${id}.pdf`) {
   const token = getToken();
+  const url = obtenerPdfFichaUrl(id);
 
   const response = await fetch(url, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -651,22 +105,23 @@ export async function fetchProductoFotoBlobUrl(codigo) {
 
   if (response.status === 401) {
     removeToken();
-    window.location.href = '/login';
-    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
-  }
-
-  // 204 = sin foto registrada; 404 = endpoint/producto no encontrado.
-  // En ambos casos tratamos como "sin foto" para no mostrar error al usuario.
-  if (response.status === 204 || response.status === 404) {
-    return null;
+    throw new Error('Sesión expirada.');
   }
 
   if (!response.ok) {
-    throw new Error(`Error ${response.status}`);
+    throw new Error(`Error ${response.status} al descargar el PDF`);
   }
 
   const blob = await response.blob();
-  return URL.createObjectURL(blob);
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = nombreArchivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
+  return { success: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -747,229 +202,4 @@ export function trackEvent(eventType, { path, section, metadata } = {}) {
   }).catch(() => {
     // Silenciar errores de analytics para no afectar la experiencia
   });
-}
-
-function _analyticsQuery(dias, fechaDesde, fechaHasta, pais = '', ciudad = '') {
-  const params = new URLSearchParams();
-  params.set('dias', String(dias));
-  if (fechaDesde) params.set('fecha_desde', fechaDesde);
-  if (fechaHasta) params.set('fecha_hasta', fechaHasta);
-  if (pais) params.set('pais', pais);
-  if (ciudad) params.set('ciudad', ciudad);
-  return params.toString();
-}
-
-export async function fetchAnalyticsResumen(dias = 30, tipo = 'todos', fechaDesde = '', fechaHasta = '') {
-  const query = _analyticsQuery(dias, fechaDesde, fechaHasta);
-  return apiFetch(`/api/analytics/resumen?${query}&tipo=${tipo}`);
-}
-
-export async function fetchAnalyticsVisitas(query = '') {
-  return apiFetch(`/api/analytics/visitas?${query}`);
-}
-
-export async function fetchAnalyticsPublicoPorDia(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
-  return apiFetch(`/api/analytics/publico/por-dia?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
-}
-
-export async function fetchAnalyticsPublicoPorHora(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
-  return apiFetch(`/api/analytics/publico/por-hora?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
-}
-
-export async function fetchAnalyticsPublicoPorDiaHora(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
-  return apiFetch(`/api/analytics/publico/por-dia-hora?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
-}
-
-export async function fetchAnalyticsPublicoComparativa(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
-  return apiFetch(`/api/analytics/publico/comparativa?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
-}
-
-export async function fetchAnalyticsPublicoDispositivos(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
-  return apiFetch(`/api/analytics/publico/dispositivos?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
-}
-
-export async function fetchAnalyticsPublicoNavegadores(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
-  return apiFetch(`/api/analytics/publico/navegadores?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
-}
-
-export async function fetchAnalyticsPublicoSistemasOperativos(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
-  return apiFetch(`/api/analytics/publico/sistemas-operativos?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
-}
-
-export async function fetchAnalyticsPublicoPaises(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
-  return apiFetch(`/api/analytics/publico/paises?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
-}
-
-export async function fetchAnalyticsPublicoCiudades(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
-  return apiFetch(`/api/analytics/publico/ciudades?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
-}
-
-export async function fetchAnalyticsPublicoReferrers(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
-  return apiFetch(`/api/analytics/publico/referrers?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
-}
-
-export async function fetchAnalyticsPublicoPaginas(dias = 30, fechaDesde = '', fechaHasta = '', pais = '', ciudad = '') {
-  return apiFetch(`/api/analytics/publico/paginas?${_analyticsQuery(dias, fechaDesde, fechaHasta, pais, ciudad)}`);
-}
-
-export async function fetchAnalyticsAlertas(dias = 30, fechaDesde = '', fechaHasta = '', umbralIntentos = 5) {
-  const params = new URLSearchParams(_analyticsQuery(dias, fechaDesde, fechaHasta));
-  params.set('umbral_intentos', String(umbralIntentos));
-  return apiFetch(`/api/analytics/alertas?${params.toString()}`);
-}
-
-export async function fetchAnalyticsAlertasAvanzadas() {
-  return apiFetch('/api/analytics/alertas/avanzadas');
-}
-
-// ---------------------------------------------------------------------------
-// Fichas Técnicas (documentación de producto por marca)
-// ---------------------------------------------------------------------------
-
-export async function fetchTiposDocumento() {
-  return apiFetch('/api/fichas/tipos');
-}
-
-export async function fetchFichasAdmin(params = {}) {
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      query.set(key, value);
-    }
-  });
-  const qs = query.toString();
-  return apiFetch(`/api/fichas${qs ? `?${qs}` : ''}`);
-}
-
-export async function fetchProductosMarca(marca) {
-  return apiFetch(`/api/fichas/productos?marca=${encodeURIComponent(marca)}`);
-}
-
-// Multipart manual: apiFetch fuerza Content-Type json, así que se hace fetch
-// directo con solo el header Authorization (mismo patrón que vendedores/firmas).
-export async function subirDocumentoProducto(formData) {
-  const token = getToken();
-  const response = await fetch(`${API_BASE}/api/fichas`, {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
-  });
-
-  if (response.status === 401) {
-    removeToken();
-    window.location.href = '/login';
-    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
-  }
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.detail || `Error ${response.status}`);
-  }
-  return data;
-}
-
-export async function actualizarDocumento(id, patch) {
-  return apiFetch(`/api/fichas/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(patch),
-  });
-}
-
-export async function desactivarDocumento(id) {
-  return apiFetch(`/api/fichas/${id}`, { method: 'DELETE' });
-}
-
-export async function fetchDocumentosPublicos(marca, codigo) {
-  const params = new URLSearchParams({ marca, codigo });
-  return apiFetch(`/api/fichas/publicas?${params.toString()}`);
-}
-
-export function obtenerPdfFichaUrl(id) {
-  return `${API_BASE}/api/fichas/${id}/pdf`;
-}
-
-// Abre el PDF en pestaña nueva. Para docs públicos basta la URL directa;
-// con JWT también funciona para privados usando fetch + blob.
-export async function verPdfFicha(id) {
-  const token = getToken();
-  const url = obtenerPdfFichaUrl(id);
-
-  if (!token) {
-    window.open(url, '_blank', 'noopener,noreferrer');
-    return { success: true };
-  }
-
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (response.status === 401) {
-    removeToken();
-    window.location.href = '/login';
-    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
-  }
-
-  if (!response.ok) {
-    throw new Error(`Error ${response.status} al abrir el PDF`);
-  }
-
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  window.open(objectUrl, '_blank', 'noopener,noreferrer');
-  // El objectUrl se libera después de unos segundos para dar tiempo a que el visor cargue
-  setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
-  return { success: true };
-}
-
-export async function descargarPdfFicha(id, nombreArchivo = `ficha-${id}.pdf`) {
-  const token = getToken();
-  const url = obtenerPdfFichaUrl(id);
-
-  const response = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-
-  if (response.status === 401) {
-    removeToken();
-    window.location.href = '/login';
-    throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
-  }
-
-  if (!response.ok) {
-    throw new Error(`Error ${response.status} al descargar el PDF`);
-  }
-
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = objectUrl;
-  a.download = nombreArchivo;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(objectUrl);
-  return { success: true };
-}
-
-export async function descargarReporteAnalytics(formato, dias = 30, fechaDesde = '', fechaHasta = '') {
-  const response = await fetch(
-    `${API_BASE}/api/analytics/reporte/${formato}?${_analyticsQuery(dias, fechaDesde, fechaHasta)}`,
-    {
-      headers: {
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`Error ${response.status} al generar el reporte`);
-  }
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const enlace = document.createElement('a');
-  enlace.href = url;
-  enlace.download = `reporte_trafico_${new Date().toISOString().slice(0, 10)}.${formato}`;
-  document.body.appendChild(enlace);
-  enlace.click();
-  enlace.remove();
-  URL.revokeObjectURL(url);
 }
