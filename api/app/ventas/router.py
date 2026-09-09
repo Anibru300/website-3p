@@ -64,42 +64,66 @@ def seguimiento_documental(
     user: dict = Depends(get_current_user),
 ):
     try:
+        # Vista mantenida por el ETL desde SAE (siempre actualizada). Un mismo
+        # pedido+artículo trae una fila PEDIDO y una fila FACTURA por cada
+        # factura vinculada; se consolidan para calcular surtido/pendiente.
         sql = """
             SELECT
-                folio_pedido,
-                fecha_pedido,
-                cliente,
-                codigo,
-                descripcion,
-                cantidad_pedido,
-                folio_remision,
-                cantidad_remision,
-                folio_factura,
-                cantidad_factura,
-                estatus_linea
+                pedido_cve_doc AS folio_pedido,
+                MAX(pedido_fecha) AS fecha_pedido,
+                MAX(pedido_cliente) AS cliente,
+                cve_art AS codigo,
+                MAX(descripcion_art) AS descripcion,
+                SUM(CASE WHEN doc_tipo = 'PEDIDO' THEN cant ELSE 0 END) AS cantidad_pedido,
+                MAX(facturas_vinculadas) AS folio_factura,
+                SUM(CASE WHEN doc_tipo = 'FACTURA' THEN cant ELSE 0 END) AS surtido
             FROM v_seguimiento_documental
-            WHERE 1=1
+            WHERE pedido_cve_doc IS NOT NULL
+              AND doc_tipo IN ('PEDIDO', 'FACTURA')
         """
         params = {}
         if folio_pedido:
-            sql += " AND folio_pedido = %(folio_pedido)s"
-            params["folio_pedido"] = folio_pedido
-        sql += " ORDER BY folio_pedido, codigo LIMIT %(limit)s"
+            sql += " AND pedido_cve_doc = %(folio_pedido)s"
+            params["folio_pedido"] = str(folio_pedido).strip()
+        sql += """
+             GROUP BY pedido_cve_doc, cve_art
+             ORDER BY pedido_cve_doc, cve_art
+             LIMIT %(limit)s
+        """
         params["limit"] = limit
 
         with postgres_cursor() as cur:
             cur.execute(sql, params)
             rows = cur.fetchall()
 
-        return {"data": [dict(row) for row in rows]}
+        data = []
+        for row in rows:
+            d = dict(row)
+            cant = float(d["cantidad_pedido"] or 0)
+            surtido = float(d["surtido"] or 0)
+            pendiente = cant - surtido
+            fecha = d["fecha_pedido"]
+            d["fecha_pedido"] = fecha.isoformat() if hasattr(fecha, "isoformat") else fecha
+            d["cantidad_pedido"] = cant
+            d["surtido"] = surtido
+            d["pendiente"] = pendiente
+            d["estatus_linea"] = (
+                "Facturado" if pendiente <= 0.001 else ("Parcial" if surtido > 0 else "Pendiente")
+            )
+            data.append(d)
+
+        return {"data": data, "fuente": "sae"}
     except Exception as e:
         logger.warning("v_seguimiento_documental fallo, usando fallback Excel: %s", e)
         try:
             detalle = get_pedido_detalle_excel(folio_pedido)
-            return {"data": detalle}
+            for d in detalle:
+                d.setdefault("surtido", None)
+                d.setdefault("pendiente", None)
+            return {"data": detalle, "fuente": "excel"}
         except Exception as e2:
             logger.error("Fallback Excel tambien fallo: %s", e2)
-            return {"data": []}
+            return {"data": [], "fuente": "excel"}
 
 
 def _parse_iso_date(value):

@@ -2768,37 +2768,45 @@ export default function DashboardPage() {
           <DataTable
             rows={pedidoDetalle}
             columns={[
-              { key: 'folio_pedido', label: 'Pedido', sortable: true },
-              { key: 'fecha_pedido', label: 'Fecha pedido', sortable: true },
+              { key: 'folio_pedido', label: 'Folio', sortable: true },
+              {
+                key: 'fecha_pedido',
+                label: 'Fecha pedido',
+                sortable: true,
+                format: (v) => {
+                  if (!v) return '—';
+                  const [y, m, d] = String(v).slice(0, 10).split('-');
+                  return `${d}/${m}/${y}`;
+                },
+              },
               { key: 'cliente', label: 'Cliente', sortable: true, wrap: true },
               { key: 'codigo', label: 'Código', sortable: true },
               { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
               {
                 key: 'cantidad_pedido',
-                label: 'Cantidad',
+                label: 'Pedido',
                 sortable: true,
                 total: true,
                 accessor: (row) => Number(row.cantidad_pedido) || 0,
                 format: formatNumber,
               },
-              { key: 'folio_remision', label: 'Remisión', sortable: true },
               {
-                key: 'cantidad_remision',
-                label: 'Cant. remisión',
+                key: 'surtido',
+                label: 'Surtido',
                 sortable: true,
                 total: true,
-                accessor: (row) => Number(row.cantidad_remision) || 0,
-                format: formatNumber,
+                accessor: (row) => (row.surtido == null ? null : Number(row.surtido)),
+                format: (v) => (v == null ? '—' : formatNumber(v)),
+              },
+              {
+                key: 'pendiente',
+                label: 'Pendiente',
+                sortable: true,
+                total: true,
+                accessor: (row) => (row.pendiente == null ? null : Number(row.pendiente)),
+                format: (v) => (v == null ? '—' : formatNumber(v)),
               },
               { key: 'folio_factura', label: 'Factura', sortable: true },
-              {
-                key: 'cantidad_factura',
-                label: 'Cant. factura',
-                sortable: true,
-                total: true,
-                accessor: (row) => Number(row.cantidad_factura) || 0,
-                format: formatNumber,
-              },
               { key: 'estatus_linea', label: 'Estatus', sortable: true },
             ]}
             emptyMessage="No hay seguimiento documental para este pedido"
