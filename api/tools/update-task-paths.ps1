@@ -1,4 +1,4 @@
-# Actualiza las acciones de las tareas programadas 3P tras el movimiento de carpetas.
+﻿# Actualiza las acciones de las tareas programadas 3P tras el movimiento de carpetas.
 # Ejecutar UNA VEZ como administrador:
 #   powershell -ExecutionPolicy Bypass -File "C:\Projects\PAGINA WEB 3P\pagina web 3p\api\tools\update-task-paths.ps1"
 $ErrorActionPreference = "Stop"
@@ -31,7 +31,7 @@ $tasks = @(
 foreach ($t in $tasks) {
     $existing = Get-ScheduledTask -TaskName $t.Name -ErrorAction SilentlyContinue
     if (-not $existing) {
-        Write-Host "NO EXISTE: $($t.Name) — crearla con su script de registro original." -ForegroundColor Yellow
+        Write-Host "NO EXISTE: $($t.Name) - crearla con su script de registro original." -ForegroundColor Yellow
         continue
     }
     Set-ScheduledTask -TaskName $t.Name -Action $t.Action | Out-Null
