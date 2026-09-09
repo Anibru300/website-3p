@@ -122,6 +122,18 @@ def movimientos(
 # ---------------------------------------------------------------------------
 
 
+def _frescura_espejo() -> str | None:
+    """Devuelve la fecha de la última sincronización del espejo SAE."""
+    sql = "SELECT MAX(sincronizado_el) AS ultimo FROM sae_existencias"
+    with postgres_cursor() as cur:
+        cur.execute(sql)
+        row = cur.fetchone()
+    if not row or row["ultimo"] is None:
+        return None
+    ultimo = row["ultimo"]
+    return ultimo.isoformat() if hasattr(ultimo, "isoformat") else str(ultimo)
+
+
 def _calcular_valor_inventario_actual():
     """Devuelve el valor actual por almacén y el total consolidado."""
     sql = """
@@ -129,7 +141,7 @@ def _calcular_valor_inventario_actual():
             e.cve_alm,
             MAX(a.descripcion) AS nombre,
             SUM(e.exist) AS existencia_total,
-            SUM(e.exist * COALESCE(p.costo_promedio, 0)) AS valor_total
+            SUM(e.exist * GREATEST(COALESCE(p.costo_promedio, 0), COALESCE(p.ultimo_costo, 0))) AS valor_total
         FROM sae_existencias e
         LEFT JOIN sae_almacenes a ON e.cve_alm = a.cve_alm
         LEFT JOIN sae_productos p ON e.cve_art = p.cve_art
@@ -260,7 +272,60 @@ def obtener_historial_valor_inventario(
     finally:
         conn.close()
 
-    return {"data": data}
+    return {"data": data, "espejo_actualizado_el": _frescura_espejo()}
+
+
+# ---------------------------------------------------------------------------
+# Desglose de valor por producto dentro de un almacén (drill-down)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/valor-por-producto")
+def valor_por_producto(
+    cve_alm: str = Query(..., description="Clave del almacén"),
+    user: dict = Depends(get_current_user),
+):
+    """Productos con existencia en un almacén y su valor (mayor de los dos costos)."""
+    sql = """
+        SELECT
+            e.cve_art AS codigo,
+            MAX(COALESCE(p.descripcion, '')) AS descripcion,
+            SUM(e.exist) AS piezas,
+            MAX(p.costo_promedio) AS costo_promedio,
+            MAX(p.ultimo_costo) AS ultimo_costo
+        FROM sae_existencias e
+        LEFT JOIN sae_productos p ON p.cve_art = e.cve_art
+        WHERE e.exist > 0 AND e.cve_alm = %(cve_alm)s
+        GROUP BY e.cve_art
+        ORDER BY SUM(e.exist) * GREATEST(
+            COALESCE(MAX(p.costo_promedio), 0),
+            COALESCE(MAX(p.ultimo_costo), 0)
+        ) DESC
+    """
+    with postgres_cursor() as cur:
+        cur.execute(sql, {"cve_alm": cve_alm})
+        rows = [dict(r) for r in cur.fetchall()]
+
+    productos = []
+    total = 0.0
+    for r in rows:
+        piezas = float(r["piezas"] or 0)
+        prom = float(r["costo_promedio"] or 0)
+        ult = float(r["ultimo_costo"] or 0)
+        costo_usado = max(prom, ult)
+        valor = piezas * costo_usado
+        total += valor
+        productos.append({
+            "codigo": r["codigo"],
+            "descripcion": r["descripcion"],
+            "piezas": piezas,
+            "costo_promedio": prom,
+            "ultimo_costo": ult,
+            "costo_usado": costo_usado,
+            "valor": valor,
+        })
+
+    return {"cve_alm": cve_alm, "total": total, "productos": productos}
 
 
 # ---------------------------------------------------------------------------

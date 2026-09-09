@@ -298,7 +298,7 @@ def subalmacenes(user: dict = Depends(get_current_user)):
             e.cve_alm,
             MAX(a.descripcion) AS nombre,
             SUM(e.exist) AS existencia_total,
-            SUM(e.exist * COALESCE(p.costo_promedio, 0)) AS valor_total
+            SUM(e.exist * GREATEST(COALESCE(p.costo_promedio, 0), COALESCE(p.ultimo_costo, 0))) AS valor_total
         FROM sae_existencias e
         LEFT JOIN sae_almacenes a ON e.cve_alm = a.cve_alm
         LEFT JOIN sae_productos p ON e.cve_art = p.cve_art

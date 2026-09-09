@@ -19,6 +19,7 @@ import {
   exportarHistorialVentas,
   guardarSnapshotValorInventario,
   fetchHistorialValorInventario,
+  fetchValorPorProducto,
   fetchAlertasStock,
   trackEvent,
 } from '../utils/api';
@@ -1227,6 +1228,11 @@ export default function DashboardPage() {
   // Historial de valor del inventario
   const [historialValor, setHistorialValor] = useState([]);
   const [historialValorLoading, setHistorialValorLoading] = useState(false);
+  const [frescuraEspejo, setFrescuraEspejo] = useState(null);
+  const [drillCveAlm, setDrillCveAlm] = useState('');
+  const [drillProductos, setDrillProductos] = useState([]);
+  const [drillTotal, setDrillTotal] = useState(0);
+  const [drillLoading, setDrillLoading] = useState(false);
 
   // Refs para evitar doble carga inicial en efectos con debounce
   const initialLoadDone = useRef({ existencias: false, historial: false });
@@ -1340,12 +1346,31 @@ export default function DashboardPage() {
       if (historialValorHasta) params.fecha_hasta = historialValorHasta;
       const data = await fetchHistorialValorInventario(params);
       setHistorialValor(data.data || []);
+      setFrescuraEspejo(data.espejo_actualizado_el || null);
     } catch (err) {
       setError(err.message);
     } finally {
       setHistorialValorLoading(false);
     }
   }, [historialValorDesde, historialValorHasta]);
+
+  const loadDrillProductos = useCallback(async (cveAlm) => {
+    if (!cveAlm) {
+      setDrillProductos([]);
+      setDrillTotal(0);
+      return;
+    }
+    setDrillLoading(true);
+    try {
+      const data = await fetchValorPorProducto(cveAlm);
+      setDrillProductos(data.productos || []);
+      setDrillTotal(data.total || 0);
+    } catch {
+      // silencioso: el drill-down no debe tumbar la pestaña
+    } finally {
+      setDrillLoading(false);
+    }
+  }, []);
 
   const buildHistorialQuery = useCallback(
     (offset = 0) => {
@@ -3363,6 +3388,44 @@ export default function DashboardPage() {
     const cambio = valorActual - valorAnterior;
     const cambioPct = valorAnterior !== 0 ? (cambio / valorAnterior) * 100 : 0;
 
+    const ultimaFecha = totalRows.length > 0 ? totalRows[totalRows.length - 1].fecha : null;
+    const topAlmacen = ultimaFecha
+      ? historialValor
+          .filter((d) => d.fecha === ultimaFecha && d.cve_alm && d.cve_alm !== 'TOTAL')
+          .sort((a, b) => b.valor_total - a.valor_total)[0]
+      : null;
+    const topAlmacenPct = topAlmacen && valorActual ? (topAlmacen.valor_total / valorActual) * 100 : 0;
+
+    // Días dentro del rango que no tienen snapshot (la tarea no corrió o la PC estaba apagada)
+    const diasFaltantes = (() => {
+      if (fechas.length < 2) return [];
+      const [ay, am, ad] = fechas[0].split('-').map(Number);
+      const [by, bm, bd] = fechas[fechas.length - 1].split('-').map(Number);
+      const actual = new Date(ay, am - 1, ad);
+      const fin = new Date(by, bm - 1, bd);
+      const conRegistro = new Set(fechas);
+      const faltantes = [];
+      while (actual <= fin) {
+        const key = `${actual.getFullYear()}-${String(actual.getMonth() + 1).padStart(2, '0')}-${String(actual.getDate()).padStart(2, '0')}`;
+        if (!conRegistro.has(key)) faltantes.push(key);
+        actual.setDate(actual.getDate() + 1);
+      }
+      return faltantes;
+    })();
+
+    // Frescura del espejo SAE que alimenta el cálculo
+    const frescura = (() => {
+      if (!frescuraEspejo) return null;
+      const d = new Date(frescuraEspejo);
+      if (Number.isNaN(d.getTime())) return null;
+      const horas = (Date.now() - d.getTime()) / 3600000;
+      return {
+        horas,
+        texto: horas < 1 ? 'hace menos de 1 hora' : horas < 48 ? `hace ${Math.floor(horas)} h` : `hace ${(horas / 24).toFixed(1)} días`,
+        fecha: d.toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      };
+    })();
+
     const toggleSeries = (label) => {
       setHistorialValorVisibleSeries((prev) => ({
         ...prev,
@@ -3374,7 +3437,34 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <SectionHeader title="Valor histórico del inventario" icon={Activity} />
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {frescura && (
+          <div
+            className={`flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl border ${
+              frescura.horas > 48
+                ? 'bg-red-50 border-red-200 text-red-700'
+                : 'bg-blue-50 border-blue-200 text-blue-700'
+            }`}
+          >
+            <AlertCircle size={16} className="shrink-0" />
+            <span>
+              Datos de SAE sincronizados <strong>{frescura.texto}</strong>
+              <span className="text-xs opacity-75"> ({frescura.fecha})</span>
+              {frescura.horas > 48 && ' — revisar el ETL, el valor puede estar desactualizado'}
+            </span>
+          </div>
+        )}
+
+        {diasFaltantes.length > 0 && (
+          <div className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>
+              Días sin snapshot en el rango: <strong>{diasFaltantes.join(', ')}</strong>
+              <span className="text-xs opacity-75"> (la tarea no corrió o la PC estaba apagada)</span>
+            </span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <KpiCard
             label="Valor actual"
             value={formatCurrencySmart(valorActual)}
@@ -3383,11 +3473,18 @@ export default function DashboardPage() {
             subtext="Inventario total hoy"
           />
           <KpiCard
-            label="Cambio vs día anterior"
+            label="Cambio vs registro anterior"
             value={formatCurrencySmart(cambio)}
             icon={cambio >= 0 ? ArrowUp : ArrowDown}
             color={cambio >= 0 ? 'bg-emerald-600' : 'bg-red-500'}
             subtext={`${cambioPct >= 0 ? '+' : ''}${cambioPct.toFixed(2)}%`}
+          />
+          <KpiCard
+            label="Almacén principal"
+            value={topAlmacen ? formatCurrencySmart(topAlmacen.valor_total) : '—'}
+            icon={Warehouse}
+            color="bg-purple-600"
+            subtext={topAlmacen ? `${topAlmacen.nombre_alm} · ${topAlmacenPct.toFixed(1)}% del total` : 'Sin datos'}
           />
           <KpiCard
             label="Días registrados"
@@ -3493,6 +3590,72 @@ export default function DashboardPage() {
                 })}
               </div>
             </>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+          <SectionHeader title="Desglose por producto" icon={Layers} />
+          <p className="text-sm text-gray-500 mb-4">
+            Selecciona un almacén para ver qué productos componen su valor (existencias actuales de SAE).
+          </p>
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <select
+              value={drillCveAlm}
+              onChange={(e) => {
+                setDrillCveAlm(e.target.value);
+                loadDrillProductos(e.target.value);
+              }}
+              className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-p3-red focus:border-p3-red"
+            >
+              <option value="">— Elige un almacén —</option>
+              {uniqueAlmacenes.map((alm) => (
+                <option key={alm.cve_alm} value={alm.cve_alm}>
+                  {alm.nombre_alm || `Almacén ${alm.cve_alm}`}
+                </option>
+              ))}
+            </select>
+            {drillCveAlm && !drillLoading && (
+              <span className="text-sm text-gray-600">
+                Total: <strong>{formatCurrency(drillTotal)}</strong> · {formatNumber(drillProductos.length)} productos
+              </span>
+            )}
+            {drillLoading && (
+              <div className="w-4 h-4 border-2 border-p3-red border-t-transparent rounded-full animate-spin" />
+            )}
+          </div>
+          {drillCveAlm && (
+            <DataTable
+              rows={drillProductos}
+              columns={[
+                { key: 'codigo', label: 'Código', sortable: true },
+                { key: 'descripcion', label: 'Descripción', sortable: true, wrap: true },
+                {
+                  key: 'piezas',
+                  label: 'Piezas',
+                  sortable: true,
+                  total: true,
+                  accessor: (row) => Number(row.piezas) || 0,
+                  format: formatNumber,
+                },
+                {
+                  key: 'costo_usado',
+                  label: 'Costo usado',
+                  sortable: true,
+                  accessor: (row) => Number(row.costo_usado) || 0,
+                  format: formatCurrency,
+                },
+                {
+                  key: 'valor',
+                  label: 'Valor',
+                  sortable: true,
+                  total: true,
+                  accessor: (row) => Number(row.valor) || 0,
+                  format: formatCurrency,
+                },
+              ]}
+              emptyMessage="Sin productos con existencia en este almacén"
+              emptyIcon={Package}
+            />
           )}
         </div>
       </div>

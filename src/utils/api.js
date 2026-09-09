@@ -393,6 +393,10 @@ export async function fetchAlertasStock() {
   return apiFetch('/api/inventario/alertas-stock');
 }
 
+export async function fetchValorPorProducto(cveAlm) {
+  return apiFetch(`/api/inventario/valor-por-producto?cve_alm=${encodeURIComponent(cveAlm)}`);
+}
+
 export async function fetchSanAntonioOrdenes(query = '') {
   return apiFetch(`/api/san-antonio/ordenes?${query}`);
 }
