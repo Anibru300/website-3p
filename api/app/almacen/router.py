@@ -15,6 +15,7 @@ from app.services.excel import (
     get_material_en_vales_by_code,
     get_vales_abiertos_count,
     get_fotos_map,
+    get_fotos_multi_map,
     normalize_text,
     read_excel_sheet,
     to_date,
@@ -324,13 +325,17 @@ def subalmacenes(user: dict = Depends(get_current_user)):
     return {"data": data}
 
 
-@router.get("/foto-producto/{codigo}")
-def foto_producto(codigo: str, user: dict = Depends(get_current_user)):
-    fotos = get_fotos_map()
-    ruta = fotos.get(codigo.strip())
-    if not ruta:
-        return Response(status_code=204)
+@router.get("/fotos-producto/{codigo}")
+def fotos_producto(codigo: str, user: dict = Depends(get_current_user)):
+    """Resumen de fotos de un producto: cuántas tiene registradas.
 
+    El detalle de cada foto se sirve en /foto-producto/{codigo}/{indice}.
+    """
+    rutas = get_fotos_multi_map().get(codigo.strip()) or []
+    return {"codigo": codigo.strip(), "total": len(rutas)}
+
+
+def _stream_foto(ruta: str):
     path = Path(ruta)
     if not path.exists():
         return Response(status_code=204)
@@ -340,3 +345,20 @@ def foto_producto(codigo: str, user: dict = Depends(get_current_user)):
         content_type = "image/jpeg"
 
     return StreamingResponse(open(path, "rb"), media_type=content_type)
+
+
+@router.get("/foto-producto/{codigo}")
+def foto_producto(codigo: str, user: dict = Depends(get_current_user)):
+    fotos = get_fotos_map()
+    ruta = fotos.get(codigo.strip())
+    if not ruta:
+        return Response(status_code=204)
+    return _stream_foto(ruta)
+
+
+@router.get("/foto-producto/{codigo}/{indice}")
+def foto_producto_por_indice(codigo: str, indice: int, user: dict = Depends(get_current_user)):
+    rutas = get_fotos_multi_map().get(codigo.strip()) or []
+    if indice < 0 or indice >= len(rutas):
+        return Response(status_code=204)
+    return _stream_foto(rutas[indice])

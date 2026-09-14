@@ -407,12 +407,14 @@ def _fotos_from_rows(rows):
         codigo = normalize_text(item.get("CODIGO"))
         ruta = normalize_text(item.get("RUTA_FOTO"))
         if codigo and ruta:
-            fotos[codigo] = ruta
+            fotos.setdefault(codigo, []).append(ruta)
     return fotos
 
 
-def get_fotos_map():
-    """Lee la hoja FOTOS_PRODUCTOS (sync_* o Excel de almacén) y devuelve un dict.
+def get_fotos_multi_map():
+    """Lee la hoja FOTOS_PRODUCTOS (sync_* o Excel de almacén) y devuelve un dict
+    {codigo: [ruta_foto, ...]} con TODAS las fotos por producto, en el orden
+    en que aparecen en la hoja (una fila = una foto).
 
     Si la fuente no existe o no se puede abrir, devuelve dict vacío.
     La última versión del mapa se conserva en memoria por _FOTOS_TTL_SECONDS.
@@ -425,6 +427,17 @@ def get_fotos_map():
     fotos = _fotos_from_rows(_fotos_rows())
     _FOTOS_CACHE = {"map": fotos, "ts": now}
     return fotos
+
+
+def get_fotos_map():
+    """Devuelve {codigo: ruta} con UNA foto por producto (la última registrada),
+    manteniendo el comportamiento previo para consumidores que solo usan una foto
+    (p. ej. el PDF de cotizaciones)."""
+    return {
+        codigo: rutas[-1]
+        for codigo, rutas in get_fotos_multi_map().items()
+        if rutas
+    }
 
 
 # Alias interno para compatibilidad con imports anteriores

@@ -27,7 +27,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from app.auth.dependencies import get_current_user, require_admin
 from app.config import get_settings
 from app.database import users_connection
-from app.services.excel import _get_cached_historial, _get_fotos_map
+from app.services.excel import _get_cached_historial, get_fotos_multi_map
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +105,8 @@ def _init_cotizaciones_db():
             cur.execute("ALTER TABLE cotizaciones ADD COLUMN vendedor TEXT")
         if not _column_exists(conn, "cotizacion_lineas", "stock_leon"):
             cur.execute("ALTER TABLE cotizacion_lineas ADD COLUMN stock_leon INTEGER DEFAULT 0")
+        if not _column_exists(conn, "cotizacion_lineas", "foto_indice"):
+            cur.execute("ALTER TABLE cotizacion_lineas ADD COLUMN foto_indice INTEGER")
         if not _column_exists(conn, "cotizaciones", "con_fotos"):
             cur.execute("ALTER TABLE cotizaciones ADD COLUMN con_fotos INTEGER DEFAULT 0")
         # Eliminar con_envio si existe (ya no se usa)
@@ -340,6 +342,7 @@ class LineaCotizacionInput(BaseModel):
     precio_unitario: float = Field(default=0, ge=0)
     descuento_pct: float = Field(default=0, ge=0, le=100)
     stock_leon: int = 0
+    foto_indice: int | None = None  # índice de la foto elegida (None = última registrada)
 
 
 class CotizacionInput(BaseModel):
@@ -452,8 +455,8 @@ def guardar_cotizacion(
                 """
                 INSERT INTO cotizacion_lineas
                 (cotizacion_id, codigo, descripcion, almacen, cantidad, precio_unitario,
-                 descuento_pct, precio_con_descuento, total_linea, stock_leon)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 descuento_pct, precio_con_descuento, total_linea, stock_leon, foto_indice)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     cotizacion_id,
@@ -466,6 +469,7 @@ def guardar_cotizacion(
                     linea["precio_con_descuento"],
                     linea["total_linea"],
                     int(linea.get("stock_leon", 0)),
+                    linea.get("foto_indice"),
                 ),
             )
 
@@ -667,14 +671,19 @@ def generar_pdf_cotizacion(
     # Tabla de líneas
     mostrar_stock_leon = bool(cot["con_stock_leon"])
     mostrar_fotos = bool(cot.get("con_fotos"))
-    fotos = _get_fotos_map() if mostrar_fotos else {}
+    fotos = get_fotos_multi_map() if mostrar_fotos else {}
     foto_width = 60
     foto_height = 45
 
-    def _foto_cell(codigo):
-        ruta = fotos.get(str(codigo).strip())
-        if not ruta:
+    def _foto_cell(codigo, foto_indice=None):
+        rutas = fotos.get(str(codigo).strip()) or []
+        if not rutas:
             return "—"
+        # Sin índice válido se mantiene el comportamiento previo: la última foto registrada.
+        if isinstance(foto_indice, int) and 0 <= foto_indice < len(rutas):
+            ruta = rutas[foto_indice]
+        else:
+            ruta = rutas[-1]
         path = Path(ruta)
         if not path.exists():
             return "—"
@@ -695,7 +704,7 @@ def generar_pdf_cotizacion(
     for l in lineas:
         row = []
         if mostrar_fotos:
-            row.append(_foto_cell(l["codigo"]))
+            row.append(_foto_cell(l["codigo"], l.get("foto_indice")))
         row.extend([
             l["codigo"] or "—",
             f"{l['cantidad']:.0f}",

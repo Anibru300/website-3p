@@ -20,7 +20,7 @@ from app.services.excel import (  # noqa: E402
     _material_en_vales_from_rows,
     _pedidos_vivos_from_rows,
     _vales_abiertos_from_rows,
-    get_fotos_map,
+    get_fotos_multi_map,
     get_material_en_vales_by_code,
     get_pedidos_vivos_excel,
     get_vales_abiertos_count,
@@ -167,7 +167,7 @@ class TestFeatureFlag:
         import app.services.excel as excel_mod
 
         excel_mod._FOTOS_CACHE = {"map": None, "ts": 0}
-        assert get_fotos_map() == fotos_live
+        assert get_fotos_multi_map() == fotos_live
 
     def test_pedidos_identicos_ambas_rutas(self, excel_pedidos, monkeypatch):
         from app.services.excel import _load_pedidos_excel
